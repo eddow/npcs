@@ -1,0 +1,52 @@
+// Logical expression examples
+x = 10
+y = 20
+name = "John"
+flag = true
+
+// Basic logical operations
+print "x = " + x + ", y = " + y
+print "x > 5 and y > 15: " + (x > 5 and y > 15)
+print "x > 15 or y > 15: " + (x > 15 or y > 15)
+print "not (x > 15): " + (not (x > 15))
+
+// String logical operations
+print "\nname = '" + name + "'"
+print "name == 'John' and name.length > 0: " + (name == "John" and name.length > 0)
+print "name == 'Jane' or name == 'John': " + (name == "Jane" or name == "John")
+
+// Boolean logical operations
+print "\nflag = " + flag
+print "flag and true: " + (flag and true)
+print "flag or false: " + (flag or false)
+print "not flag: " + (not flag)
+
+// Complex logical expressions
+print "\nComplex expressions:"
+print "(x > 5 and y > 10) or (x < 5 and y < 10): " + ((x > 5 and y > 10) or (x < 5 and y < 10))
+print "not (x > 15 and y > 25): " + (not (x > 15 and y > 25))
+
+// Logical expressions in if statements
+if x > 5 and y > 15 then
+	print "Both x and y are in valid ranges"
+end if
+
+if name == "John" or name == "Jane" then
+	print "Name is either John or Jane"
+end if
+
+if not (x > 20) then
+	print "x is not greater than 20"
+end if
+
+// Logical expressions with isa
+person = {name: "Alice", age: 30}
+if person isa map and person.name isa string then
+	print "Person is a map with string name"
+end if
+
+if (x isa number or x isa string) and x != null then
+	print "x is either number or string and not null"
+end if
+
+print "Logical expression examples completed!"

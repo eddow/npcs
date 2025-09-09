@@ -1,0 +1,14 @@
+// Test function references in pause/resume
+myFunc = function(x)
+    return x * 2
+end function
+
+x = 5
+print "Before pause: x = " + x
+print "Calling function: " + myFunc(x)
+
+waitTomorrow()
+
+print "After pause: x = " + x
+print "Calling function again: " + myFunc(x)
+print "Function still works!"

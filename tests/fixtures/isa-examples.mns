@@ -1,0 +1,81 @@
+// ISA Expression Examples in MiniScript
+
+// Basic type checking
+x = 42
+name = "John"
+flag = true
+person = {name: "Alice", age: 30}
+fruits = ["apple", "banana", "orange"]
+
+// Simple isa checks
+print "x isa number: " + (x isa number)
+print "name isa string: " + (name isa string)
+print "flag isa boolean: " + (flag isa boolean)
+print "person isa map: " + (person isa map)
+print "fruits isa list: " + (fruits isa list)
+
+// Negation using not() - this is the correct way
+print "x isa not number: " + (not (x isa number))
+print "name isa not string: " + (not (name isa string))
+
+// Negation using comparison - alternative way
+print "x isa number == false: " + (x isa number == false)
+print "name isa string != true: " + (name isa string != true)
+
+// Complex boolean expressions
+if x isa number and x > 0 then
+	print "x is a positive number"
+end if
+
+if name isa string and name.length > 0 then
+	print "name is a non-empty string"
+end if
+
+if person isa map and person.name isa string then
+	print "person is a map with a string name"
+end if
+
+// Type checking in functions
+validateInput = function(value)
+	if value isa number then
+		print "Input is a number: " + value
+	else if value isa string then
+		print "Input is a string: " + value
+	else if value isa boolean then
+		print "Input is a boolean: " + value
+	else if value isa map then
+		print "Input is a map with keys: " + value.keys
+	else if value isa list then
+		print "Input is a list with " + value.len + " items"
+	else
+		print "Input is of unknown type"
+	end if
+end function
+
+// Test the validation function
+validateInput(x)
+validateInput(name)
+validateInput(flag)
+validateInput(person)
+validateInput(fruits)
+
+// Complex type checking
+if person isa map and person.age isa number and person.age > 18 then
+	print "Person is an adult"
+end if
+
+if fruits isa list and fruits.len > 0 then
+	print "Fruits list is not empty"
+end if
+
+// Type checking with logical operators
+if (x isa number or x isa string) and x != null then
+	print "x is either a number or string and not null"
+end if
+
+// Negation in complex expressions
+if not (x isa string) and not (x isa boolean) then
+	print "x is neither a string nor a boolean"
+end if
+
+print "ISA examples completed!"

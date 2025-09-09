@@ -1,0 +1,42 @@
+// Continue statement examples
+print "Numbers 1-10, skipping even numbers:"
+counter = 1
+while counter <= 10
+	if counter % 2 == 0 then
+		counter = counter + 1
+		continue
+	end if
+	print "  " + counter
+	counter = counter + 1
+end while
+
+print "\nNumbers 1-10, skipping multiples of 3:"
+for num in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+	if num % 3 == 0 then
+		continue
+	end if
+	print "  " + num
+end for
+
+print "\nProcessing items, skipping invalid ones:"
+items = ["valid1", "invalid", "valid2", "error", "valid3"]
+for item in items
+	if item == "invalid" or item == "error" then
+		print "  Skipping: " + item
+		continue
+	end if
+	print "  Processing: " + item
+end for
+
+print "\nContinue in nested loops:"
+for i in [1, 2, 3]
+	print "  Outer loop: " + i
+	for j in [1, 2, 3]
+		if j == 2 then
+			continue
+		end if
+		print "    Inner loop: " + j
+	end for
+end for
+
+print "Continue statement examples completed!"

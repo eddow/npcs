@@ -1,5 +1,4 @@
-import { describe, it, expect } from 'vitest';
-import { MiniScriptTestRunner } from '../src/test-runner';
+import { MiniScriptTestRunner } from '../src/test-runner-jest.js';
 
 describe('MiniScript Executor', () => {
 	const runner = new MiniScriptTestRunner();
@@ -132,12 +131,9 @@ counter = counter + 1
 end while
 `;
 
-			// Write temporary test file
-			const fs = await import('node:fs');
-			const path = await import('node:path');
-			const { fileURLToPath } = await import('node:url');
-			const __filename = fileURLToPath(import.meta.url);
-			const __dirname = path.dirname(__filename);
+			// Create a temporary test file using CommonJS
+			const fs = require('fs');
+			const path = require('path');
 			const tempFile = path.join(__dirname, 'fixtures', 'comprehensive.mns');
 			fs.writeFileSync(tempFile, comprehensiveTest);
 

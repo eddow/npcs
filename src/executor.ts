@@ -1,4 +1,5 @@
 //import * as MiniScript from 'miniscript-core';
+import { IOInterface, ConsoleIO } from './io-interface.js';
 
 export interface ExecutionState {
 	variables: Record<string, any>;
@@ -19,14 +20,17 @@ export interface CallFrame {
 export class MiniScriptExecutor {
 	private variables: Map<string, any> = new Map();
 	private functions: Map<string, any> = new Map();
+	private functionRegistry: Map<string, any> = new Map(); // Maps function names to their AST definitions
 	private callStack: CallFrame[] = [];
 	private currentStatementIndex: number = 0;
 	private ast: any = null;
 	private source: string = '';
 	private executionPaused: boolean = false;
 	private pauseReason: string = '';
+	private io: IOInterface;
 
-	constructor() {
+	constructor(io?: IOInterface) {
+		this.io = io || new ConsoleIO();
 		// Add native functions
 		this.functions.set('waitTomorrow', this.createWaitTomorrowFunction());
 	}
@@ -39,6 +43,9 @@ export class MiniScriptExecutor {
 		this.ast = ast;
 		this.source = source || '';
 		this.currentStatementIndex = 0;
+		
+		// Build function registry from AST
+		this.buildFunctionRegistry(ast);
 
 		// Execute each statement in the chunk
 		for (let i = this.currentStatementIndex; i < ast.body.length; i++) {
@@ -70,6 +77,12 @@ export class MiniScriptExecutor {
 				return this.executeReturn(statement);
 			case 'ASTBreakStatement':
 				return this.executeBreak(statement);
+			case 'ASTContinueStatement':
+				return this.executeContinue(statement);
+			case 'ASTForGenericStatement':
+				return this.executeForGeneric(statement);
+			case 'ASTImportCodeExpression':
+				return this.executeImport(statement);
 			default:
 				console.log(`Unknown statement type: ${statementType}`);
 				return undefined;
@@ -110,7 +123,7 @@ export class MiniScriptExecutor {
 		// Check for else clauses
 		for (let i = 1; i < statement.clauses.length; i++) {
 			const clause = statement.clauses[i];
-			if (clause.condition === null || this.evaluateExpression(clause.condition)) {
+			if (clause.condition === null || clause.condition === undefined || this.evaluateExpression(clause.condition)) {
 				return this.executeBlock(clause.body);
 			}
 		}
@@ -124,6 +137,7 @@ export class MiniScriptExecutor {
 			if (result === 'BREAK') {
 				break;
 			}
+			// Continue statements are handled by the loop itself (just continue to next iteration)
 		}
 		return undefined;
 	}
@@ -141,6 +155,11 @@ export class MiniScriptExecutor {
 		// Check if it's a built-in function
 		if (funcName === 'print') {
 			return this.executePrint(statement);
+		}
+		
+		// Check if it's an import statement
+		if (funcName === 'import') {
+			return this.executeImport(statement);
 		}
 
 		// Check if it's a user-defined function
@@ -168,7 +187,7 @@ export class MiniScriptExecutor {
 		// Handle both args and expression.arguments
 		const args = statement.args || (statement.expression && statement.expression.arguments);
 		const evaluatedArgs = args ? args.map((arg: any) => this.evaluateExpression(arg)) : [];
-		console.log(...evaluatedArgs);
+		this.io.print(evaluatedArgs.join(' '));
 	}
 
 	private executeReturn(statement: any): any {
@@ -215,6 +234,10 @@ export class MiniScriptExecutor {
 				if (result === 'BREAK') {
 					return 'BREAK';
 				}
+				// Handle continue statements
+				if (result === 'CONTINUE') {
+					return 'CONTINUE';
+				}
 			}
 			return undefined;
 		} finally {
@@ -233,11 +256,15 @@ export class MiniScriptExecutor {
 			case 'ASTNumericLiteral':
 			case 'ASTStringLiteral':
 			case 'ASTBooleanLiteral':
+			case 'ASTNilLiteral':
 			case 'ASTMapKeyString':
 			case 'ASTListValue':
 				// Handle primitive types directly
 				if (typeof expr.value === 'string' || typeof expr.value === 'number' || typeof expr.value === 'boolean') {
 					return expr.value;
+				}
+				if (exprType === 'ASTNilLiteral') {
+					return null;
 				}
 				return this.evaluateExpression(expr.value);
 			case 'ASTIdentifier':
@@ -261,6 +288,10 @@ export class MiniScriptExecutor {
 				return this.evaluateListConstructor(expr);
 			case 'ASTParenthesisExpression':
 				return this.evaluateExpression(expr.expression);
+			case 'ASTIsaExpression':
+				return this.evaluateIsaExpression(expr);
+			case 'ASTLogicalExpression':
+				return this.evaluateLogicalExpression(expr);
 			default:
 				console.log(`Unknown expression type: ${exprType}`);
 				return undefined;
@@ -281,6 +312,8 @@ export class MiniScriptExecutor {
 				return left * right;
 			case '/':
 				return left / right;
+			case '%':
+				return left % right;
 			case '>':
 				return left > right;
 			case '<':
@@ -299,14 +332,17 @@ export class MiniScriptExecutor {
 	}
 
 	private evaluateUnaryExpression(expr: any): any {
-		const operand = this.evaluateExpression(expr.operand);
+		const argument = this.evaluateExpression(expr.argument || expr.operand);
 		const operator = expr.operator;
-
+		
 		switch (operator) {
+			case 'not':
 			case '!':
-				return !operand;
+				return !argument;
 			case '-':
-				return -operand;
+				return -argument;
+			case '+':
+				return +argument;
 			default:
 				throw new Error(`Unknown unary operator: ${operator}`);
 		}
@@ -352,6 +388,14 @@ export class MiniScriptExecutor {
 		const object = this.evaluateExpression(expr.base);
 		const property = expr.identifier ? expr.identifier.name : this.evaluateExpression(expr.indexer);
 		
+		// Special handling for built-in properties
+		if (property === 'len' && Array.isArray(object)) {
+			return object.length;
+		}
+		if (property === 'keys' && object && typeof object === 'object' && !Array.isArray(object)) {
+			return Object.keys(object);
+		}
+		
 		if (object && typeof object === 'object') {
 			return object[property];
 		}
@@ -396,8 +440,8 @@ export class MiniScriptExecutor {
 			
 			// Serialize and print the execution state
 			const state = this.serializeState();
-			console.log('EXECUTION PAUSED - State serialized:');
-			console.log(JSON.stringify(state, null, 2));
+			this.io.print('EXECUTION PAUSED - State serialized:');
+			this.io.print(JSON.stringify(state, null, 2));
 			
 			return 'EXECUTION_PAUSED';
 		};
@@ -466,10 +510,64 @@ export class MiniScriptExecutor {
 		return serialized;
 	}
 
-	// Get a reference for a function (simplified for now)
+	// Build function registry from AST
+	private buildFunctionRegistry(ast: any): void {
+		this.functionRegistry.clear();
+		
+		if (ast && ast.body) {
+			ast.body.forEach((stmt: any) => {
+				// Handle function assignments: myFunc = function(x) ... end function
+				if (stmt.constructor.name === 'ASTAssignmentStatement' && 
+					stmt.init && stmt.init.constructor.name === 'ASTFunctionStatement') {
+					
+					const funcName = stmt.variable?.name;
+					const funcDef = stmt.init;
+					
+					if (funcName) {
+						this.functionRegistry.set(funcName, funcDef);
+					}
+				}
+				// Handle direct function statements: function myFunc(x) ... end function
+				else if (stmt.constructor.name === 'ASTFunctionStatement') {
+					const funcName = stmt.name;
+					if (funcName) {
+						this.functionRegistry.set(funcName, stmt);
+					}
+				}
+				// Handle function expressions in assignments
+				else if (stmt.constructor.name === 'ASTAssignmentStatement' && 
+					stmt.init && stmt.init.constructor.name === 'ASTFunctionExpression') {
+					
+					const funcName = stmt.variable?.name;
+					const funcDef = stmt.init;
+					
+					if (funcName) {
+						this.functionRegistry.set(funcName, funcDef);
+					}
+				}
+			});
+		}
+	}
+
+	// Get a reference for a function - store the function name as the reference
 	private getFunctionReference(func: Function): string {
-		// In a real implementation, this would be more sophisticated
-		// For now, we'll use a simple approach
+		// Find the function name in the registry
+		for (const [name, funcDef] of this.functionRegistry.entries()) {
+			// Create a temporary function to compare
+			const tempFunc = this.createFunction(funcDef);
+			if (tempFunc === func) {
+				return name;
+			}
+		}
+		
+		// Fallback: try to find by function name in variables
+		for (const [varName, value] of this.variables.entries()) {
+			if (value === func) {
+				return varName;
+			}
+		}
+		
+		// Last resort: use function string representation
 		return `function_${func.toString().slice(0, 50)}`;
 	}
 
@@ -491,7 +589,7 @@ export class MiniScriptExecutor {
 
 	// Restore execution state
 	restoreState(state: ExecutionState, MiniScript?: any): void {
-		this.variables = new Map(Object.entries(state.variables));
+		// Set basic state first
 		this.currentStatementIndex = state.currentStatementIndex;
 		this.source = state.source;
 		this.executionPaused = state.executionPaused;
@@ -502,13 +600,55 @@ export class MiniScriptExecutor {
 			const lexer = new MiniScript.Lexer(this.source);
 			const parser = new MiniScript.Parser(this.source, { lexer });
 			this.ast = parser.parseChunk();
+			
+			// Build function registry from the re-parsed AST
+			this.buildFunctionRegistry(this.ast);
 		}
+		
+		// Restore variables, handling function references
+		this.variables = this.restoreVariables(state.variables);
 		
 		// Restore call stack (simplified - we'll rebuild it during execution)
 		this.callStack = [];
 		
-		// Restore functions (simplified for now)
+		// Restore native functions
 		this.functions.set('waitTomorrow', this.createWaitTomorrowFunction());
+	}
+
+	// Restore variables, handling function references
+	private restoreVariables(serializedVars: Record<string, any>): Map<string, any> {
+		const restored = new Map<string, any>();
+		
+		for (const [key, value] of Object.entries(serializedVars)) {
+			if (value && typeof value === 'object' && value.__type === 'function') {
+				// Restore function from reference
+				const funcRef = value.__reference;
+				const restoredFunc = this.restoreFunction(funcRef);
+				restored.set(key, restoredFunc);
+			} else {
+				restored.set(key, value);
+			}
+		}
+		
+		return restored;
+	}
+
+	// Restore a function from its reference
+	private restoreFunction(funcRef: string): Function | undefined {
+		// Check if it's a function name in the registry
+		if (this.functionRegistry.has(funcRef)) {
+			const funcDef = this.functionRegistry.get(funcRef);
+			return this.createFunction(funcDef);
+		}
+		
+		// Check if it's a native function
+		if (this.functions.has(funcRef)) {
+			return this.functions.get(funcRef);
+		}
+		
+		// If we can't restore it, return undefined
+		console.warn(`Could not restore function: ${funcRef}`);
+		return undefined;
 	}
 
 	// Resume execution from current state
@@ -533,4 +673,80 @@ export class MiniScriptExecutor {
 			}
 		}
 	}
+
+	// New statement execution methods
+	private executeContinue(statement: any): any {
+		return 'CONTINUE';
+	}
+
+	private executeForGeneric(statement: any): any {
+		const variable = statement.variable.name;
+		const iterator = this.evaluateExpression(statement.iterator);
+		
+		if (!Array.isArray(iterator)) {
+			throw new Error('For loop iterator must be a list');
+		}
+		
+		for (const item of iterator) {
+			// Set the loop variable
+			this.variables.set(variable, item);
+			
+			// Execute the loop body
+			const result = this.executeBlock(statement.body);
+			
+			if (result === 'BREAK') {
+				break;
+			}
+			// Continue statements are handled by the loop itself (just continue to next iteration)
+		}
+		
+		return undefined;
+	}
+
+	private executeImport(statement: any): any {
+		// Extract module name from the call arguments
+		const args = statement.args || (statement.expression && statement.expression.arguments);
+		if (!args || args.length === 0) {
+			throw new Error('Import statement missing module name');
+		}
+		const moduleName = this.evaluateExpression(args[0]);
+		return this.io.import(moduleName);
+	}
+
+	// New expression evaluation methods
+	private evaluateIsaExpression(expr: any): boolean {
+		const left = this.evaluateExpression(expr.left);
+		const right = expr.right.name; // Type name (number, string, boolean, map, list)
+		
+		switch (right) {
+			case 'number':
+				return typeof left === 'number';
+			case 'string':
+				return typeof left === 'string';
+			case 'boolean':
+				return typeof left === 'boolean';
+			case 'map':
+				return left !== null && typeof left === 'object' && !Array.isArray(left);
+			case 'list':
+				return Array.isArray(left);
+			default:
+				return false;
+		}
+	}
+
+	private evaluateLogicalExpression(expr: any): any {
+		const left = this.evaluateExpression(expr.left);
+		const right = this.evaluateExpression(expr.right);
+		const operator = expr.operator;
+		
+		switch (operator) {
+			case 'and':
+				return left && right;
+			case 'or':
+				return left || right;
+			default:
+				throw new Error(`Unknown logical operator: ${operator}`);
+		}
+	}
+
 }

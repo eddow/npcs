@@ -1,0 +1,14 @@
+flag = true
+print "flag = " + flag
+
+if flag then
+	print "flag is true"
+else
+	print "flag is false"
+end if
+
+if not flag then
+	print "not flag is true"
+else
+	print "not flag is false"
+end if

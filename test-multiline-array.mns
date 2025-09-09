@@ -1,0 +1,7 @@
+// Test multiline array
+data = [
+	42,
+	"hello",
+	true
+]
+print "Data: " + data

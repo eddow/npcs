@@ -1,0 +1,46 @@
+// For loop examples
+fruits = ["apple", "banana", "orange", "grape"]
+
+print "Iterating through fruits:"
+for fruit in fruits
+	print "  - " + fruit
+end for
+
+// For loop with break
+print "\nFruits (stopping at orange):"
+for fruit in fruits
+	print "  - " + fruit
+	if fruit == "orange" then
+		break
+	end if
+end for
+
+// For loop with continue
+print "\nFruits (skipping banana):"
+for fruit in fruits
+	if fruit == "banana" then
+		continue
+	end if
+	print "  - " + fruit
+end for
+
+// For loop with numbers
+numbers = [1, 2, 3, 4, 5]
+sum = 0
+for num in numbers
+	sum = sum + num
+end for
+print "\nSum of numbers: " + sum
+
+// Nested for loops
+matrix = [[1, 2], [3, 4], [5, 6]]
+print "\nMatrix:"
+for row in matrix
+	rowStr = ""
+	for cell in row
+		rowStr = rowStr + cell + " "
+	end for
+	print "  " + rowStr
+end for
+
+print "For loop examples completed!"

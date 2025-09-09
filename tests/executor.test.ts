@@ -1,5 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { MiniScriptExecutor } from '../src/executor';
+import { MiniScriptExecutor } from '../src/executor.js';
 import { Lexer, Parser } from 'miniscript-core';
 
 describe('MiniScript Executor Unit Tests', () => {

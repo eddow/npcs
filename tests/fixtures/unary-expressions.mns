@@ -1,0 +1,53 @@
+// Unary expression examples
+x = 42
+y = -10
+flag = true
+
+// Negation operator
+print "x = " + x
+print "not (x > 50): " + (not (x > 50))
+print "not (x < 50): " + (not (x < 50))
+
+// Boolean negation
+print "\nflag = " + flag
+print "not flag: " + (not flag)
+print "not (not flag): " + (not (not flag))
+
+// Arithmetic unary operators
+print "\ny = " + y
+print "-y: " + (-y)
+print "-(-y): " + (-(-y))
+
+// Unary with expressions
+print "\nUnary with expressions:"
+print "-(x + 10): " + (-(x + 10))
+print "not (x > 30 and y < 0): " + (not (x > 30 and y < 0))
+
+// Unary in if statements
+if not (x < 0) then
+	print "x is not negative"
+end if
+
+if -y > 0 then
+	print "Negative of y is positive"
+end if
+
+// Complex unary expressions
+result = not (x > 50 or y < -20)
+print "\nnot (x > 50 or y < -20): " + result
+
+negatedSum = -(x + y)
+print "-(x + y): " + negatedSum
+
+// Unary with isa
+if not (x isa string) then
+	print "x is not a string"
+end if
+
+if not (flag isa boolean) then
+	print "flag is not a boolean"
+else
+	print "flag is a boolean"
+end if
+
+print "Unary expression examples completed!"
