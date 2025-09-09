@@ -1,0 +1,6 @@
+// Basic pause test
+x = 10
+print "Before waitTomorrow: x = " + x
+waitTomorrow()
+print "After waitTomorrow: x = " + x
+print "Execution completed!"

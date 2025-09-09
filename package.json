@@ -1,0 +1,29 @@
+{
+  "name": "test-miniscript",
+  "version": "1.0.0",
+  "description": "MiniScript executor with comprehensive testing",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "clean": "rm -rf dist",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:single": "tsx run-test.ts",
+    "test:pause": "tsx demo-pause-resume.ts",
+    "test:pause-single": "tsx run-pause-test.ts",
+    "dev": "tsx test.ts"
+  },
+  "dependencies": {
+    "miniscript-core": "^1.6.0",
+    "tsx": "^4.20.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@vitest/ui": "^3.2.4",
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
+  }
+}

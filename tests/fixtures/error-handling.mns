@@ -1,0 +1,12 @@
+// Test error cases
+undefined_var = someUndefinedVariable
+print "This should show undefined: " + undefined_var
+
+// Test function with undefined parameter
+testFunc = function(x)
+	print "Parameter x: " + x
+	return x
+end function
+
+result = testFunc(undefined)
+print "Function result: " + result

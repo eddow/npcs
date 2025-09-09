@@ -1,0 +1,10 @@
+// Pause inside while loop
+counter = 0
+while counter < 3
+	print "Loop iteration: " + counter
+	counter = counter + 1
+	if counter == 2 then
+		waitTomorrow()
+	end if
+end while
+print "Loop completed!"

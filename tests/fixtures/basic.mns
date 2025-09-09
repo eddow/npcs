@@ -1,0 +1,8 @@
+// Basic arithmetic and variables
+x = 10
+y = 5
+sum = x + y
+product = x * y
+
+print "Sum: " + sum
+print "Product: " + product

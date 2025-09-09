@@ -1,0 +1,13 @@
+// Object creation and manipulation
+person = {name: "John", age: 39, city: "New York"}
+print "Person name: " + person.name
+print "Person age: " + person.age
+
+// Nested objects
+company = {name: "TechCorp", ceo: {name: "Jane", age: 45}}
+print "Company: " + company.name
+print "CEO name: " + company.ceo.name
+
+// Property modification
+person.age = 40
+print "Updated age: " + person.age

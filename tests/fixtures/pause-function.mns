@@ -1,0 +1,10 @@
+// Pause inside function
+testFunc = function(value)
+	print "Function called with: " + value
+	waitTomorrow()
+	print "After pause in function: " + value
+	return value * 2
+end function
+
+result = testFunc(5)
+print "Function result: " + result

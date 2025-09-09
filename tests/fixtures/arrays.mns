@@ -1,0 +1,10 @@
+// Array creation and access
+fruits = ["apple", "banana", "orange"]
+print "First fruit: " + fruits[0]
+print "Second fruit: " + fruits[1]
+
+// Mixed data types
+data = {count: 10, active: true, items: ["apple", "banana"]}
+print "Count: " + data.count
+print "Active: " + data.active
+print "First item: " + data.items[0]

@@ -1,0 +1,31 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Debug Current TS/TSX File",
+			"type": "node",
+			"request": "launch",
+			"program": "${workspaceFolder}/node_modules/.bin/tsx",
+			"args": ["${file}"],
+			"console": "integratedTerminal",
+			"internalConsoleOptions": "neverOpen",
+			"skipFiles": ["<node_internals>/**"],
+			"env": {
+				"NODE_ENV": "development"
+			}
+		},
+		{
+			"name": "Debug test.ts",
+			"type": "node",
+			"request": "launch",
+			"program": "${workspaceFolder}/node_modules/.bin/tsx",
+			"args": ["${workspaceFolder}/test.ts"],
+			"console": "integratedTerminal",
+			"internalConsoleOptions": "neverOpen",
+			"skipFiles": ["<node_internals>/**"],
+			"env": {
+				"NODE_ENV": "development"
+			}
+		}
+	]
+}
