@@ -1,4 +1,4 @@
-import { runFile, runFixture, runScript } from '../src/test-runner-jest.js';
+import { runFile, runFixture, runScript } from './test-runner-jest.js';
 
 describe('MiniScript Executor', () => {
 
@@ -12,6 +12,22 @@ describe('MiniScript Executor', () => {
 				'Product: 50'
 			]);
 			expect(result.executionTime).toBeLessThan(1000);
+		});
+
+		it('should return stuff', () => {
+			const snippet = `
+test = function()
+	return function(x)
+		return x*2
+	end function
+end function
+
+tf = test()
+return tf(2)
+`;
+			const result = runScript(snippet);
+			expect(result.success).toBe(true);
+			expect(result.result).toEqual({ type: 'return', value: 4 });
 		});
 	});
 	it('should handle if/else variations (debug-if-else)', () => {

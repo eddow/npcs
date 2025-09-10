@@ -6,7 +6,7 @@ while counter < 3
 	print "After loop iteration: " + counter
 	if counter == 2 then
 		print "Before"
-		yield()
+		yield 0
 		print "After"
 	end if
 end while

@@ -136,6 +136,31 @@ interface LValue {
 	set(value: MSValue): void
 }
 
+export function rootScope(
+	variables: Record<string, any>,
+	statements: Record<string, any> = {},
+	functions: Record<string, any> = {}
+): ExecutionScope {
+	variables = { ...variables }
+	for(const [name, value] of Object.entries(statements)) {
+		variables[name] = new NativeFunctionDefinition({statement: value})
+	}
+	for(const [name, value] of Object.entries(functions)) {
+		variables[name] = new NativeFunctionDefinition({evaluation: value})
+	}
+	return {
+		variables,
+		ip: [0],
+		loopStack: []
+	}
+}
+export function emptyScope(): ExecutionScope {
+	return {
+		variables: {},
+		ip: [0],
+		loopStack: []
+	}
+}
 export class MiniScriptExecutor {
 	public assertAST<E extends ASTBase>(
 		expr: ASTBase, ctor: new (...args: any[]) => E, expectedName?: string
@@ -157,37 +182,16 @@ export class MiniScriptExecutor {
 		const caretLine = `${caretIndent}^`
 		return `${expr.start.line}:${expr.start.character}\n${lineText}\n${caretLine}`
 	}
-	get scope(): ExecutionScope {
+	private scopes: ExecutionScope[]
+	private get scope(): ExecutionScope {
 		return this.scopes[0]
 	}
-	static rootScope(
-		variables: Record<string, any>,
-		statements: Record<string, any> = {},
-		functions: Record<string, any> = {}
-	): ExecutionScope {
-		variables = { ...variables }
-		for(const [name, value] of Object.entries(statements)) {
-			variables[name] = new NativeFunctionDefinition({statement: value})
-		}
-		for(const [name, value] of Object.entries(functions)) {
-			variables[name] = new NativeFunctionDefinition({evaluation: value})
-		}
-		return {
-			variables,
-			ip: [0],
-			loopStack: []
-		}
+	get state(): ExecutionScope[] {
+		return this.scopes.slice(0, -1)
 	}
-	static emptyScope(): ExecutionScope {
-		return {
-			variables: {},
-			ip: [0],
-			loopStack: []
-		}
-	}
-	constructor(private ast: any, public scopes: ExecutionScope[] = [], private source?: string) {
-		if(scopes.length === 0) scopes = [MiniScriptExecutor.rootScope({})]
-		if(scopes.length < 2) scopes.push(MiniScriptExecutor.emptyScope())
+
+	constructor(private ast: any, private source: string, root: ExecutionScope, state: ExecutionScope[] = [emptyScope()])	 {
+		this.scopes = [...state, root]
 	}
 
 	// Variable access methods
@@ -262,6 +266,12 @@ export class MiniScriptExecutor {
 						throw new ExecutionError(this, currentBlock, `Assignment statement init is not a function statement: ${av.constructor.name}`)
 					}
 					container = av.body
+				} else if(currentBlock instanceof ASTReturnStatement) {
+					const rv = currentBlock.argument
+					if(!(rv instanceof ASTFunctionStatement)) {
+						throw new ExecutionError(this, currentBlock, `Return statement argument is not a function statement: ${rv?.constructor.name ?? 'undefined'}`)
+					}
+					container = rv.body
 				} else if(currentBlock instanceof ASTBaseBlock) {
 					container = currentBlock.body
 				} else if(currentBlock instanceof ASTIfStatement) {
@@ -278,7 +288,10 @@ export class MiniScriptExecutor {
 			if(lastStatement instanceof ASTClause) {
 				ip.pop()
 				this.incrementIP(ip)
-			} else if(lastStatement instanceof ASTAssignmentStatement) {
+			} else if(
+				lastStatement instanceof ASTAssignmentStatement ||
+				lastStatement instanceof ASTReturnStatement
+			) {
 				// function definition
 				return null
 			} else if(lastStatement instanceof ASTWhileStatement) {

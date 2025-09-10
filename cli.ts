@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from "node:fs"
 import { join, resolve } from "node:path"
 import MiniScript, { ASTChunk } from "miniscript-core"
-import { MiniScriptExecutor } from "./src/executor.js"
+import { MiniScriptExecutor, rootScope } from "./src/executor.js"
 
 function showUsage() {
 	console.log("Usage: npx tsx cli.ts <script-file>")
@@ -60,13 +60,13 @@ async function runScript(scriptPath: string) {
 		console.log("\n" + "=".repeat(50) + "\n")
 		
 		// Create executor and run
-		const rootScope = MiniScriptExecutor.rootScope({}, {
+		const root = rootScope({}, {
 			print: (...args: any[]) => {
 				console.log(args.join(" "))
 			}
 		})
 		
-		const executor = new MiniScriptExecutor(ast, rootScope, content)
+		const executor = new MiniScriptExecutor(ast, content, root)
 		
 		console.log("🚀 Executing MiniScript...")
 		console.log("📤 Output:")

@@ -1,7 +1,7 @@
 {
-  "name": "mns-executor",
+  "name": "npc-script",
   "version": "1.0.0",
-  "description": "MiniScript executor with comprehensive testing",
+  "description": "MiniScript executor with linear stateful execution",
   "type": "module",
   "scripts": {
     "build": "tsc",

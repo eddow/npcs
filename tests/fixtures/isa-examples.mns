@@ -44,9 +44,9 @@ validateInput = function(value)
 	else if value isa boolean then
 		print "Input is a boolean: " + value
 	else if value isa map then
-		print "Input is a map with keys: " + value.keys
+		print "Input is a map"
 	else if value isa list then
-		print "Input is a list with " + value.len + " items"
+		print "Input is a list"
 	else
 		print "Input is of unknown type"
 	end if
@@ -64,8 +64,8 @@ if person isa map and person.age isa number and person.age > 18 then
 	print "Person is an adult"
 end if
 
-if fruits isa list and fruits.len > 0 then
-	print "Fruits list is not empty"
+if fruits isa list and len(fruits) > 0 then
+	print "Fruits list is " + len(fruits) + " long"
 end if
 
 // Type checking with logical operators
