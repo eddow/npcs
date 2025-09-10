@@ -9,7 +9,7 @@ A comprehensive MiniScript executor with full testing suite using Vitest.
 - ✅ **Array Support**: `["apple", "banana"]` with index access
 - ✅ **Function Definitions**: `function(param) ... end function`
 - ✅ **Control Flow**: `if/else`, `while` loops, `break` statements
-- ✅ **Pause/Resume Execution**: `waitTomorrow()` function pauses execution and serializes state
+- ✅ **Pause/Resume Execution**: `yield()` function pauses execution and serializes state
 - ✅ **State Serialization**: Complete execution state can be saved and restored
 - ✅ **Cross-Executor Restoration**: Resume execution in a completely new executor instance
 - ✅ **Comprehensive Testing**: 26+ test cases covering all features
@@ -153,7 +153,7 @@ end while
 ```miniscript
 x = 10
 print "Before pause: x = " + x
-waitTomorrow()  // Pauses execution and serializes state
+yield()  // Pauses execution and serializes state
 print "After pause: x = " + x
 print "Execution completed!"
 ```
@@ -162,7 +162,7 @@ print "Execution completed!"
 ```miniscript
 person = {name: "Alice", age: 30}
 print "Before pause: " + person.name + " is " + person.age
-waitTomorrow()  // State is preserved across pause
+yield()  // State is preserved across pause
 person.age = 31
 print "After pause: " + person.name + " is now " + person.age
 ```
@@ -195,7 +195,7 @@ The executor is highly optimized and suitable for real-time applications.
 
 The pause/resume system provides:
 
-1. **Native `waitTomorrow()` Function**: Pauses execution at any point
+1. **Native `yield()` Function**: Pauses execution at any point
 2. **State Serialization**: Saves variables, call stack, and execution position
 3. **Cross-Executor Restoration**: Resume in a completely new executor instance
 4. **Object State Preservation**: Complex objects maintain their state across pause/resume

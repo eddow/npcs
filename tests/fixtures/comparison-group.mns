@@ -1,0 +1,23 @@
+// Comparison group / chained comparisons fixture
+
+// Increasing chain
+if 3 < 4 < 5 then print "3 < 4 < 5"
+
+// Equality chaining
+if 3 == 3 == 3 then print "3 == 3 == 3"
+
+if 3 == 3 == 4 then print "3 == 3 == 4"
+
+// Mixed operators
+if 1 < 2 == 2 then print "1 < 2 == 2"
+if 2 == 2 < 3 then print "2 == 2 < 3"
+
+// Non-increasing chain
+if 5 > 4 > 3 then print "5 > 4 > 3"
+
+// Inequality chain (if supported)
+if 1 != 2 != 3 then print "1 != 2 != 3"
+
+// Edge: equal then not equal
+if 2 == 2 != 3 then print "2 == 2 != 3"
+

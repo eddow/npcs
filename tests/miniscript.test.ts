@@ -1,11 +1,10 @@
-import { MiniScriptTestRunner } from '../src/test-runner-jest.js';
+import { runFile, runFixture, runScript } from '../src/test-runner-jest.js';
 
 describe('MiniScript Executor', () => {
-	const runner = new MiniScriptTestRunner();
 
 	describe('Basic Operations', () => {
-		it('should handle basic arithmetic and variables', async () => {
-			const result = await runner.runFixture('basic');
+		it('should handle basic arithmetic and variables', () => {
+			const result = runFixture('basic');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toEqual([
@@ -15,23 +14,54 @@ describe('MiniScript Executor', () => {
 			expect(result.executionTime).toBeLessThan(1000);
 		});
 	});
+	it('should handle if/else variations (debug-if-else)', () => {
+		const result = runFixture('debug-if-else');
+		
+		expect(result.success).toBe(true);
+		expect(result.output).toEqual([
+			'flag = true',
+			'One-liner true',
+			'Simple-liner true',
+			'flag is true',
+			'not flag is false'
+		]);
+	});
+	// Chained comparisons / comparison group
+	describe('Comparison Group', () => {
+		it('should evaluate chained comparisons correctly', () => {
+			const result = runFixture('comparison-group');
+			
+			expect(result.success).toBe(true);
+			// Expected outputs based on semantics similar to math chained comparisons
+			expect(result.output).toEqual([
+				'3 < 4 < 5',
+				'3 == 3 == 3',
+				'1 < 2 == 2',
+				'2 == 2 < 3',
+				'5 > 4 > 3',
+				'1 != 2 != 3',
+				'2 == 2 != 3'
+			]);
+		});
+	});
 
 	describe('Functions', () => {
-		it('should handle function definitions and calls', async () => {
-			const result = await runner.runFixture('functions');
+		it('should handle function definitions and calls', () => {
+			const result = runFixture('functions');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toEqual([
 				'Hello, World!',
+				'*Shake hands*',
 				'Calculation result: 25',
 				'Function returned: 25'
 			]);
 		});
 	});
-
+	
 	describe('Objects', () => {
-		it('should handle object creation and property access', async () => {
-			const result = await runner.runFixture('objects');
+		it('should handle object creation and property access', () => {
+			const result = runFixture('objects');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toEqual([
@@ -39,14 +69,15 @@ describe('MiniScript Executor', () => {
 				'Person age: 39',
 				'Company: TechCorp',
 				'CEO name: Jane',
-				'Updated age: 40'
+				'Updated age: 40',
+				'Updated age: 41'
 			]);
 		});
 	});
 
 	describe('Arrays', () => {
-		it('should handle array creation and access', async () => {
-			const result = await runner.runFixture('arrays');
+		it('should handle array creation and access', () => {
+			const result = runFixture('arrays');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toEqual([
@@ -58,27 +89,54 @@ describe('MiniScript Executor', () => {
 			]);
 		});
 	});
-
-	describe('Control Flow', () => {
-		it('should handle if statements and loops', async () => {
-			const result = await runner.runFixture('control-flow');
+	describe('While Loops', () => {
+		it('should handle if statements and loops', () => {
+			const result = runFixture('while-loops');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toEqual([
-				'x is greater than 5',
-				'Let\'s do some calculations',
-				'y = 20',
-				'Counter is: 0',
-				'Counter is: 1',
-				'Counter is: 2',
+				'Simple Counter is: 0',
+				'Simple Counter is: 1',
+				'Simple Counter is: 2',
+				'Break Counter is: 2',
+				'Break Counter is: 3',
 				'Loop finished!'
 			]);
+		});
+	});	
+
+	describe('For Loops', () => {
+		it('should handle basic for loops', () => {
+			const result = runFixture('for-loops');
+			expect(result.success).toBe(true);
+			expect(result.output).toEqual([
+				'Iterating through fruits:',
+				'  - apple',
+				'  - banana',
+				'  - orange',
+				'  - grape',
+				'Fruits (stopping at orange):',
+				'  - apple',
+				'  - banana',
+				'  - orange',
+				'Fruits (skipping banana):',
+				'  - apple',
+				'  - orange',
+				'  - grape',
+				'Sum of numbers: 15',
+				'Matrix:',
+				'  1 2 ',
+				'  3 4 ',
+				'  5 6 ',
+				'For loop examples completed!'
+			]);
+			expect(result.executionTime).toBeLessThan(1000);
 		});
 	});
 
 	describe('Error Handling', () => {
-		it('should handle undefined variables gracefully', async () => {
-			const result = await runner.runFixture('error-handling');
+		it('should handle undefined variables gracefully', () => {
+			const result = runFixture('error-handling');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toEqual([
@@ -88,25 +146,18 @@ describe('MiniScript Executor', () => {
 			]);
 		});
 	});
-
+	
 	describe('Performance', () => {
-		it('should execute basic operations quickly', async () => {
-			const result = await runner.runFixture('basic');
+		it('should execute basic operations quickly', () => {
+			const result = runFixture('basic');
 			
 			expect(result.success).toBe(true);
 			expect(result.executionTime).toBeLessThan(100); // Should be very fast
 		});
-
-		it('should execute complex operations in reasonable time', async () => {
-			const result = await runner.runFixture('control-flow');
-			
-			expect(result.success).toBe(true);
-			expect(result.executionTime).toBeLessThan(500); // Should still be fast
-		});
 	});
-
+	
 	describe('Integration Tests', () => {
-		it('should handle all features together', async () => {
+		it('should handle all features together', () => {
 			// Create a comprehensive test file
 			const comprehensiveTest = `
 // Comprehensive test combining all features
@@ -132,27 +183,19 @@ end while
 `;
 
 			// Create a temporary test file using CommonJS
-			const fs = require('fs');
-			const path = require('path');
-			const tempFile = path.join(__dirname, 'fixtures', 'comprehensive.mns');
-			fs.writeFileSync(tempFile, comprehensiveTest);
 
-			try {
-				const result = await runner.runFile(tempFile);
-				
-				expect(result.success).toBe(true);
-				expect(result.output).toEqual([
-					'Hello, Alice!',
-					'You are 30 years old',
-					'Your first skill is: JavaScript',
-					'Greeting completed for: Alice',
-					'Iteration: 0',
-					'Iteration: 1'
-				]);
-			} finally {
-				// Clean up temporary file
-				fs.unlinkSync(tempFile);
-			}
+			const result = runScript(comprehensiveTest);
+			
+			expect(result.success).toBe(true);
+			expect(result.output).toEqual([
+				'Hello, Alice!',
+				'You are 30 years old',
+				'Your first skill is: JavaScript',
+				'Greeting completed for: Alice',
+				'Iteration: 0',
+				'Iteration: 1'
+			])
 		});
 	});
-});
+	
+})

@@ -1,0 +1,16 @@
+// Simple while loop
+counter = 0
+while counter < 3
+	print "Simple Counter is: " + counter
+	counter = counter + 1
+end while
+
+// While loop with break/continue
+counter = 0
+while true
+	counter = counter + 1
+	if counter < 2 then continue
+	print "Break Counter is: " + counter
+	if counter >= 3 then break
+end while
+print "Loop finished!"

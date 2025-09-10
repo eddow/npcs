@@ -2,7 +2,7 @@
 x = 15
 if x > 10 then
 	print "Inside if: x = " + x
-	waitTomorrow()
+	yield()
 	print "After pause in if: x = " + x
 end if
 print "After if block"

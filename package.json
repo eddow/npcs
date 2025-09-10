@@ -1,5 +1,5 @@
 {
-  "name": "test-miniscript",
+  "name": "mns-executor",
   "version": "1.0.0",
   "description": "MiniScript executor with comprehensive testing",
   "type": "module",
@@ -13,9 +13,11 @@
     "test:single": "tsx run-test.ts",
     "test:pause": "tsx demo-pause-resume.ts",
     "test:pause-single": "tsx run-pause-test.ts",
+    "biome": "biome check . --fix",
     "dev": "tsx test.ts"
   },
   "dependencies": {
+    "@biomejs/biome": "^2.2.3",
     "miniscript-core": "^1.6.0",
     "tsx": "^4.20.5"
   },

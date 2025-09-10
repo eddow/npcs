@@ -1,5 +1,7 @@
 // Object creation and manipulation
 person = {name: "John", age: 39, city: "New York"}
+
+
 print "Person name: " + person.name
 print "Person age: " + person.age
 
@@ -11,3 +13,6 @@ print "CEO name: " + company.ceo.name
 // Property modification
 person.age = 40
 print "Updated age: " + person.age
+
+person["age"] = 41
+print "Updated age: " + person["age"]

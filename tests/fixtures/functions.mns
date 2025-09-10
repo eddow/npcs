@@ -1,7 +1,12 @@
+
 // Function definitions and calls
 greet = function(name)
 	print "Hello, " + name + "!"
 	return "Greeting sent to " + name
+end function
+
+shake = function(what)
+	print "*Shake " + what + "*"
 end function
 
 calculate = function(a, b)
@@ -12,5 +17,6 @@ end function
 
 // Test function calls
 greet "World"
+shake "hands"
 value = calculate(5, 3)
 print "Function returned: " + value

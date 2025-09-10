@@ -1,4 +1,0 @@
-// Test unary plus
-y = -10
-print "y = " + y
-print "-y: " + (-y)

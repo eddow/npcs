@@ -174,7 +174,7 @@ The executor now supports a comprehensive subset of MiniScript including:
 
 ### **Built-in Functions**
 - `print()` - Output to console
-- `waitTomorrow()` - Pause execution and serialize state
+- `yield()` - Pause execution and serialize state
 
 ### **Advanced Features**
 - Import system (parsing ready)

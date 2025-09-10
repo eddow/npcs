@@ -7,7 +7,7 @@ for fruit in fruits
 end for
 
 // For loop with break
-print "\nFruits (stopping at orange):"
+print "Fruits (stopping at orange):"
 for fruit in fruits
 	print "  - " + fruit
 	if fruit == "orange" then
@@ -16,7 +16,7 @@ for fruit in fruits
 end for
 
 // For loop with continue
-print "\nFruits (skipping banana):"
+print "Fruits (skipping banana):"
 for fruit in fruits
 	if fruit == "banana" then
 		continue
@@ -30,11 +30,11 @@ sum = 0
 for num in numbers
 	sum = sum + num
 end for
-print "\nSum of numbers: " + sum
+print "Sum of numbers: " + sum
 
 // Nested for loops
 matrix = [[1, 2], [3, 4], [5, 6]]
-print "\nMatrix:"
+print "Matrix:"
 for row in matrix
 	rowStr = ""
 	for cell in row

@@ -1,6 +1,11 @@
 flag = true
 print "flag = " + flag
 
+if flag then print "One-liner true" else print "One-liner false"
+
+if flag then print "Simple-liner true"
+if not flag then print "Simple-liner false"
+
 if flag then
 	print "flag is true"
 else

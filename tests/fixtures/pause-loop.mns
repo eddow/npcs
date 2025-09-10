@@ -3,8 +3,11 @@ counter = 0
 while counter < 3
 	print "Loop iteration: " + counter
 	counter = counter + 1
+	print "After loop iteration: " + counter
 	if counter == 2 then
-		waitTomorrow()
+		print "Before"
+		yield()
+		print "After"
 	end if
 end while
 print "Loop completed!"

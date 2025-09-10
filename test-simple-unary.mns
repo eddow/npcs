@@ -1,6 +1,0 @@
-// Simple unary test
-x = 42
-print "x = " + x
-print "not (x > 50): " + (not (x > 50))
-print "-x: " + (-x)
-print "not (not true): " + (not (not true))

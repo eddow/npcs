@@ -1,3 +1,0 @@
-// Test array syntax
-data = [1, 2, 3]
-print "Array: " + data

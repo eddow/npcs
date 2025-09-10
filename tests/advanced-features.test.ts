@@ -1,64 +1,11 @@
-import { MiniScriptTestRunner } from '../src/test-runner-jest.js';
+import { runFixture, runScript } from '../src/test-runner-jest.js';
 
 describe('Advanced MiniScript Features', () => {
-	const runner = new MiniScriptTestRunner();
 
-	describe('For Loops', () => {
-		it('should handle basic for loops', async () => {
-			const result = await runner.runFixture('for-loops');
-			
-			expect(result.success).toBe(true);
-			expect(result.output).toContain('Iterating through fruits:');
-			expect(result.output).toContain('  - apple');
-			expect(result.output).toContain('  - banana');
-			expect(result.output).toContain('  - orange');
-			expect(result.output).toContain('  - grape');
-			expect(result.output).toContain('\\nSum of numbers: 15');
-			expect(result.executionTime).toBeLessThan(1000);
-		});
-
-		it('should handle for loops with break', async () => {
-			const result = await runner.runFixture('for-loops');
-			
-			expect(result.success).toBe(true);
-			expect(result.output).toContain('\\nFruits (stopping at orange):');
-			expect(result.output).toContain('  - orange');
-			// Should not contain grape after orange in the "stopping at orange" section
-			const stoppingSectionIndex = result.output.findIndex(line => line.includes('Fruits (stopping at orange):'));
-			const nextSectionIndex = result.output.findIndex(line => line.includes('Fruits (skipping banana):'));
-			const stoppingSection = result.output.slice(stoppingSectionIndex, nextSectionIndex);
-			const grapeInStoppingSection = stoppingSection.find(line => line.includes('- grape'));
-			expect(grapeInStoppingSection).toBeUndefined(); // grape should not appear in the stopping section
-		});
-
-		it('should handle for loops with continue', async () => {
-			const result = await runner.runFixture('for-loops');
-			
-			expect(result.success).toBe(true);
-			expect(result.output).toContain('\\nFruits (skipping banana):');
-			expect(result.output).toContain('  - apple');
-			expect(result.output).toContain('  - orange');
-			expect(result.output).toContain('  - grape');
-			// Should not contain banana in the skipping section
-			const skippingIndex = result.output.findIndex(line => line.includes('Fruits (skipping banana):'));
-			const bananaAfterSkip = result.output.slice(skippingIndex).find(line => line.includes('- banana'));
-			expect(bananaAfterSkip).toBeUndefined();
-		});
-
-		it('should handle nested for loops', async () => {
-			const result = await runner.runFixture('for-loops');
-			
-			expect(result.success).toBe(true);
-			expect(result.output).toContain('\\nMatrix:');
-			expect(result.output).toContain('  1 2 ');
-			expect(result.output).toContain('  3 4 ');
-			expect(result.output).toContain('  5 6 ');
-		});
-	});
 
 	describe('Continue Statements', () => {
-		it('should handle continue in while loops', async () => {
-			const result = await runner.runFixture('continue-statements');
+		it('should handle continue in while loops', () => {
+			const result = runFixture('continue-statements');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('Numbers 1-10, skipping even numbers:');
@@ -75,8 +22,8 @@ describe('Advanced MiniScript Features', () => {
 			expect(result.output).not.toContain('10');
 		});
 
-		it('should handle continue in for loops', async () => {
-			const result = await runner.runFixture('continue-statements');
+		it('should handle continue in for loops', () => {
+			const result = runFixture('continue-statements');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('\\nNumbers 1-10, skipping multiples of 3:');
@@ -93,8 +40,8 @@ describe('Advanced MiniScript Features', () => {
 			expect(result.output).not.toContain('9');
 		});
 
-		it('should handle continue with conditional logic', async () => {
-			const result = await runner.runFixture('continue-statements');
+		it('should handle continue with conditional logic', () => {
+			const result = runFixture('continue-statements');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('\\nProcessing items, skipping invalid ones:');
@@ -105,8 +52,8 @@ describe('Advanced MiniScript Features', () => {
 			expect(result.output).toContain('  Skipping: error');
 		});
 
-		it('should handle continue in nested loops', async () => {
-			const result = await runner.runFixture('continue-statements');
+		it('should handle continue in nested loops', () => {
+			const result = runFixture('continue-statements');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('\\nContinue in nested loops:');
@@ -121,8 +68,8 @@ describe('Advanced MiniScript Features', () => {
 	});
 
 	describe('Import System', () => {
-		it('should handle import statements', async () => {
-			const result = await runner.runFixture('import-system');
+		it('should handle import statements', () => {
+			const result = runFixture('import-system');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('Testing import statements:');
@@ -133,8 +80,8 @@ describe('Advanced MiniScript Features', () => {
 			expect(result.output).toContain('Imported string and json modules');
 		});
 
-		it('should handle imports in functions', async () => {
-			const result = await runner.runFixture('import-system');
+		it('should handle imports in functions', () => {
+			const result = runFixture('import-system');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('Import statement: network (not implemented)');
@@ -142,8 +89,8 @@ describe('Advanced MiniScript Features', () => {
 			expect(result.output).toContain('Imported network and database modules');
 		});
 
-		it('should handle conditional imports', async () => {
-			const result = await runner.runFixture('import-system');
+		it('should handle conditional imports', () => {
+			const result = runFixture('import-system');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('Import statement: conditional (not implemented)');
@@ -152,8 +99,8 @@ describe('Advanced MiniScript Features', () => {
 	});
 
 	describe('ISA Expressions', () => {
-		it('should handle basic type checking', async () => {
-			const result = await runner.runFixture('isa-examples');
+		it('should handle basic type checking', () => {
+			const result = runFixture('isa-examples');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('x isa number: true');
@@ -163,32 +110,32 @@ describe('Advanced MiniScript Features', () => {
 			expect(result.output).toContain('fruits isa list: true');
 		});
 
-		it('should handle negation with not()', async () => {
-			const result = await runner.runFixture('isa-examples');
+		it('should handle negation with not()', () => {
+			const result = runFixture('isa-examples');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('x isa not number: false');
 			expect(result.output).toContain('name isa not string: false');
 		});
 
-		it('should handle negation with comparison', async () => {
-			const result = await runner.runFixture('isa-examples');
+		it('should handle negation with comparison', () => {
+			const result = runFixture('isa-examples');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('x isa number == false: false');
 			expect(result.output).toContain('name isa string != true: false');
 		});
 
-		it('should handle isa in if statements', async () => {
-			const result = await runner.runFixture('isa-examples');
+		it('should handle isa in if statements', () => {
+			const result = runFixture('isa-examples');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('x is a positive number');
 			expect(result.output).toContain('person is a map with a string name');
 		});
 
-		it('should handle type validation in functions', async () => {
-			const result = await runner.runFixture('isa-examples');
+		it('should handle type validation in functions', () => {
+			const result = runFixture('isa-examples');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('Input is a number: 42');
@@ -198,8 +145,8 @@ describe('Advanced MiniScript Features', () => {
 			expect(result.output).toContain('Input is a list with 3 items');
 		});
 
-		it('should handle complex type checking', async () => {
-			const result = await runner.runFixture('isa-examples');
+		it('should handle complex type checking', () => {
+			const result = runFixture('isa-examples');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('Person is an adult');
@@ -210,8 +157,8 @@ describe('Advanced MiniScript Features', () => {
 	});
 
 	describe('Logical Expressions', () => {
-		it('should handle basic logical operations', async () => {
-			const result = await runner.runFixture('logical-expressions');
+		it('should handle basic logical operations', () => {
+			const result = runFixture('logical-expressions');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('x > 5 and y > 15: true');
@@ -219,16 +166,16 @@ describe('Advanced MiniScript Features', () => {
 			expect(result.output).toContain('not (x > 15): true');
 		});
 
-		it('should handle string logical operations', async () => {
-			const result = await runner.runFixture('logical-expressions');
+		it('should handle string logical operations', () => {
+			const result = runFixture('logical-expressions');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('name == \'John\' and name.length > 0: false');
 			expect(result.output).toContain('name == \'Jane\' or name == \'John\': true');
 		});
 
-		it('should handle boolean logical operations', async () => {
-			const result = await runner.runFixture('logical-expressions');
+		it('should handle boolean logical operations', () => {
+			const result = runFixture('logical-expressions');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('flag and true: true');
@@ -236,16 +183,16 @@ describe('Advanced MiniScript Features', () => {
 			expect(result.output).toContain('not flag: false');
 		});
 
-		it('should handle complex logical expressions', async () => {
-			const result = await runner.runFixture('logical-expressions');
+		it('should handle complex logical expressions', () => {
+			const result = runFixture('logical-expressions');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('(x > 5 and y > 10) or (x < 5 and y < 10): true');
 			expect(result.output).toContain('not (x > 15 and y > 25): true');
 		});
 
-		it('should handle logical expressions in if statements', async () => {
-			const result = await runner.runFixture('logical-expressions');
+		it('should handle logical expressions in if statements', () => {
+			const result = runFixture('logical-expressions');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('Both x and y are in valid ranges');
@@ -253,8 +200,8 @@ describe('Advanced MiniScript Features', () => {
 			expect(result.output).toContain('x is not greater than 20');
 		});
 
-		it('should handle logical expressions with isa', async () => {
-			const result = await runner.runFixture('logical-expressions');
+		it('should handle logical expressions with isa', () => {
+			const result = runFixture('logical-expressions');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('Person is a map with string name');
@@ -263,8 +210,8 @@ describe('Advanced MiniScript Features', () => {
 	});
 
 	describe('Unary Expressions', () => {
-		it('should handle boolean negation', async () => {
-			const result = await runner.runFixture('unary-expressions');
+		it('should handle boolean negation', () => {
+			const result = runFixture('unary-expressions');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('not (x > 50): true');
@@ -273,39 +220,39 @@ describe('Advanced MiniScript Features', () => {
 			expect(result.output).toContain('not (not flag): true');
 		});
 
-		it('should handle arithmetic negation', async () => {
-			const result = await runner.runFixture('unary-expressions');
+		it('should handle arithmetic negation', () => {
+			const result = runFixture('unary-expressions');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('-y: -10');
 			expect(result.output).toContain('-(-y): 10');
 		});
 
-		it('should handle unary with expressions', async () => {
-			const result = await runner.runFixture('unary-expressions');
+		it('should handle unary with expressions', () => {
+			const result = runFixture('unary-expressions');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('-(x + 10): -52');
 			expect(result.output).toContain('not (x > 30 and y < 0): true');
 		});
 
-		it('should handle unary in if statements', async () => {
-			const result = await runner.runFixture('unary-expressions');
+		it('should handle unary in if statements', () => {
+			const result = runFixture('unary-expressions');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('x is not negative');
 		});
 
-		it('should handle complex unary expressions', async () => {
-			const result = await runner.runFixture('unary-expressions');
+		it('should handle complex unary expressions', () => {
+			const result = runFixture('unary-expressions');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('\\nnot (x > 50 or y < -20): false');
 			expect(result.output).toContain('-(x + y): -52');
 		});
 
-		it('should handle unary with isa', async () => {
-			const result = await runner.runFixture('unary-expressions');
+		it('should handle unary with isa', () => {
+			const result = runFixture('unary-expressions');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('x is not a string');
@@ -314,8 +261,8 @@ describe('Advanced MiniScript Features', () => {
 	});
 
 	describe('Comprehensive Integration', () => {
-		it('should handle all advanced features together', async () => {
-			const result = await runner.runFixture('advanced-features');
+		it('should handle all advanced features together', () => {
+			const result = runFixture('advanced-features');
 			
 			expect(result.success).toBe(true);
 			expect(result.output).toContain('=== Advanced MiniScript Features Demo ===');

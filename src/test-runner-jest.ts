@@ -1,81 +1,51 @@
-import { MiniScriptExecutor } from "./executor.js";
-import { TestIO } from "./io-interface.js";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+import { Lexer, Parser } from "miniscript-core"
+import { ExecutionScope, MiniScriptExecutor } from "./executor.js"
 
 export interface TestResult {
-	success: boolean;
-	output: string[];
-	error?: string;
-	executionTime: number;
+	success: boolean
+	output: string[]
+	error?: string
+	executionTime: number
+	result?: any,
+	scopes?: ExecutionScope[],
 }
 
-export class MiniScriptTestRunner {
-	private executor: MiniScriptExecutor;
-	private io: TestIO;
-	private MiniScript: any;
+export function	runFixture(fixtureName: string, scopes?: ExecutionScope[]): TestResult {
+	const fixturePath = join(process.cwd(), "tests", "fixtures", `${fixtureName}.mns`)
+	return runFile(fixturePath, scopes)
+}
 
-	constructor() {
-		this.io = new TestIO();
-		this.executor = new MiniScriptExecutor(this.io);
-		// Dynamically import miniscript-core for Jest compatibility
-		this.initializeMiniScript();
-	}
+export function	runFile(filePath: string, scopes?: ExecutionScope[]): TestResult {
+	return runScript(readFileSync(filePath, "utf-8"), scopes)
+}
 
-	private async initializeMiniScript() {
-		if (!this.MiniScript) {
-			this.MiniScript = await import('miniscript-core');
-		}
-	}
+export function	runScript(content: string, scopes: ExecutionScope[] = [MiniScriptExecutor.emptyScope()]): TestResult {
+	const startTime = Date.now()
+	const output: string[] = []
 
-	async runFixture(fixtureName: string): Promise<TestResult> {
-		await this.initializeMiniScript();
-		
-		const startTime = Date.now();
-		
-		// Clear previous output
-		this.io.clear();
+	try {
+		const lexer = new Lexer(content)
+		const parser = new Parser(content, { lexer })
+		const ast = parser.parseChunk()
 
-		try {
-			const fixturePath = join(process.cwd(), 'tests', 'fixtures', `${fixtureName}.mns`);
-			const content = readFileSync(fixturePath, 'utf-8');
-			
-			const lexer = new this.MiniScript.Lexer(content);
-			const parser = new this.MiniScript.Parser(content, { lexer });
-			const ast = parser.parseChunk();
-			
-			this.executor.execute(ast);
-			const executionTime = Date.now() - startTime;
-			
-			return { success: true, output: this.io.getOutput(), executionTime };
-		} catch (error: any) {
-			const executionTime = Date.now() - startTime;
-			return { success: false, output: this.io.getOutput(), error: error.message, executionTime };
-		}
-	}
 
-	async runFile(filePath: string): Promise<TestResult> {
-		await this.initializeMiniScript();
-		
-		const startTime = Date.now();
-		
-		// Clear previous output
-		this.io.clear();
+		const executor = new MiniScriptExecutor(
+			ast,
+			[...scopes, MiniScriptExecutor.rootScope({}, {
+				print: (...args: any[]) => {
+					output.push(args.join(" "))
+				},
+				yield: (arg: any) => arg
+			})],
+			content)
+		const result = executor.execute()
+		const executionTime = Date.now() - startTime
 
-		try {
-			const content = readFileSync(filePath, 'utf-8');
-			
-			const lexer = new this.MiniScript.Lexer(content);
-			const parser = new this.MiniScript.Parser(content, { lexer });
-			const ast = parser.parseChunk();
-			
-			this.executor.execute(ast);
-			const executionTime = Date.now() - startTime;
-			
-			return { success: true, output: this.io.getOutput(), executionTime };
-		} catch (error: any) {
-			const executionTime = Date.now() - startTime;
-			return { success: false, output: this.io.getOutput(), error: error.message, executionTime };
-		}
+		return { success: true, output, executionTime, result, scopes: executor.scopes.slice(0, -1) }
+	} catch (error: any) {
+		const executionTime = Date.now() - startTime
+		return { success: false, output, error: error.message, executionTime }
 	}
 }

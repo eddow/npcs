@@ -7,7 +7,7 @@ x = 5
 print "Before pause: x = " + x
 print "Calling function: " + myFunc(x)
 
-waitTomorrow()
+yield()
 
 print "After pause: x = " + x
 print "Calling function again: " + myFunc(x)
