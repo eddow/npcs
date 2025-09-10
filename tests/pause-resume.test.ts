@@ -4,14 +4,14 @@ describe('Pause/Resume Execution', () => {
 
 	describe('Basic Pause/Resume', () => {
 		it('should pause and resume basic execution', () => {
-			const result = runFixture('pause-basic');
+			const first = runFixture('pause-basic');
 			
-			expect(result.success).toBe(true);
-			expect(result.output).toEqual(['Before yield: x = 10'])
-			expect(result.result).toEqual({type: 'yield', value: 42});
-			expect(result.executionTime).toBeLessThan(1000);
+			expect(first.success).toBe(true);
+			expect(first.output).toEqual(['Before yield: x = 10'])
+			expect(first.result).toEqual({type: 'yield', value: 42});
+			expect(first.executionTime).toBeLessThan(1000);
 
-			const second = runFixture('pause-basic', result.state);
+			const second = runFixture('pause-basic', first.stack);
 			expect(second.success).toBe(true);
 			expect(second.output).toEqual(['After yield: x = 10', 'Execution completed!'])
 			expect(second.result).toEqual({type: 'eob'});
@@ -34,7 +34,7 @@ print "after"`;
 			expect(first.output).toEqual(['start 5']);
 			expect(first.result).toEqual({ type: 'yield', value: 7 });
 
-			const second = runScript(code, first.state);
+			const second = runScript(code, first.stack);
 			expect(second.success).toBe(true);
 			expect(second.output).toEqual(['end 5', 'after']);
 			expect(second.result).toEqual({ type: 'eob' });
@@ -55,7 +55,7 @@ print "done"`;
 			expect(first.output).toEqual(['item: apple', 'item: banana']);
 			expect(first.result).toEqual({ type: 'yield', value: 0 });
 
-			const second = runScript(code, first.state);
+			const second = runScript(code, first.stack);
 			expect(second.success).toBe(true);
 			expect(second.output).toEqual(['item: orange', 'done']);
 			expect(second.result).toEqual({ type: 'eob' });
@@ -68,7 +68,7 @@ yield(123)
 print "after"`;
 			const first = runScript(code);
 			expect(first.success).toBe(false);
-			expect(first.error).toEqual('Native function definition has no evaluation function');
+			expect(first.error!.message).toEqual('Native function definition has no evaluation function');
 		});
 
 		it('should yield with function call argument that returns a value', () => {
@@ -82,7 +82,7 @@ yield double(21)`;
 			expect(first.output).toEqual([]);
 			expect(first.result).toEqual({ type: 'yield', value: 42 });
 
-			const second = runScript(code, first.state);
+			const second = runScript(code, first.stack);
 			expect(second.success).toBe(true);
 			expect(second.output).toEqual([]);
 			expect(second.result).toEqual({ type: 'eob' });
@@ -97,7 +97,7 @@ end function
 print double(21)`;
 			const first = runScript(code);
 			expect(first.success).toBe(false);
-			expect(first.error).toEqual('Function call cannot yield');
+			expect(first.error!.message).toEqual('Function call cannot yield');
 		});
 	});
 
@@ -107,7 +107,7 @@ print double(21)`;
 			expect(first.success).toBe(true);
 			expect(first.output).toEqual(['Inside if: x = 15']);
 			expect(first.result).toEqual({ type: 'yield', value: 0 });
-			const second = runFixture('pause-if', first.state);
+			const second = runFixture('pause-if', first.stack);
 			expect(second.success).toBe(true);
 			expect(second.output).toEqual(['After pause in if: x = 15', 'After if block']);
 			expect(second.result).toEqual({ type: 'eob' });
@@ -124,7 +124,7 @@ print double(21)`;
 				'Before'
 			]);
 			expect(first.result).toEqual({ type: 'yield', value: 0 });
-			const second = runFixture('pause-loop', first.state);
+			const second = runFixture('pause-loop', first.stack);
 			expect(second.success).toBe(true);
 			expect(second.output).toEqual([
 				'After',
@@ -147,7 +147,7 @@ print double(21)`;
 			expect(first.success).toBe(true);
 			expect(first.output).toEqual(['Before pause: Alice is 30']);
 			expect(first.result).toEqual({ type: 'yield', value: 0 });
-			const second = runFixture('pause-objects', first.state);
+			const second = runFixture('pause-objects', first.stack);
 			expect(second.success).toBe(true);
 			expect(second.output).toEqual(['After pause: Alice is now 31']);
 			expect(second.result).toEqual({ type: 'eob' });

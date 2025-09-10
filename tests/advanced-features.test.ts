@@ -1,4 +1,3 @@
-import { rootScope } from '../src/executor.js';
 import { runFixture, runScript } from './test-runner-jest.js';
 
 describe('Advanced MiniScript Features', () => {

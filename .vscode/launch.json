@@ -1,63 +1,60 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Debug Current TS/TSX File",
-            "type": "node",
-            "request": "launch",
-            "program": "${workspaceFolder}/node_modules/.bin/tsx",
-            "args": ["${file}"],
-            "console": "integratedTerminal",
-            "internalConsoleOptions": "neverOpen",
-            "skipFiles": ["<node_internals>/**"],
-            "env": {
-                "NODE_ENV": "development"
-            }
-        },
-        {
-            "name": "Debug Current .mns File",
-            "type": "node",
-            "request": "launch",
-            "program": "${workspaceFolder}/cli.ts",
-            "args": ["${fileBasenameNoExtension}"],
-            "runtimeExecutable": "npx",
-            "runtimeArgs": ["tsx"],
-            "console": "integratedTerminal",
-            "internalConsoleOptions": "neverOpen",
-            "skipFiles": ["<node_internals>/**"],
-            "env": {
-                "NODE_ENV": "development"
-            }
-        },
-        {
-            "name": "Debug Current File (Smart)",
-            "type": "node",
-            "request": "launch",
-            "program": "${workspaceFolder}/node_modules/.bin/tsx",
-            "args": [
-                "${workspaceFolder}/cli.ts",
-                "${input:smartFileInput}"
-            ],
-            "console": "integratedTerminal",
-            "internalConsoleOptions": "neverOpen",
-            "skipFiles": ["<node_internals>/**"],
-            "env": {
-                "NODE_ENV": "development"
-            }
-        }
-    ],
-    "inputs": [
-        {
-            "id": "scriptFile",
-            "description": "Enter the MiniScript file to run (e.g., 'basic', 'functions', or 'tests/fixtures/basic.mns')",
-            "default": "basic",
-            "type": "promptString"
-        },
-        {
-            "id": "smartFileInput",
-            "description": "File to run (auto-detects .mns vs .ts/.tsx)",
-            "default": "${fileBasenameNoExtension}",
-            "type": "promptString"
-        }
-    ]
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Debug Current TS/TSX File",
+			"type": "node",
+			"request": "launch",
+			"program": "${workspaceFolder}/node_modules/.bin/tsx",
+			"args": ["${file}"],
+			"console": "integratedTerminal",
+			"internalConsoleOptions": "neverOpen",
+			"skipFiles": ["<node_internals>/**"],
+			"env": {
+				"NODE_ENV": "development"
+			}
+		},
+		{
+			"name": "Debug Current .mns File",
+			"type": "node",
+			"request": "launch",
+			"program": "${workspaceFolder}/cli.ts",
+			"args": ["${fileBasenameNoExtension}"],
+			"runtimeExecutable": "npx",
+			"runtimeArgs": ["tsx"],
+			"console": "integratedTerminal",
+			"internalConsoleOptions": "neverOpen",
+			"skipFiles": ["<node_internals>/**"],
+			"env": {
+				"NODE_ENV": "development"
+			}
+		},
+		{
+			"name": "Debug Current File (Smart)",
+			"type": "node",
+			"request": "launch",
+			"program": "${workspaceFolder}/node_modules/.bin/tsx",
+			"args": ["${workspaceFolder}/cli.ts", "${input:smartFileInput}"],
+			"console": "integratedTerminal",
+			"internalConsoleOptions": "neverOpen",
+			"skipFiles": ["<node_internals>/**"],
+			"env": {
+				"NODE_ENV": "development"
+			}
+		}
+	],
+	"inputs": [
+		{
+			"id": "scriptFile",
+			"description": "Enter the MiniScript file to run (e.g., 'basic', 'functions', or 'tests/fixtures/basic.mns')",
+			"default": "basic",
+			"type": "promptString"
+		},
+		{
+			"id": "smartFileInput",
+			"description": "File to run (auto-detects .mns vs .ts/.tsx)",
+			"default": "${fileBasenameNoExtension}",
+			"type": "promptString"
+		}
+	]
 }

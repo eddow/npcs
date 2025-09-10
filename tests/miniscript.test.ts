@@ -1,4 +1,4 @@
-import { runFile, runFixture, runScript } from './test-runner-jest.js';
+import { runFixture, runScript } from './test-runner-jest.js';
 
 describe('MiniScript Executor', () => {
 
@@ -28,6 +28,73 @@ return tf(2)
 			const result = runScript(snippet);
 			expect(result.success).toBe(true);
 			expect(result.result).toEqual({ type: 'return', value: 4 });
+		});
+	});
+
+	describe('Scope System', () => {
+
+		it('should capture variables in closures by reference (counter)', () => {
+			const snippet = `
+makeCounter = function()
+	count = 0
+	return function()
+		count = count + 1
+		return count
+	end function
+end function
+
+inc = makeCounter()
+print inc()
+print inc()
+`;
+			const result = runScript(snippet);
+			expect(result.success).toBe(true);
+			expect(result.output).toEqual(['1', '2']);
+		});
+
+		it('should prefer parameter over outer variable (parameter shadowing)', () => {
+			const snippet = `
+a = 10
+f = function(a)
+	print a
+end function
+
+f(99)
+print a
+`;
+			const result = runScript(snippet);
+			expect(result.success).toBe(true);
+			expect(result.output).toEqual(['99', '10']);
+		});
+
+		it('should resolve through nested function scope chain', () => {
+			const snippet = `
+outer = function()
+	y = 42
+	inner = function()
+		return y
+	end function
+	return inner()
+end function
+
+print outer()
+`;
+			const result = runScript(snippet);
+			expect(result.success).toBe(true);
+			expect(result.output).toEqual(['42']);
+		});
+
+		it('should treat if-block vars as function-scoped (like var in JS)', () => {
+			const snippet = `
+flag = true
+if flag then
+	tmp = 7
+end if
+print tmp
+`;
+			const result = runScript(snippet);
+			expect(result.success).toBe(true);
+			expect(result.output).toEqual(['7']);
 		});
 	});
 	it('should handle if/else variations (debug-if-else)', () => {
