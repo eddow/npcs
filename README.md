@@ -11,7 +11,12 @@ When your goblin is about to open a door, your mom comes home, you save, install
 
 In the evening, you load your game again - and your goblin finishes opening the door and his script.
 
-## Main feature
+### MiniScript
+
+It's basically quick-basic on steroids (functional and with iterators)
+
+
+### Main feature
 
 Give it a scope, with values and callbacks, and execute it. The script will return
 - `eob` = End Of Block - it just executed
@@ -25,7 +30,7 @@ Give it a scope, with values and callbacks, and execute it. The script will retu
 - ✅ **Object Creation & Access**: `{name: "John", age: 39}` with property access
 - ✅ **Array Support**: `["apple", "banana"]` with index access
 - ✅ **Function Definitions**: `function(param) ... end function`
-- ✅ **Control Flow**: `if/else`, `while` loops, `break` statements
+- ✅ **Control Flow**: `if/else`, `while` and `for ... in ...` loops, `break` statements
 - ✅ **Pause/Resume Execution**: `yield()` function pauses execution and serializes state
 - ✅ **State Serialization**: Complete execution state can be saved and restored
 - ✅ **Cross-Executor Restoration**: Resume execution in a completely new executor instance

@@ -3,7 +3,7 @@
 	"files": {
 		"includes": [
 			"src/**/*.ts",
-			"src/**/*.js",
+			"tests/**/*.ts",
 			"*.js",
 			"*.ts",
 			".vscode/*.json",

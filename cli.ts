@@ -46,11 +46,11 @@ async function runScript(scriptPath: string) {
 		}
 
 		// Read the script file
-		const content = readFileSync(filePath, "utf-8")
+		const source = readFileSync(filePath, "utf-8")
 
 		// Parse the MiniScript code
-		const lexer = new MiniScript.Lexer(content)
-		const parser = new MiniScript.Parser(content, { lexer })
+		const lexer = new MiniScript.Lexer(source)
+		const parser = new MiniScript.Parser(source, { lexer })
 		const ast = parser.parseChunk() as ASTChunk
 
 		console.log("🌳 AST parsed successfully")
@@ -68,7 +68,7 @@ async function runScript(scriptPath: string) {
 			},
 		}
 
-		const executor = new MiniScriptExecutor(ast, content, context)
+		const executor = new MiniScriptExecutor({ ast, source }, context)
 
 		console.log("🚀 Executing MiniScript...")
 		console.log("📤 Output:")

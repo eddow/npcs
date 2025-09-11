@@ -1,33 +1,33 @@
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { Lexer, Parser } from "miniscript-core"
-import { ExecutionStack, MiniScriptExecutor } from "../src/executor.js"
+import { MiniScriptExecutor } from "../src/executor.js"
 
 export interface TestResult {
 	success: boolean
 	output: string[]
 	error?: Error
 	executionTime: number
-	result?: any,
-	stack?: ExecutionStack[],
+	result?: any
+	state?: string
 }
 
-export function	runFixture(fixtureName: string, stack?: ExecutionStack[]): TestResult {
+export function runFixture(fixtureName: string, state?: string): TestResult {
 	const fixturePath = join(process.cwd(), "tests", "fixtures", `${fixtureName}.mns`)
-	return runFile(fixturePath, stack)
+	return runFile(fixturePath, state)
 }
 
-export function	runFile(filePath: string, stack?: ExecutionStack[]): TestResult {
-	return runScript(readFileSync(filePath, "utf-8"), stack)
+export function runFile(filePath: string, state?: string): TestResult {
+	return runScript(readFileSync(filePath, "utf-8"), state)
 }
 
-export function	runScript(content: string, stack?: ExecutionStack[]): TestResult {
+export function runScript(source: string, state?: string): TestResult {
 	const startTime = Date.now()
 	const output: string[] = []
 
 	try {
-		const lexer = new Lexer(content)
-		const parser = new Parser(content, { lexer })
+		const lexer = new Lexer(source)
+		const parser = new Parser(source, { lexer })
 		const ast = parser.parseChunk()
 
 		const context = {
@@ -35,28 +35,23 @@ export function	runScript(content: string, stack?: ExecutionStack[]): TestResult
 				print(...args: any[]) {
 					output.push(args.join(" "))
 				},
-				yield: (arg: any) => arg
+				yield: (arg: any) => arg,
 			},
 			functions: {
 				len(array: any) {
-					if(!Array.isArray(array)) {
-						throw new Error('Not an array')
+					if (!Array.isArray(array)) {
+						throw new Error("Not an array")
 					}
 					return array.length
-				}
-			}
+				},
+			},
 		}
 
-		const executor = new MiniScriptExecutor(
-			ast,
-			content,
-			context,
-			stack
-		)
+		const executor = new MiniScriptExecutor({ ast, source }, context, state)
 		const result = executor.execute()
 		const executionTime = Date.now() - startTime
 
-		return { success: true, output, executionTime, result, stack: executor.stack }
+		return { success: true, output, executionTime, result, state: executor.state }
 	} catch (error: any) {
 		const executionTime = Date.now() - startTime
 		return { success: false, output, error: error, executionTime }

@@ -1,6 +1,6 @@
 import {
 	ASTAssignmentStatement,
-	type ASTBase,
+	ASTBase,
 	ASTBaseBlock,
 	type ASTBinaryExpression,
 	type ASTCallExpression,
@@ -19,135 +19,32 @@ import {
 	ASTReturnStatement,
 	type ASTUnaryExpression,
 	ASTWhileStatement,
+	Lexer,
+	Parser,
 } from "miniscript-core"
+import {
+	type ExecutionContext,
+	ExecutionError,
+	type ExecutionResult,
+	type ExecutionStack,
+	type ForScope,
+	FunctionDefinition,
+	type FunctionResult,
+	type IP,
+	type LValue,
+	type MSValue,
+	NativeFunctionDefinition,
+	parseStack,
+	type ReturnResult,
+	stringifyStack,
+	type YieldResult,
+} from "./helpers"
 
-export class ExecutionError extends Error {
-	constructor(
-		public executor: MiniScriptExecutor,
-		public statement: ASTBase,
-		message: string,
-	) {
-		super(message)
-		this.name = "ExecutionError"
-	}
-	public toString(): string {
-		return `ExecutionError: ${this.message}\n${this.executor.sourceLocation(this.statement)}`
-	}
-}
-
-//#region obsolete interfaces
-// Statement path for tracking nested execution position - simple array of indexes
-export interface StatementPath {
-	statementIndexes: number[] // [parentIndex, childIndex, ...] like an instruction pointer
-}
-
-// Function call frame with proper function references
-export interface FunctionCallFrame {
-	functionName: string // Reference to function in registry
-	parameters: Record<string, any> // Function parameters
-	variables: Record<string, any> // Local variables
-	statementPath: StatementPath // Current position in function
-	returnValue?: any // For when function returns
-}
-
-// Execution state interface for deep pause/resume functionality
-export interface ExecutionState {
-	variables: Record<string, any>
-	functionCallStack: FunctionCallFrame[]
-	currentStatementPath: StatementPath
+interface ScriptSpecification {
+	ast: ASTBase
 	source: string
-	executionPaused: boolean
-	pauseReason?: string
-}
-//#endregion
-export type IP = number[]
-
-export interface LoopScope {
-	ipDepth: number
 }
 
-export interface ForScope extends LoopScope {
-	iterator: MSValue[]
-	index: number
-	variable: string
-}
-export interface ExecutionStack {
-	scope: MSScope
-	ip: IP
-	loopStack: (LoopScope | ForScope)[]
-}
-
-type MSValue = any
-type MSScope = Record<string, any>
-/**
- * This is a class so that `instanceof` can be used to check if an object is a function definition.
- */
-class FunctionDefinition {
-	constructor(
-		public ip: IP,
-		public parameters: string[],
-		public scope: MSScope,
-	) {}
-	enterCall(args: any[]): ExecutionStack {
-		const variables = {} as MSScope
-		for (let i = 0; i < this.parameters.length; i++) {
-			variables[this.parameters[i]] = args[i]
-		}
-		return {
-			scope: Object.setPrototypeOf(variables, this.scope),
-			ip: [...this.ip],
-			loopStack: [],
-		}
-	}
-}
-
-interface ExecutionContext {
-	statements?: Record<string, (...args: any[]) => any>
-	variables?: Record<string, any>
-	functions?: Record<string, any>
-}
-
-class NativeFunctionDefinition {
-	/**
-	 * @param evaluation - function to evaluate the function as an expression. Returns a value to place in the expression
-	 * @param statement - function to call the function as a statement. If returns a result, the result is yielded
-	 */
-	constructor(public name: string){}
-	evaluate(executor: MiniScriptExecutor, args: any[], ast: ASTBase): MSValue {
-		const evaluation = executor.context.functions![this.name]
-		if (!evaluation)
-			throw new ExecutionError(
-				executor,
-				ast,
-				"Native function definition has no evaluation function",
-			)
-		return evaluation(...args)
-	}
-	state(executor: MiniScriptExecutor, args: any[], ast: ASTBase): FunctionResult {
-		const statement = executor.context.statements![this.name]
-		if (!statement)
-			throw new ExecutionError(
-				executor,
-				ast,
-				"Native function definition has no statement function",
-			)
-		return statement(...args)
-	}
-}
-
-type BranchedResult = { type: "branched" }
-type YieldResult = { type: "yield"; value: any }
-type ReturnResult = { type: "return"; value?: any }
-// End of block
-type EOBResult = { type: "eob" }
-
-type FunctionResult = YieldResult | ReturnResult | EOBResult
-type ExecutionResult = BranchedResult | FunctionResult | undefined | void
-
-interface LValue {
-	get(): MSValue
-	set(value: MSValue): void
-}
 export class MiniScriptExecutor {
 	public assertAST<E extends ASTBase>(
 		expr: ASTBase,
@@ -161,7 +58,8 @@ export class MiniScriptExecutor {
 	}
 	public sourceLocation(expr: ASTBase): string {
 		const source = this.source
-		if (!source || !expr.start) return ""
+		if (!expr.start) return ""
+		if (!source) return `${expr.start.line}:${expr.start.character}`
 		const lines = source.split("\n")
 		const lineIdx = expr.start.line - 1
 		const colIdx = Math.max(1, expr.start.character)
@@ -171,20 +69,41 @@ export class MiniScriptExecutor {
 		const caretLine = `${caretIndent}^`
 		return `${expr.start.line}:${expr.start.character}\n${lineText}\n${caretLine}`
 	}
-
+	private readonly source?: string
+	private readonly ast: ASTBase
+	private stack: ExecutionStack[]
+	get state(): string {
+		return stringifyStack(this.stack)
+	}
+	set state(state: string) {
+		this.stack = parseStack(state)
+	}
 	constructor(
-		private readonly ast: any,
-		private readonly source: string,
+		readonly specs: ASTBase | ScriptSpecification | string,
 		public readonly context: ExecutionContext,
-		public stack: ExecutionStack[] = [{ scope: {}, ip: [0], loopStack: [] }],
-	) {}
+		state: string | ExecutionStack[] = [{ scope: {}, ip: [0], loopScopes: [] }],
+	) {
+		if (typeof specs === "string") {
+			this.ast = new Parser(specs, { lexer: new Lexer(specs) }).parseChunk()
+			this.source = specs
+		} else if (specs instanceof ASTBase) {
+			this.ast = specs
+		} else {
+			this.ast = specs.ast
+			this.source = specs.source
+		}
+		this.stack = typeof state === "string" ? parseStack(state) : state
+	}
 
 	// Variable access methods
 	private getVariable(name: string): any {
+		for (const scope of this.stack[0].loopScopes)
+			if ("variable" in scope && scope.variable === name) return scope.iterator[scope.index]
 		const scope = this.stack[0].scope
-		if(name in scope) return scope[name]
-		if(this.context.variables && name in this.context.variables) return this.context.variables[name]
-		if(
+		if (name in scope) return scope[name]
+		if (this.context.variables && name in this.context.variables)
+			return this.context.variables[name]
+		if (
 			(this.context.functions && name in this.context.functions) ||
 			(this.context.statements && name in this.context.statements)
 		)
@@ -192,14 +111,21 @@ export class MiniScriptExecutor {
 	}
 
 	private setVariable(name: string, value: any): void {
-		let scope = this.stack[0].scope
-		if(name in scope) while(scope) {
-			if (Object.hasOwn(scope, name)) {
-				scope[name] = value
+		for (const scope of this.stack[0].loopScopes)
+			if ("variable" in scope && scope.variable === name) {
+				scope.iterator[scope.index] = value
 				return
 			}
-			scope = Object.getPrototypeOf(scope)
-		} else scope[name] = value
+		let scope = this.stack[0].scope
+		if (name in scope)
+			while (scope) {
+				if (Object.hasOwn(scope, name)) {
+					scope[name] = value
+					return
+				}
+				scope = Object.getPrototypeOf(scope)
+			}
+		else scope[name] = value
 	}
 
 	// Main execution entry point
@@ -286,15 +212,14 @@ export class MiniScriptExecutor {
 				// function definition
 				return null
 			} else if (lastStatement instanceof ASTWhileStatement) {
-				this.stack[0].loopStack.pop()
+				this.stack[0].loopScopes.shift()
 				return lastStatement
 			} else if (lastStatement instanceof ASTForGenericStatement) {
-				const forLoop = this.stack[0].loopStack[this.stack[0].loopStack.length - 1] as ForScope
+				const forLoop = this.stack[0].loopScopes[0] as ForScope
 				forLoop.index++
 				if (forLoop.index < forLoop.iterator.length) this.stack[0].ip.push(0)
 				else {
-					this.stack[0].loopStack.pop()
-					this.stack[0].scope = Object.getPrototypeOf(this.stack[0].scope)
+					this.stack[0].loopScopes.shift()
 					this.incrementIP(ip)
 				}
 			} else {
@@ -323,6 +248,8 @@ export class MiniScriptExecutor {
 				return this.executeIf(statement as ASTIfStatement)
 			case "ASTWhileStatement":
 				return this.executeWhile(statement as ASTWhileStatement)
+			case "ASTForGenericStatement":
+				return this.executeForGeneric(statement as ASTForGenericStatement)
 			case "ASTCallStatement":
 				return this.executeProcedure(statement as ASTCallStatement)
 			case "ASTCallExpression":
@@ -334,8 +261,6 @@ export class MiniScriptExecutor {
 				return this.executeBreak(statement)
 			case "ASTContinueStatement":
 				return this.executeContinue(statement)
-			case "ASTForGenericStatement":
-				return this.executeForGeneric(statement as ASTForGenericStatement)
 			case "ASTImportCodeExpression":
 				return this.executeImport(statement)
 			default:
@@ -420,7 +345,7 @@ export class MiniScriptExecutor {
 		// Check if we're entering the loop for the first time
 		if (this.evaluateExpression(statement.condition)) {
 			// Enter the while loop body - push index 0 for first statement in the block
-			this.stack[0].loopStack.push({ ipDepth: this.stack[0].ip.length })
+			this.stack[0].loopScopes.unshift({ ipDepth: this.stack[0].ip.length })
 			this.stack[0].ip.push(0)
 			return { type: "branched" } // Continue execution in the new block
 		}
@@ -453,7 +378,7 @@ export class MiniScriptExecutor {
 		// Get arguments
 		const args = statement.arguments
 		const evaluatedArgs = args ? args.map((arg: any) => this.evaluateExpression(arg)) : []
-		// Handle both func and expression properties : TODO: What was this ASTCallStatement.func?
+		// Handle both func and expression properties
 		// Evaluate the function reference to get the function definition
 		const func = this.evaluateExpression(statement.base)
 
@@ -487,9 +412,9 @@ export class MiniScriptExecutor {
 	}
 
 	private executeContinue(statement: ASTBase): ExecutionResult {
-		if (!this.stack[0].loopStack.length)
+		if (!this.stack[0].loopScopes.length)
 			throw new ExecutionError(this, statement, "Break/Continue statement outside of loop")
-		const lastLoop = this.stack[0].loopStack[this.stack[0].loopStack.length - 1]
+		const lastLoop = this.stack[0].loopScopes[0]
 		this.stack[0].ip.splice(lastLoop.ipDepth)
 		const loopStatement = this.getStatementByIP(this.stack[0].ip)
 		this.assertAST(loopStatement, ASTBaseBlock)
@@ -497,9 +422,9 @@ export class MiniScriptExecutor {
 		return { type: "branched" }
 	}
 	private executeBreak(statement: ASTBase): ExecutionResult {
-		if (!this.stack[0].loopStack.length)
+		if (!this.stack[0].loopScopes.length)
 			throw new ExecutionError(this, statement, "Break/Continue statement outside of loop")
-		this.stack[0].ip.splice(this.stack[0].loopStack.pop()!.ipDepth)
+		this.stack[0].ip.splice(this.stack[0].loopScopes.shift()!.ipDepth)
 		this.incrementIP(this.stack[0].ip)
 		return { type: "branched" }
 	}
@@ -639,22 +564,13 @@ export class MiniScriptExecutor {
 		if (!Array.isArray(iterator)) {
 			throw new ExecutionError(this, statement, "For loop iterator must be a list")
 		}
-		const forScope = {
+		this.stack[0].loopScopes.unshift({
 			iterator,
 			index: 0,
 			ipDepth: this.stack[0].ip.length,
 			variable,
-		} as ForScope
-		this.stack[0].loopStack.push(forScope)
+		})
 		this.stack[0].ip.push(0)
-		this.stack[0].scope = Object.setPrototypeOf({
-			get [variable]() {
-				return iterator[forScope.index]
-			},
-			set [variable](_value: any) {
-				throw new ExecutionError(this, statement, `Cannot set variable ${variable} in for loop`)
-			}
-		}, this.stack[0].scope)
 		return { type: "branched" } // Let the main loop handle execution
 	}
 
