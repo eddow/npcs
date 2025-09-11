@@ -1,6 +1,6 @@
-import { parse, stringify } from "flatted"
-import type { ASTBase } from "miniscript-core"
-import type { MiniScriptExecutor } from "./executor"
+import { parse, stringify } from 'flatted'
+import type { ASTBase } from 'miniscript-core'
+import type { MiniScriptExecutor } from './executor'
 
 export class ExecutionError extends Error {
 	constructor(
@@ -9,10 +9,10 @@ export class ExecutionError extends Error {
 		message: string,
 	) {
 		super(message)
-		this.name = "ExecutionError"
+		this.name = 'ExecutionError'
 	}
 	public toString(): string {
-		return `ExecutionError: ${this.message}\n${this.executor.sourceLocation(this.statement)}`
+		return `ExecutionError: ${this.message}\n${this.executor.script.sourceLocation(this.statement)}`
 	}
 }
 
@@ -41,7 +41,11 @@ export interface ExecutionState {
 	pauseReason?: string
 }
 //#endregion
-export type IP = number[]
+export type IP = {
+	// TODO -> shift/unshift
+	indexes: number[]
+	functionIndex?: number
+}
 
 export interface LoopScope {
 	ipDepth: number
@@ -56,6 +60,7 @@ export interface ExecutionStack {
 	scope: MSScope
 	ip: IP
 	loopScopes: (LoopScope | ForScope)[]
+	yielding: boolean
 }
 
 export type MSValue = any
@@ -65,28 +70,25 @@ export type MSScope = Record<string, any>
  */
 export class FunctionDefinition {
 	constructor(
-		public ip: IP,
+		public index: number,
 		public parameters: string[],
 		public scope: MSScope,
 	) {}
-	enterCall(args: any[]): ExecutionStack {
+	enterCall(args: any[], yielding: boolean): ExecutionStack {
 		const variables = {} as MSScope
 		for (let i = 0; i < this.parameters.length; i++) {
 			variables[this.parameters[i]] = args[i]
 		}
 		return {
 			scope: Object.setPrototypeOf(variables, this.scope),
-			ip: [...this.ip],
+			ip: { indexes: [0], functionIndex: this.index },
+			yielding,
 			loopScopes: [],
 		}
 	}
 }
 
-export interface ExecutionContext {
-	statements?: Record<string, (...args: any[]) => any>
-	variables?: Record<string, any>
-	functions?: Record<string, any>
-}
+export type ExecutionContext = Record<string, any>
 
 export class NativeFunctionDefinition {
 	/**
@@ -95,34 +97,19 @@ export class NativeFunctionDefinition {
 	 */
 	constructor(public name: string) {}
 	evaluate(executor: MiniScriptExecutor, args: any[], ast: ASTBase): MSValue {
-		const evaluation = executor.context.functions![this.name]
+		const evaluation = executor.context[this.name]
 		if (!evaluation)
 			throw new ExecutionError(
 				executor,
 				ast,
-				"Native function definition has no evaluation function",
+				'Native value not found',
 			)
 		return evaluation(...args)
 	}
-	state(executor: MiniScriptExecutor, args: any[], ast: ASTBase): FunctionResult {
-		const statement = executor.context.statements![this.name]
-		if (!statement)
-			throw new ExecutionError(
-				executor,
-				ast,
-				"Native function definition has no statement function",
-			)
-		return statement(...args)
-	}
 }
 
-export type BranchedResult = { type: "branched" }
-export type YieldResult = { type: "yield"; value: any }
-export type ReturnResult = { type: "return"; value?: any }
-// End of block
-export type EOBResult = { type: "eob" }
-
-export type FunctionResult = YieldResult | ReturnResult | EOBResult
+export type BranchedResult = { type: 'branched' }
+export type FunctionResult = { type: 'return' | 'yield'; value?: any }
 export type ExecutionResult = BranchedResult | FunctionResult | undefined | void
 
 export interface LValue {
@@ -134,7 +121,7 @@ export function stringifyStack(stack: ExecutionStack[]): any {
 	const stringifiedScopes = new Map<object, object>()
 
 	function prototyped(value: object): object {
-		if (!value || typeof value !== "object") return value
+		if (!value || typeof value !== 'object') return value
 		if (!(value instanceof Object)) {
 			if (!stringifiedScopes.has(value)) {
 				const proto = Object.getPrototypeOf(value)
@@ -151,8 +138,8 @@ export function stringifyStack(stack: ExecutionStack[]): any {
 		return value
 	}
 
-	return stringify(stack, (key, value) => {
-		if (value && typeof value === "object") {
+	return stringify(stack, (_key, value) => {
+		if (value && typeof value === 'object') {
 			// Handle scope objects (non-Object instances with prototype chains)
 			if (!(value instanceof Object)) {
 				return prototyped(value)
@@ -160,8 +147,8 @@ export function stringifyStack(stack: ExecutionStack[]): any {
 			// Handle function definitions - serialize as plain object for reinstantiation
 			if (value instanceof FunctionDefinition) {
 				return {
-					__type: "FunctionDefinition",
-					ip: value.ip,
+					__type: 'FunctionDefinition',
+					index: value.index,
 					parameters: value.parameters,
 					scope: prototyped(value.scope),
 				}
@@ -169,7 +156,7 @@ export function stringifyStack(stack: ExecutionStack[]): any {
 			// Handle native function definitions - serialize as plain object for reinstantiation
 			if (value instanceof NativeFunctionDefinition) {
 				return {
-					__type: "NativeFunctionDefinition",
+					__type: 'NativeFunctionDefinition',
 					name: value.name,
 				}
 			}
@@ -182,7 +169,7 @@ export function parseStack(serialized: any): ExecutionStack[] {
 	const deserializedScopes = new Map<object, object>()
 
 	function restorePrototype(value: object): object {
-		if (!value || typeof value !== "object") return value
+		if (!value || typeof value !== 'object') return value
 		if (!(value instanceof Object)) {
 			if (!deserializedScopes.has(value)) {
 				const proto = Object.getPrototypeOf(value)
@@ -199,15 +186,15 @@ export function parseStack(serialized: any): ExecutionStack[] {
 		return value
 	}
 
-	return parse(serialized, (key, value) => {
-		if (value && typeof value === "object") {
+	return parse(serialized, (_key, value) => {
+		if (value && typeof value === 'object') {
 			// Restore function definitions
-			if (value.__type === "FunctionDefinition") {
-				return new FunctionDefinition(value.ip, value.parameters, restorePrototype(value.scope))
+			if (value.__type === 'FunctionDefinition') {
+				return new FunctionDefinition(value.index, value.parameters, restorePrototype(value.scope))
 			}
 
 			// Restore native function definitions
-			if (value.__type === "NativeFunctionDefinition") {
+			if (value.__type === 'NativeFunctionDefinition') {
 				return new NativeFunctionDefinition(value.name)
 			}
 

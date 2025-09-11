@@ -1,6 +1,6 @@
 import {
 	ASTAssignmentStatement,
-	ASTBase,
+	type ASTBase,
 	ASTBaseBlock,
 	type ASTBinaryExpression,
 	type ASTCallExpression,
@@ -9,7 +9,7 @@ import {
 	type ASTComparisonGroupExpression,
 	ASTElseClause,
 	ASTForGenericStatement,
-	ASTFunctionStatement,
+	type ASTFunctionStatement,
 	ASTIdentifier,
 	ASTIfClause,
 	ASTIfStatement,
@@ -19,9 +19,7 @@ import {
 	ASTReturnStatement,
 	type ASTUnaryExpression,
 	ASTWhileStatement,
-	Lexer,
-	Parser,
-} from "miniscript-core"
+} from 'miniscript-core'
 import {
 	type ExecutionContext,
 	ExecutionError,
@@ -35,15 +33,9 @@ import {
 	type MSValue,
 	NativeFunctionDefinition,
 	parseStack,
-	type ReturnResult,
 	stringifyStack,
-	type YieldResult,
-} from "./helpers"
-
-interface ScriptSpecification {
-	ast: ASTBase
-	source: string
-}
+} from './helpers'
+import NpcS from './npcs'
 
 export class MiniScriptExecutor {
 	public assertAST<E extends ASTBase>(
@@ -52,25 +44,11 @@ export class MiniScriptExecutor {
 		expectedName?: string,
 	): asserts expr is E {
 		if (!(expr instanceof ctor)) {
-			const name = expectedName || (ctor as any).name || "expected type"
+			const name = expectedName || (ctor as any).name || 'expected type'
 			throw new ExecutionError(this, expr, `Expected ${name}, got ${expr.constructor.name}`)
 		}
 	}
-	public sourceLocation(expr: ASTBase): string {
-		const source = this.source
-		if (!expr.start) return ""
-		if (!source) return `${expr.start.line}:${expr.start.character}`
-		const lines = source.split("\n")
-		const lineIdx = expr.start.line - 1
-		const colIdx = Math.max(1, expr.start.character)
-		const lineText = lines[lineIdx] ?? ""
-		// Build a caret line positioning a ^ under the designated character
-		const caretIndent = " ".repeat(colIdx - 1)
-		const caretLine = `${caretIndent}^`
-		return `${expr.start.line}:${expr.start.character}\n${lineText}\n${caretLine}`
-	}
-	private readonly source?: string
-	private readonly ast: ASTBase
+	readonly script: NpcS
 	private stack: ExecutionStack[]
 	get state(): string {
 		return stringifyStack(this.stack)
@@ -79,40 +57,29 @@ export class MiniScriptExecutor {
 		this.stack = parseStack(state)
 	}
 	constructor(
-		readonly specs: ASTBase | ScriptSpecification | string,
+		specs: NpcS | string,
 		public readonly context: ExecutionContext,
-		state: string | ExecutionStack[] = [{ scope: {}, ip: [0], loopScopes: [] }],
+		state: string | ExecutionStack[] = [
+			{ scope: {}, ip: { indexes: [0], functionIndex: undefined }, loopScopes: [], yielding: false },
+		],
 	) {
-		if (typeof specs === "string") {
-			this.ast = new Parser(specs, { lexer: new Lexer(specs) }).parseChunk()
-			this.source = specs
-		} else if (specs instanceof ASTBase) {
-			this.ast = specs
-		} else {
-			this.ast = specs.ast
-			this.source = specs.source
-		}
-		this.stack = typeof state === "string" ? parseStack(state) : state
+		this.script = typeof specs === 'string' ? new NpcS(specs, context) : specs
+		this.stack = typeof state === 'string' ? parseStack(state) : state
 	}
 
 	// Variable access methods
 	private getVariable(name: string): any {
 		for (const scope of this.stack[0].loopScopes)
-			if ("variable" in scope && scope.variable === name) return scope.iterator[scope.index]
+			if ('variable' in scope && scope.variable === name) return scope.iterator[scope.index]
 		const scope = this.stack[0].scope
 		if (name in scope) return scope[name]
-		if (this.context.variables && name in this.context.variables)
-			return this.context.variables[name]
-		if (
-			(this.context.functions && name in this.context.functions) ||
-			(this.context.statements && name in this.context.statements)
-		)
-			return new NativeFunctionDefinition(name)
+		const rv = this.context[name]
+		return typeof rv === 'function' ? new NativeFunctionDefinition(name) : rv
 	}
 
-	private setVariable(name: string, value: any): void {
+	private setVariable(name: string, value: any, statement: ASTBase): void {
 		for (const scope of this.stack[0].loopScopes)
-			if ("variable" in scope && scope.variable === name) {
+			if ('variable' in scope && scope.variable === name) {
 				scope.iterator[scope.index] = value
 				return
 			}
@@ -125,7 +92,9 @@ export class MiniScriptExecutor {
 				}
 				scope = Object.getPrototypeOf(scope)
 			}
-		else scope[name] = value
+		else if(name in this.context)
+			throw new ExecutionError(this, statement, `Cannot set ${name} native value`)
+		scope[name] = value
 	}
 
 	// Main execution entry point
@@ -134,22 +103,22 @@ export class MiniScriptExecutor {
 			// Get current statement from IP
 			const statement = this.getStatementByIP(this.stack[0].ip)
 			// Execute the current statement
-			const result = statement ? this.executeStatement(statement) : { type: "eob" }
+			const result = statement ? this.executeStatement(statement) : { type: 'return' } as FunctionResult
 			if (result)
 				switch (result.type) {
-					case "eob":
-						this.stack.shift()
-					case "return":
-						if (this.stack.length < enteringScopeDepth) return result as ReturnResult
+					case 'return':
+						const leavingScope = this.stack.shift()
+						if (this.stack.length < enteringScopeDepth) return result as FunctionResult
 						this.incrementIP(this.stack[0].ip)
+
+						if (leavingScope?.yielding && result.value !== undefined)
+							return { type: 'yield', value: result.value }
 						break
-					case "yield":
+					case 'yield':
 						this.incrementIP(this.stack[0].ip)
-						return result as YieldResult
-					case "branched":
+						return result
+					case 'branched':
 						break
-					default:
-						throw new ExecutionError(this, statement, `Unknown result type: ${result.type}`)
 				}
 			else this.incrementIP(this.stack[0].ip)
 		}
@@ -157,35 +126,15 @@ export class MiniScriptExecutor {
 
 	// Get statement by instruction pointer
 	private getStatementByIP(ip: IP): any {
-		if (ip.length === 0) {
+		if (ip.indexes.length === 0) {
 			return null
 		}
 		while (true) {
 			const statements = [] as ASTBase[]
-			let currentBlock = this.ast
+			let currentBlock: ASTBase = this.script.function(ip.functionIndex)
 			let container: ASTBase[] | undefined
-			for (const i of ip) {
-				if (currentBlock instanceof ASTAssignmentStatement) {
-					const av = (currentBlock as ASTAssignmentStatement).init
-					if (!(av instanceof ASTFunctionStatement)) {
-						throw new ExecutionError(
-							this,
-							currentBlock,
-							`Assignment statement init is not a function statement: ${av.constructor.name}`,
-						)
-					}
-					container = av.body
-				} else if (currentBlock instanceof ASTReturnStatement) {
-					const rv = currentBlock.argument
-					if (!(rv instanceof ASTFunctionStatement)) {
-						throw new ExecutionError(
-							this,
-							currentBlock,
-							`Return statement argument is not a function statement: ${rv?.constructor.name ?? "undefined"}`,
-						)
-					}
-					container = rv.body
-				} else if (currentBlock instanceof ASTBaseBlock) {
+			for (const i of ip.indexes) {
+				if (currentBlock instanceof ASTBaseBlock) {
 					container = currentBlock.body
 				} else if (currentBlock instanceof ASTIfStatement) {
 					container = currentBlock.clauses
@@ -193,17 +142,17 @@ export class MiniScriptExecutor {
 					throw new ExecutionError(
 						this,
 						currentBlock,
-						`Container not found for ip: ${ip.join(".")} -> ${currentBlock.constructor.name}`,
+						`Container not found for ip: ${ip.indexes.join('.')} -> ${currentBlock.constructor.name}`,
 					)
 				currentBlock = container![i]
 				statements.push(currentBlock)
 			}
 			let lastStatement = statements.pop()
-			if (lastStatement || ip.length <= 1) return lastStatement
-			ip.pop()
+			if (lastStatement || ip.indexes.length <= 1) return lastStatement
+			ip.indexes.pop()
 			lastStatement = statements.pop()!
 			if (lastStatement instanceof ASTClause) {
-				ip.pop()
+				ip.indexes.pop()
 				this.incrementIP(ip)
 			} else if (
 				lastStatement instanceof ASTAssignmentStatement ||
@@ -217,7 +166,7 @@ export class MiniScriptExecutor {
 			} else if (lastStatement instanceof ASTForGenericStatement) {
 				const forLoop = this.stack[0].loopScopes[0] as ForScope
 				forLoop.index++
-				if (forLoop.index < forLoop.iterator.length) this.stack[0].ip.push(0)
+				if (forLoop.index < forLoop.iterator.length) this.stack[0].ip.indexes.push(0)
 				else {
 					this.stack[0].loopScopes.shift()
 					this.incrementIP(ip)
@@ -234,34 +183,34 @@ export class MiniScriptExecutor {
 
 	// Increment the instruction pointer (move to next statement)
 	private incrementIP(ip: IP): void {
-		ip[ip.length - 1]++
+		ip.indexes[ip.indexes.length - 1]++
 	}
 
 	private executeStatement(statement: ASTBase): ExecutionResult {
 		const statementType = statement.constructor.name
 
 		switch (statementType) {
-			case "ASTAssignmentStatement":
+			case 'ASTAssignmentStatement':
 				this.executeAssignment(statement as ASTAssignmentStatement)
 				break
-			case "ASTIfStatement":
+			case 'ASTIfStatement':
 				return this.executeIf(statement as ASTIfStatement)
-			case "ASTWhileStatement":
+			case 'ASTWhileStatement':
 				return this.executeWhile(statement as ASTWhileStatement)
-			case "ASTForGenericStatement":
+			case 'ASTForGenericStatement':
 				return this.executeForGeneric(statement as ASTForGenericStatement)
-			case "ASTCallStatement":
+			case 'ASTCallStatement':
 				return this.executeProcedure(statement as ASTCallStatement)
-			case "ASTCallExpression":
+			case 'ASTCallExpression':
 				this.executeCall(statement as ASTCallExpression)
 				break
-			case "ASTReturnStatement":
+			case 'ASTReturnStatement':
 				return this.executeReturn(statement as ASTReturnStatement)
-			case "ASTBreakStatement":
+			case 'ASTBreakStatement':
 				return this.executeBreak(statement)
-			case "ASTContinueStatement":
+			case 'ASTContinueStatement':
 				return this.executeContinue(statement)
-			case "ASTImportCodeExpression":
+			case 'ASTImportCodeExpression':
 				return this.executeImport(statement)
 			default:
 				console.log(`Unknown statement type: ${statementType}`)
@@ -274,7 +223,7 @@ export class MiniScriptExecutor {
 			return {
 				get: () => this.getVariable(expr.name),
 				set: (value: MSValue) => {
-					this.setVariable(expr.name, value)
+					this.setVariable(expr.name, value, expr)
 				},
 			}
 		let base: any
@@ -299,7 +248,7 @@ export class MiniScriptExecutor {
 	private executeAssignment(statement: ASTAssignmentStatement): ExecutionResult {
 		// Check if this is a member expression assignment (e.g., person.age = 40)
 		const lValue = this.evaluateLValue(statement.variable)
-		if (!lValue) throw new ExecutionError(this, statement.variable, "Invalid L-Value target")
+		if (!lValue) throw new ExecutionError(this, statement.variable, 'Invalid L-Value target')
 		lValue.set(this.evaluateExpression(statement.init))
 	}
 
@@ -317,9 +266,9 @@ export class MiniScriptExecutor {
 				(clause instanceof ASTIfClause && this.evaluateExpression(clause.condition))
 			) {
 				// Enter this clause's block - push clause index and then 0 for first statement
-				this.stack[0].ip.push(i)
-				this.stack[0].ip.push(0)
-				return { type: "branched" }
+				this.stack[0].ip.indexes.push(i)
+				this.stack[0].ip.indexes.push(0)
+				return { type: 'branched' }
 			}
 		}
 
@@ -332,7 +281,7 @@ export class MiniScriptExecutor {
 				this.evaluateExpression((clause as any).condition)
 			) {
 				// Enter the else block - push index 0 for first statement in the block
-				this.stack[0].ip.push(0)
+				this.stack[0].ip.indexes.push(0)
 				return undefined // Continue execution in the new block
 			}
 		}
@@ -345,9 +294,9 @@ export class MiniScriptExecutor {
 		// Check if we're entering the loop for the first time
 		if (this.evaluateExpression(statement.condition)) {
 			// Enter the while loop body - push index 0 for first statement in the block
-			this.stack[0].loopScopes.unshift({ ipDepth: this.stack[0].ip.length })
-			this.stack[0].ip.push(0)
-			return { type: "branched" } // Continue execution in the new block
+			this.stack[0].loopScopes.unshift({ ipDepth: this.stack[0].ip.indexes.length })
+			this.stack[0].ip.indexes.push(0)
+			return { type: 'branched' } // Continue execution in the new block
 		}
 
 		// Loop condition is false, continue with next statement
@@ -364,13 +313,13 @@ export class MiniScriptExecutor {
 		const func = this.evaluateExpression(expr.base)
 
 		if (func instanceof FunctionDefinition) {
-			this.stack.unshift(func.enterCall(evaluatedArgs))
-			return { type: "branched" }
+			this.stack.unshift(func.enterCall(evaluatedArgs, true))
+			return { type: 'branched' }
 		} else if (func instanceof NativeFunctionDefinition) {
-			const value = func.state(this, evaluatedArgs, statement)
-			return value !== undefined ? { type: "yield", value: value } : undefined
+			const value = func.evaluate(this, evaluatedArgs, statement)
+			return value !== undefined ? { type: 'yield', value: value } : undefined
 		} else {
-			throw new ExecutionError(this, statement, "Cannot call non-function value")
+			throw new ExecutionError(this, statement, 'Cannot call non-function value')
 		}
 	}
 
@@ -383,50 +332,44 @@ export class MiniScriptExecutor {
 		const func = this.evaluateExpression(statement.base)
 
 		if (func instanceof FunctionDefinition) {
-			this.stack.unshift(func.enterCall(evaluatedArgs))
+			this.stack.unshift(func.enterCall(evaluatedArgs, false))
 			const result = this.execute(this.stack.length)
 
 			switch (result.type) {
-				case "yield":
-					throw new ExecutionError(this, statement, "Function call cannot yield")
-				case "return":
+				case 'yield':
+					throw new ExecutionError(this, statement, 'Function call cannot yield')
+				case 'return':
 					return result.value
-				case "eob":
-					return undefined
 			}
 		} else if (func instanceof NativeFunctionDefinition) {
 			return func.evaluate(this, evaluatedArgs, statement)
 		} else {
-			throw new ExecutionError(this, statement, "Cannot call non-function value")
+			throw new ExecutionError(this, statement, 'Cannot call non-function value')
 		}
 	}
 
 	private executeReturn(statement: ASTReturnStatement): ExecutionResult {
-		try {
-			return statement.argument
-				? { type: "return", value: this.evaluateExpression(statement.argument) }
-				: { type: "return" }
-		} finally {
-			this.stack.shift()
-		}
+		return statement.argument
+			? { type: 'return', value: this.evaluateExpression(statement.argument) }
+			: { type: 'return' }
 	}
 
 	private executeContinue(statement: ASTBase): ExecutionResult {
 		if (!this.stack[0].loopScopes.length)
-			throw new ExecutionError(this, statement, "Break/Continue statement outside of loop")
+			throw new ExecutionError(this, statement, 'Break/Continue statement outside of loop')
 		const lastLoop = this.stack[0].loopScopes[0]
-		this.stack[0].ip.splice(lastLoop.ipDepth)
+		this.stack[0].ip.indexes.splice(lastLoop.ipDepth)
 		const loopStatement = this.getStatementByIP(this.stack[0].ip)
 		this.assertAST(loopStatement, ASTBaseBlock)
-		this.stack[0].ip.push(loopStatement.body.length)
-		return { type: "branched" }
+		this.stack[0].ip.indexes.push(loopStatement.body.length)
+		return { type: 'branched' }
 	}
 	private executeBreak(statement: ASTBase): ExecutionResult {
 		if (!this.stack[0].loopScopes.length)
-			throw new ExecutionError(this, statement, "Break/Continue statement outside of loop")
-		this.stack[0].ip.splice(this.stack[0].loopScopes.shift()!.ipDepth)
+			throw new ExecutionError(this, statement, 'Break/Continue statement outside of loop')
+		this.stack[0].ip.indexes.splice(this.stack[0].loopScopes.shift()!.ipDepth)
 		this.incrementIP(this.stack[0].ip)
-		return { type: "branched" }
+		return { type: 'branched' }
 	}
 
 	private evaluateExpression(expr: ASTBase): MSValue {
@@ -439,33 +382,33 @@ export class MiniScriptExecutor {
 			return lValue.get()
 		}
 		switch (exprType) {
-			case "ASTNumericLiteral":
-			case "ASTStringLiteral":
-			case "ASTBooleanLiteral":
+			case 'ASTNumericLiteral':
+			case 'ASTStringLiteral':
+			case 'ASTBooleanLiteral':
 				return (expr as any).value
-			case "ASTNilLiteral":
+			case 'ASTNilLiteral':
 				return null
-			case "ASTListValue":
+			case 'ASTListValue':
 				return this.evaluateExpression((expr as ASTListValue).value)
-			case "ASTBinaryExpression":
+			case 'ASTBinaryExpression':
 				return this.evaluateBinaryExpression(expr as ASTBinaryExpression)
-			case "ASTUnaryExpression":
+			case 'ASTUnaryExpression':
 				return this.evaluateUnaryExpression(expr as ASTUnaryExpression)
-			case "ASTCallExpression":
+			case 'ASTCallExpression':
 				return this.executeCall(expr as ASTCallExpression)
-			case "ASTFunctionStatement":
+			case 'ASTFunctionStatement':
 				return this.createFunction(expr as ASTFunctionStatement)
-			case "ASTMapConstructorExpression":
+			case 'ASTMapConstructorExpression':
 				return this.evaluateMapConstructor(expr)
-			case "ASTListConstructorExpression":
+			case 'ASTListConstructorExpression':
 				return this.evaluateListConstructor(expr)
-			case "ASTParenthesisExpression":
+			case 'ASTParenthesisExpression':
 				return this.evaluateExpression((expr as any).expression)
-			case "ASTIsaExpression":
+			case 'ASTIsaExpression':
 				return this.evaluateIsaExpression(expr)
-			case "ASTLogicalExpression":
+			case 'ASTLogicalExpression':
 				return this.evaluateLogicalExpression(expr)
-			case "ASTComparisonGroupExpression":
+			case 'ASTComparisonGroupExpression':
 				return this.evaluateComparisonGroupExpression(expr as ASTComparisonGroupExpression)
 			default:
 				console.log(`Unknown expression type: ${exprType}`)
@@ -479,27 +422,27 @@ export class MiniScriptExecutor {
 		const operator = expr.operator
 		// biome-ignore-start lint/suspicious/noDoubleEquals: We keep it fuzzy for npc-s
 		switch (operator) {
-			case "+":
+			case '+':
 				return left + right
-			case "-":
+			case '-':
 				return left - right
-			case "*":
+			case '*':
 				return left * right
-			case "/":
+			case '/':
 				return left / right
-			case "%":
+			case '%':
 				return left % right
-			case ">":
+			case '>':
 				return left > right
-			case "<":
+			case '<':
 				return left < right
-			case ">=":
+			case '>=':
 				return left >= right
-			case "<=":
+			case '<=':
 				return left <= right
-			case "==":
+			case '==':
 				return left == right
-			case "!=":
+			case '!=':
 				return left != right
 			default:
 				throw new ExecutionError(this, expr, `Unknown binary operator: ${operator}`)
@@ -512,19 +455,19 @@ export class MiniScriptExecutor {
 		const operator = expr.operator
 
 		switch (operator) {
-			case "not":
-			case "!":
+			case 'not':
+			case '!':
 				return !argument
-			case "-":
+			case '-':
 				return -argument
-			case "+":
+			case '+':
 				return +argument
 			default:
 				throw new ExecutionError(this, expr, `Unknown unary operator: ${operator}`)
 		}
 	}
 
-	private createFunction(expr: ASTBase): FunctionDefinition {
+	private createFunction(expr: ASTFunctionStatement): FunctionDefinition {
 		// Find the instruction pointer for this function definition
 		// Extract parameter names
 		const parameters = ((expr as any).params || (expr as any).parameters || []).map(
@@ -532,7 +475,7 @@ export class MiniScriptExecutor {
 		)
 
 		// Return a FunctionDefinition instance
-		return new FunctionDefinition([...this.stack[0].ip, 0], parameters, this.stack[0].scope)
+		return new FunctionDefinition(this.script.indexes.get(expr)!, parameters, this.stack[0].scope)
 	}
 
 	private evaluateMapConstructor(expr: ASTBase): any {
@@ -562,20 +505,20 @@ export class MiniScriptExecutor {
 		const variable = statement.variable.name
 		const iterator = this.evaluateExpression(statement.iterator)
 		if (!Array.isArray(iterator)) {
-			throw new ExecutionError(this, statement, "For loop iterator must be a list")
+			throw new ExecutionError(this, statement, 'For loop iterator must be a list')
 		}
 		this.stack[0].loopScopes.unshift({
 			iterator,
 			index: 0,
-			ipDepth: this.stack[0].ip.length,
+			ipDepth: this.stack[0].ip.indexes.length,
 			variable,
 		})
-		this.stack[0].ip.push(0)
-		return { type: "branched" } // Let the main loop handle execution
+		this.stack[0].ip.indexes.push(0)
+		return { type: 'branched' } // Let the main loop handle execution
 	}
 
 	private executeImport(statement: ASTBase): ExecutionResult {
-		throw new ExecutionError(this, statement, "Import statement not implemented")
+		throw new ExecutionError(this, statement, 'Import statement not implemented')
 	}
 
 	// New expression evaluation methods
@@ -584,15 +527,15 @@ export class MiniScriptExecutor {
 		const right = (expr as any).right.name // Type name (number, string, boolean, map, list)
 
 		switch (right) {
-			case "number":
-				return typeof left === "number"
-			case "string":
-				return typeof left === "string"
-			case "boolean":
-				return typeof left === "boolean"
-			case "map":
-				return left !== null && typeof left === "object" && !Array.isArray(left)
-			case "list":
+			case 'number':
+				return typeof left === 'number'
+			case 'string':
+				return typeof left === 'string'
+			case 'boolean':
+				return typeof left === 'boolean'
+			case 'map':
+				return left !== null && typeof left === 'object' && !Array.isArray(left)
+			case 'list':
 				return Array.isArray(left)
 			default:
 				return false
@@ -605,9 +548,9 @@ export class MiniScriptExecutor {
 		const operator = (expr as any).operator
 
 		switch (operator) {
-			case "and":
+			case 'and':
 				return left && right
-			case "or":
+			case 'or':
 				return left || right
 			default:
 				throw new ExecutionError(this, expr, `Unknown logical operator: ${operator}`)
@@ -626,22 +569,22 @@ export class MiniScriptExecutor {
 			let comparisonOk: boolean
 			// biome-ignore-start lint/suspicious/noDoubleEquals: We keep it fuzzy for npc-s
 			switch (operator) {
-				case "<":
+				case '<':
 					comparisonOk = leftValue < rightValue
 					break
-				case ">":
+				case '>':
 					comparisonOk = leftValue > rightValue
 					break
-				case "<=":
+				case '<=':
 					comparisonOk = leftValue <= rightValue
 					break
-				case ">=":
+				case '>=':
 					comparisonOk = leftValue >= rightValue
 					break
-				case "==":
+				case '==':
 					comparisonOk = leftValue == rightValue
 					break
-				case "!=":
+				case '!=':
 					comparisonOk = leftValue != rightValue
 					break
 				default:
