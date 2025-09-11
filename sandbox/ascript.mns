@@ -1,7 +1,0 @@
-a = 10
-f = function(a)
-	print a
-end function
-
-f(99)
-print a

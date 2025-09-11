@@ -39,6 +39,7 @@ import {
 	stack,
 	parseStack,
 	stringifyStack,
+	MSScope,
 } from './helpers'
 import NpcS from './npcs'
 
@@ -61,7 +62,6 @@ export class MiniScriptExecutor {
 	stack: ExecutionStack[]
 	expressionsCacheIndex: number = 0
 	expressionsCacheStack: number[] = []
-
 	get state(): string {
 		return stringifyStack(this.stack)
 	}
@@ -81,8 +81,11 @@ export class MiniScriptExecutor {
 	private getVariable(name: string): any {
 		for (const scope of this.stack[0].loopScopes)
 			if ('variable' in scope && scope.variable === name) return scope.iterator[scope.index]
-		const scope = this.stack[0].scope
-		if (name in scope) return scope[name]
+		let scope: MSScope | undefined = this.stack[0].scope
+		while (scope) {
+			if (name in scope.variables) return scope.variables[name]
+			scope = scope.parent
+		}
 		const rv = this.context[name]
 		return typeof rv === 'function' ? new NativeFunctionDefinition(name) : rv
 	}
@@ -93,18 +96,17 @@ export class MiniScriptExecutor {
 				scope.iterator[scope.index] = value
 				return
 			}
-		let scope = this.stack[0].scope
-		if (name in scope)
-			while (scope) {
-				if (Object.hasOwn(scope, name)) {
-					scope[name] = value
-					return
-				}
-				scope = Object.getPrototypeOf(scope)
+		let scope: MSScope | undefined = this.stack[0].scope
+		while (scope) {
+			if (name in scope.variables) {
+				scope.variables[name] = value
+				return
 			}
-		else if(name in this.context)
+			scope = scope.parent
+		}
+		if(name in this.context)
 			throw new ExecutionError(this, statement, `Cannot set ${name} native value`)
-		scope[name] = value
+		this.stack[0].scope.variables[name] = value
 	}
 
 	// Main execution entry point

@@ -30,11 +30,13 @@
 			}
 		},
 		{
-			"name": "Debug Current File (Smart)",
+			"name": "Play",
 			"type": "node",
 			"request": "launch",
-			"program": "${workspaceFolder}/node_modules/.bin/tsx",
-			"args": ["${workspaceFolder}/src/cli.ts", "${input:smartFileInput}"],
+			"program": "${workspaceFolder}/games/play.ts",
+			"args": ["${workspaceFolder}/games/game.npcs", "${workspaceFolder}/game.json", "${input:sentence}"],
+			"runtimeExecutable": "npx",
+			"runtimeArgs": ["tsx"],
 			"console": "integratedTerminal",
 			"internalConsoleOptions": "neverOpen",
 			"skipFiles": ["<node_internals>/**"],
@@ -45,15 +47,8 @@
 	],
 	"inputs": [
 		{
-			"id": "scriptFile",
-			"description": "Enter the MiniScript file to run (e.g., 'basic', 'functions', or 'tests/fixtures/basic.mns')",
-			"default": "basic",
-			"type": "promptString"
-		},
-		{
-			"id": "smartFileInput",
-			"description": "File to run (auto-detects .mns vs .ts/.tsx)",
-			"default": "${fileBasenameNoExtension}",
+			"id": "sentence",
+			"description": "What to say?",
 			"type": "promptString"
 		}
 	]

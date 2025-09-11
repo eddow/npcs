@@ -1,6 +1,8 @@
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs'
-import { resolve, join } from 'node:path'
-import { NpcS } from '../src'
+import { resolve } from 'node:path'
+import { ExecutionContext, NpcS } from '../src'
+import { LexerException } from 'miniscript-core'
+import { lexerExceptionLocation } from '../src/npcs'
 
 function showUsage() {
 	console.log('Usage: npx tsx games/play.ts <script> <game> [sentence ...]')
@@ -26,7 +28,7 @@ function main() {
 		process.exit(1)
 	}
 
-	const [script, game, ...sentence] = args
+	const [script, game, ...words] = args
 
 	
 	function file(str: string, ext: string) {
@@ -47,52 +49,50 @@ function main() {
 	const source = readFileSync(scriptPath, 'utf-8')
 
 	// Build execution context with utilities
-	const sentenceText = sentence.join(' ')
-	const words = sentenceText.trim().length ? sentenceText.split(/\s+/) : []
+	const sentence = words.join(' ')
 	const context = {
-		statements: {
-			print: (...args: any[]) => {
-				console.log(args.map(String).join(' '))
-			},
-			prompt: (message: any) => String(message),
+		print(...args: any[]) {
+			console.log(...args)
 		},
-		functions: {
-		},
-		variables: {
-			sentence: sentenceText,
-			words,
-			script,
-			game,
-		},
-	} as import('../src').ExecutionContext
-
-	// Create game
-	const npc = new NpcS(source, context)
+		sentence,
+	} as ExecutionContext
 
 	// Load previous state if any
-	let priorState: string | undefined
+	let priorState: any | undefined
 	if (existsSync(gameStatePath)) {
 		try {
-			priorState = readFileSync(gameStatePath, 'utf-8')
+			priorState = JSON.parse(readFileSync(gameStatePath, 'utf-8'))
 		} catch {}
 	}
 
-	// Execute game
-	const result = npc.execute(priorState)
-	if (result.type === 'return') {
-		console.log('✅ return:', result.value)
-		// Clear saved state on completion
-		if (existsSync(gameStatePath)) {
-			try { unlinkSync(gameStatePath) } catch {}
+	try {
+		// Create game
+		const npc = new NpcS(source, context)
+
+		// Execute game
+		const result = npc.execute(priorState)
+		if (result.type === 'return') {
+			console.log('✅ return:', result.value)
+			// Clear saved state on completion
+			if (existsSync(gameStatePath)) {
+				try { unlinkSync(gameStatePath) } catch {}
+			}
+		} else if (result.type === 'yield') {
+			console.log('⏸️ yield:', result.value)
+			// Persist state for next run
+			writeFileSync(gameStatePath, JSON.stringify(result.state), 'utf-8')
+			console.log(`💾 saved state -> ${gameStatePath}`)
 		}
-	} else if (result.type === 'yield') {
-		console.log('⏸️ yield:', result.value)
-		// Persist state for next run
-		writeFileSync(gameStatePath, result.state, 'utf-8')
-		console.log(`💾 saved state -> ${gameStatePath}`)
+	} catch (error) {
+		console.error('❌ Error:', String(error))
+		if(error instanceof LexerException) {
+			console.error(lexerExceptionLocation(error, source))
+		}
+		if (error instanceof Error) {
+			console.error('Stack:', error.stack)
+		}
+		process.exit(1)
 	}
 }
 
 main()
-
-

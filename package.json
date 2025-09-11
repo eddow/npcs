@@ -3,17 +3,17 @@
   "version": "1.0.0",
   "description": "MiniScript executor with linear stateful execution",
   "main": "src/executor.ts",
-	"exports": {
-		".": {
-			"types": "./dist/executor.d.ts",
-			"import": "./dist/executor.js"
-		},
-		"./src": "./src/executor.ts"
-	},
-	"files": [
-		"dist",
-		"src"
-	],
+  "exports": {
+    ".": {
+      "types": "./dist/executor.d.ts",
+      "import": "./dist/executor.js"
+    },
+    "./src": "./src/executor.ts"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",

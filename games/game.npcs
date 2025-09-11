@@ -1,44 +1,271 @@
-prompt = function(prompt)
-	return prompt
+// Simple interactive state-based game for NpcS
+// Notes:
+// - Use prompt() to yield and get player's input from context.sentence
+// - Avoid built-in methods; use array properties and manual indexing
+yield = function(sth)
+	return sth
 end function
 
-// A tiny interactive demo game: each read of sentence/words is preceded by a prompt.
+prompt = function(text)
+	yield text
+	return sentence
+end function
 
-print "Welcome to the tavern!"
+// --- Game State ---
+push = function(list, value)
+	list[list.length] = value
+	return list.length
+end function
 
-// Start with an empty inventory
 inventory = []
+gold = 0
+hasOpenedChest = false
+goblinDefeated = false
 
-// Ask for the player's name, then read it
-prompt "Hello, traveler. What is your name?"
-name = sentence
-if name.length == 0 then
+addItem = function(itemName)
+	push(inventory, itemName)
+end function
+
+hasItem = function(itemName)
+	i = 0
+	while i < inventory.length
+		if inventory[i] == itemName then
+			return true
+		end if
+		i = i + 1
+	end while
+	return false
+end function
+
+removeItem = function(itemName)
+	newInv = []
+	i = 0
+	while i < inventory.length
+		if inventory[i] != itemName then
+			push(newInv, inventory[i])
+		end if
+		i = i + 1
+	end while
+	inventory = newInv
+end function
+
+listInventory = function()
+	if inventory.length == 0 then
+		print "(inventory is empty)"
+		return
+	end if
+	print "Your inventory:"
+	for item in inventory
+		print "  - " + item
+	end for
+end function
+
+askYesNo = function(question)
+	answer = prompt(question + " (yes/no)")
+	if answer == "y" or answer == "yes" then return true
+	if answer == "n" or answer == "no" then return false
+	print "Please answer yes or no."
+	return askYesNo(question)
+end function
+
+// --- Locations / States ---
+tavern = function()
+	print "You are in the Cozy Tankard tavern."
+	print "What would you like to do, " + name + "?"
+	print "Commands: dungeon, shop, inventory, rest, leave"
+	while true
+		choice = prompt("tavern> ")
+
+		if choice == "dungeon" then
+			goToDungeon()
+		end if
+		if choice == "shop" then
+			shop()
+		end if
+		if choice == "inventory" then
+			inventoryMenu()
+		end if
+		if choice == "rest" then
+			print "You take a short rest by the hearth. Cozy!"
+		end if
+		if choice == "leave" then
+			print "You wave goodbye to the barkeep and step outside."
+			return
+		end if
+
+		print "The bard tilts their head. 'I don't quite follow.'"
+	end while
+end function
+
+shop = function()
+	print "You browse the general store. Your gold: " + gold
+	print "For sale:"
+	print "  - torch (2g)"
+	print "  - bread (1g)"
+	print "Commands: buy torch, buy bread, back"
+	while true
+		choice = prompt("shop> ")
+		if choice == "buy torch" then
+			if gold >= 2 then
+				gold = gold - 2
+				addItem("torch")
+				print "You buy a torch."
+			else
+				print "You don't have enough gold."
+			end if
+			continue
+		end if
+		if choice == "buy bread" then
+			if gold >= 1 then
+				gold = gold - 1
+				addItem("bread")
+				print "You buy a hearty loaf of bread."
+			else
+				print "You don't have enough gold."
+			end if
+			continue
+		end if
+		if choice == "back" then
+			print "You leave the shop."
+			return
+		end if
+		print "The shopkeep squints. 'Say that again?'"
+	end while
+end function
+
+inventoryMenu = function()
+	print "Inventory menu. Commands: list, eat bread, light torch, drop <name>, back"
+	while true
+		choice = prompt("inv> ")
+		if choice == "list" then
+			listInventory()
+			continue
+		end if
+		if choice == "eat bread" then
+			if hasItem("bread") then
+				removeItem("bread")
+				print "You eat the bread. Delicious!"
+			else
+				print "You don't have bread."
+			end if
+			continue
+		end if
+		if choice == "light torch" then
+			if hasItem("torch") then
+				print "You light the torch. Everything feels less ominous."
+			else
+				print "No torch to light."
+			end if
+			continue
+		end if
+		// Drop logic: expects exact item name after 'drop '
+		if choice == "back" then
+			return
+		end if
+		// crude drop parser without methods: check prefixes by exact matches set
+		if choice == "drop bread" then
+			if hasItem("bread") then
+				removeItem("bread")
+				print "You drop the bread. A duck looks pleased."
+			else
+				print "You don't have bread."
+			end if
+			continue
+		end if
+		if choice == "drop torch" then
+			if hasItem("torch") then
+				removeItem("torch")
+				print "You drop the torch. Hopefully it's out."
+			else
+				print "You don't have a torch."
+			end if
+			continue
+		end if
+		print "Not sure how to do that with your belongings."
+	end while
+end function
+
+goToDungeon = function()
+	print "You stand at the mouth of a small dungeon."
+	if hasItem("torch") then
+		print "Your torch flickers bravely."
+	else
+		print "It's dark inside. A torch would help."
+	end if
+	print "Commands: enter, back"
+	while true
+		choice = prompt("dungeon> ")
+		if choice == "back" then
+			print "You head back to town."
+			return
+		end if
+		if choice == "enter" then
+			dungeonInterior()
+			continue
+		end if
+		print "The wind howls. Perhaps try a clearer command."
+	end while
+end function
+
+dungeonInterior = function()
+	print "Inside the dungeon you see a chest and hear skittering."
+	print "Commands: chest, fight goblin, back"
+	while true
+		choice = prompt("dng> ")
+		if choice == "back" then
+			print "You step back into the daylight."
+			return
+		end if
+		if choice == "chest" then
+			if hasOpenedChest then
+				print "The chest is empty. Someone (you) looted it."
+			else
+				print "You open the chest. Inside is a rusty sword!"
+				addItem("rusty sword")
+				hasOpenedChest = true
+			end if
+			continue
+		end if
+		if choice == "fight goblin" then
+			fightGoblin()
+			continue
+		end if
+		print "Your echo replies: 'What?'"
+	end while
+end function
+
+fightGoblin = function()
+	if goblinDefeated then
+		print "Only a goblin-shaped smudge remains."
+		return
+	end if
+	print "A goblin jumps out!"
+	if hasItem("rusty sword") then
+		print "You swing your rusty sword with dramatic flair."
+		print "The goblin flees, dropping 3 gold coins!"
+		gold = gold + 3
+		goblinDefeated = true
+	else
+		print "You consider punching the goblin. The goblin considers punching back."
+		brave = askYesNo("Proceed unarmed?")
+		if brave then
+			print "You flail heroically. The goblin laughs heroically."
+			print "After a tense staring contest, you both retreat."
+		else
+			print "A tactical retreat seems wise."
+		end if
+	end if
+end function
+
+// --- Entry Point ---
+print "Welcome to Tiny Quest!"
+name = prompt("Traveler, what is your name?")
+if name == "" then
 	name = "Stranger"
 end if
-print "Well met, " + name + "!"
-print "Type: look, inventory, or quit"
+print "Well met, " + name + "! You have " + gold + " gold."
 
-// Main loop: ask actions until the player says "quit"
-while true
-	prompt "> What do you do?"
-	action = words[0]
-	if action == "quit" then
-		print "Goodbye, " + name + "!"
-		return "ended"
-	else if action == "look" then
-		print "You are in a cozy tavern. The fire crackles."
-	else if action == "inventory" then
-		if inventory.length == 0 then
-			print "Your pockets are empty."
-		else
-			print "You carry:"
-			for item in inventory
-				print " - " + item
-			end for
-		end if
-	else if action.length > 0 then
-		print "You try to '" + action + "' but nothing happens."
-	else
-		// No action provided; loop will prompt again
-	end if
-end while
+// Start at the tavern
+tavern()
+
+print "Game over. Thanks for playing, " + name + "!"

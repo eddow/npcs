@@ -1,7 +1,7 @@
 import { runFixture, runScript } from './test-runner-jest.js'
 
-describe('Pause/Resume Execution', () => {
-	describe('Basic Pause/Resume', () => {
+describe('Yield Execution', () => {
+	describe('Basic Yield', () => {
 		it('should pause and resume basic execution', () => {
 			const first = runFixture('pause-basic')
 
@@ -166,7 +166,7 @@ print "after work"`
 	})
 
 	describe('Object State Preservation', () => {
-		it('should preserve object state across pause/resume', () => {
+		it('should preserve object state across Yield', () => {
 			const first = runFixture('pause-objects')
 			expect(first.success).toBe(true)
 			expect(first.output).toEqual(['Before pause: Alice is 30'])

@@ -19,9 +19,8 @@ It's basically quick-basic on steroids (functional and with iterators)
 ### Main feature
 
 Give it a scope, with values and callbacks, and execute it. The script will return
-- `eob` = End Of Block - it just executed
-- `return` = the script just returned something (and you have the value)
-- `yield` = the script yielded something, use that value and store the `executor.scopes`
+- `{type: 'return', value?: any}` = the script just returned something (and you have the value)
+- `{type: 'yield', value: any, state: string}` = the script yielded something, use that value and store the state to be able to "`next()`"
 
 
 ## Features

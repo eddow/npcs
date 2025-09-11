@@ -65,16 +65,20 @@ export interface ExecutionStack {
 }
 
 export function stack(partial: Partial<ExecutionStack> = {}): ExecutionStack {
-	return Object.assign({
-		scope: {},
+	return {
+		scope: {variables: {}},
 		ip: { indexes: [0], functionIndex: undefined },
 		loopScopes: [],
-		targetReturn: false,
-	}, partial)
+		targetReturn: 'lose',
+		...partial,
+	}
 }
 
 export type MSValue = any
-export type MSScope = Record<string, any>
+export type MSScope = {
+	variables: Record<string, any>
+	parent?: MSScope
+}
 /**
  * This is a class so that `instanceof` can be used to check if an object is a function definition.
  */
@@ -85,12 +89,12 @@ export class FunctionDefinition {
 		public scope: MSScope,
 	) {}
 	enterCall(args: any[], targetReturn: TargetReturn): ExecutionStack {
-		const variables = {} as MSScope
+		const variables = {}
 		for (let i = 0; i < this.parameters.length; i++) {
 			variables[this.parameters[i]] = args[i]
 		}
 		return stack({
-			scope: Object.setPrototypeOf(variables, this.scope),
+			scope: {variables, parent: this.scope},
 			ip: { indexes: [0], functionIndex: this.index },
 			targetReturn,
 		})
@@ -127,39 +131,16 @@ export interface LValue {
 }
 
 export function stringifyStack(stack: ExecutionStack[]): any {
-	const stringifiedScopes = new Map<object, object>()
 
-	function prototyped(value: object): object {
-		if (!value || typeof value !== 'object') return value
-		if (!(value instanceof Object)) {
-			if (!stringifiedScopes.has(value)) {
-				const proto = Object.getPrototypeOf(value)
-				stringifiedScopes.set(
-					value,
-					Object.create(
-						proto === null ? null : prototyped(proto),
-						Object.getOwnPropertyDescriptors(value),
-					),
-				)
-			}
-			return stringifiedScopes.get(value)!
-		}
-		return value
-	}
-
-	return stringify(stack, (_key, value) => {
+	return JSON.parse(stringify(stack, (_key, value) => {
 		if (value && typeof value === 'object') {
-			// Handle scope objects (non-Object instances with prototype chains)
-			if (!(value instanceof Object)) {
-				return prototyped(value)
-			}
 			// Handle function definitions - serialize as plain object for reinstantiation
 			if (value instanceof FunctionDefinition) {
 				return {
 					__type: 'FunctionDefinition',
 					index: value.index,
 					parameters: value.parameters,
-					scope: prototyped(value.scope),
+					scope: value.scope,
 				}
 			}
 			// Handle native function definitions - serialize as plain object for reinstantiation
@@ -171,45 +152,20 @@ export function stringifyStack(stack: ExecutionStack[]): any {
 			}
 		}
 		return value
-	})
+	}))
 }
 
-export function parseStack(serialized: any): ExecutionStack[] {
-	const deserializedScopes = new Map<object, object>()
-
-	function restorePrototype(value: object): object {
-		if (!value || typeof value !== 'object') return value
-		if (!(value instanceof Object)) {
-			if (!deserializedScopes.has(value)) {
-				const proto = Object.getPrototypeOf(value)
-				deserializedScopes.set(
-					value,
-					Object.create(
-						proto === null ? null : restorePrototype(proto),
-						Object.getOwnPropertyDescriptors(value),
-					),
-				)
-			}
-			return deserializedScopes.get(value)!
-		}
-		return value
-	}
-
-	return parse(serialized, (_key, value) => {
+export function parseStack(serialized: string): ExecutionStack[] {
+	return parse(JSON.stringify(serialized), (_key, value) => {
 		if (value && typeof value === 'object') {
 			// Restore function definitions
 			if (value.__type === 'FunctionDefinition') {
-				return new FunctionDefinition(value.index, value.parameters, restorePrototype(value.scope))
+				return new FunctionDefinition(value.index, value.parameters, value.scope)
 			}
 
 			// Restore native function definitions
 			if (value.__type === 'NativeFunctionDefinition') {
 				return new NativeFunctionDefinition(value.name)
-			}
-
-			// Handle scope objects (non-Object instances with prototype chains)
-			if (!(value instanceof Object)) {
-				return restorePrototype(value)
 			}
 		}
 		return value
