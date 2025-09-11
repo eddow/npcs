@@ -94,20 +94,37 @@ yield double(21)`
 			expect(second.output).toEqual([])
 			expect(second.result).toEqual({ type: 'return' })
 		})
-
-		it('should fail to yield with function call argument that returns a value', () => {
+		
+		it('should yield the return value when calling a yielding function as a statement', () => {
 			const code = `
-double = function(x)
-	yield x
-	return x * 2
+work = function(n)
+	print "work start: " + n
+	yield "tick-" + n
+	return n * 3
 end function
-print double(21)`
+
+print "work:", work(3) + work(7)
+print "after work"`
 			const first = runScript(code)
-			expect(first.success).toBe(false)
-			expect(first.error!.message).toEqual('Function call cannot yield')
+			// Even though the function yields internally, calling it as a statement should
+			// ultimately yield the function's return value when the call completes.
+			expect(first.success).toBe(true)
+			expect(first.output).toEqual(['work start: 3'])
+			expect(first.result).toEqual({ type: 'yield', value: 'tick-3' })
+
+			const second = runScript(code, first.state)
+			expect(second.success).toBe(true)
+			expect(second.output).toEqual(['work start: 7'])
+			expect(second.result).toEqual({ type: 'yield', value: 'tick-7' })
+
+			// After yielding the return value of the call-statement, the program should be done.
+			const third = runScript(code, second.state)
+			expect(third.success).toBe(true)
+			expect(third.output).toEqual(['work: 30', 'after work'])
+			expect(third.result).toEqual({ type: 'return' })
 		})
 	})
-
+	
 	describe('Pause in Control Flow', () => {
 		it('should pause and resume inside if statement', () => {
 			const first = runFixture('pause-if')

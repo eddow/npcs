@@ -1,0 +1,44 @@
+prompt = function(prompt)
+	return prompt
+end function
+
+// A tiny interactive demo game: each read of sentence/words is preceded by a prompt.
+
+print "Welcome to the tavern!"
+
+// Start with an empty inventory
+inventory = []
+
+// Ask for the player's name, then read it
+prompt "Hello, traveler. What is your name?"
+name = sentence
+if name.length == 0 then
+	name = "Stranger"
+end if
+print "Well met, " + name + "!"
+print "Type: look, inventory, or quit"
+
+// Main loop: ask actions until the player says "quit"
+while true
+	prompt "> What do you do?"
+	action = words[0]
+	if action == "quit" then
+		print "Goodbye, " + name + "!"
+		return "ended"
+	else if action == "look" then
+		print "You are in a cozy tavern. The fire crackles."
+	else if action == "inventory" then
+		if inventory.length == 0 then
+			print "Your pockets are empty."
+		else
+			print "You carry:"
+			for item in inventory
+				print " - " + item
+			end for
+		end if
+	else if action.length > 0 then
+		print "You try to '" + action + "' but nothing happens."
+	else
+		// No action provided; loop will prompt again
+	end if
+end while

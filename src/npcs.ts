@@ -7,7 +7,7 @@ import {
 } from 'miniscript-core'
 import { ASTProviderWithCallback } from './ast-provider-with-callback'
 import { MiniScriptExecutor } from './executor'
-import type { ExecutionContext } from './helpers'
+import { IsaTypes, jsIsaTypes, jsOperators, type ExecutionContext, type Operators } from './helpers'
 export type NpcReturn =
 	| { type: 'return'; value?: any }
 	| { type: 'yield'; value: any; state: string }
@@ -33,6 +33,8 @@ export default class NpcS {
 	constructor(
 		public script: string,
 		public context: ExecutionContext,
+		public operators: Operators = jsOperators,
+		public isaTypes: IsaTypes = jsIsaTypes,
 	) {
 		this.ast = new Parser(script, {
 			lexer: new Lexer(script),

@@ -19,8 +19,8 @@ print "x isa not number: " + (not (x isa number))
 print "name isa not string: " + (not (name isa string))
 
 // Negation using comparison - alternative way
-print "x isa number == false: " + (x isa number == false)
-print "name isa string != true: " + (name isa string != true)
+print "x isa number == false: " + ((x isa number) == false)
+print "name isa string != true: " + ((name isa string) != true)
 
 // Complex boolean expressions
 if x isa number and x > 0 then
@@ -64,8 +64,8 @@ if person isa map and person.age isa number and person.age > 18 then
 	print "Person is an adult"
 end if
 
-if fruits isa list and len(fruits) > 0 then
-	print "Fruits list is " + len(fruits) + " long"
+if (fruits isa list) and fruits.length > 0 then
+	print "Fruits list is " + fruits.length + " long"
 end if
 
 // Type checking with logical operators

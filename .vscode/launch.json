@@ -19,7 +19,7 @@
 			"type": "node",
 			"request": "launch",
 			"program": "${workspaceFolder}/src/cli.ts",
-			"args": ["${fileBasenameNoExtension}"],
+			"args": ["${file}"],
 			"runtimeExecutable": "npx",
 			"runtimeArgs": ["tsx"],
 			"console": "integratedTerminal",

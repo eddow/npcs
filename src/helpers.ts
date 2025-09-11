@@ -42,7 +42,6 @@ export interface ExecutionState {
 }
 //#endregion
 export type IP = {
-	// TODO -> shift/unshift
 	indexes: number[]
 	functionIndex?: number
 }
@@ -56,11 +55,22 @@ export interface ForScope extends LoopScope {
 	index: number
 	variable: string
 }
+type TargetReturn = number | 'yield' | 'lose'
 export interface ExecutionStack {
 	scope: MSScope
 	ip: IP
 	loopScopes: (LoopScope | ForScope)[]
-	yielding: boolean
+	evaluatedCache?: Record<number, any>
+	targetReturn: TargetReturn
+}
+
+export function stack(partial: Partial<ExecutionStack> = {}): ExecutionStack {
+	return Object.assign({
+		scope: {},
+		ip: { indexes: [0], functionIndex: undefined },
+		loopScopes: [],
+		targetReturn: false,
+	}, partial)
 }
 
 export type MSValue = any
@@ -74,17 +84,16 @@ export class FunctionDefinition {
 		public parameters: string[],
 		public scope: MSScope,
 	) {}
-	enterCall(args: any[], yielding: boolean): ExecutionStack {
+	enterCall(args: any[], targetReturn: TargetReturn): ExecutionStack {
 		const variables = {} as MSScope
 		for (let i = 0; i < this.parameters.length; i++) {
 			variables[this.parameters[i]] = args[i]
 		}
-		return {
+		return stack({
 			scope: Object.setPrototypeOf(variables, this.scope),
 			ip: { indexes: [0], functionIndex: this.index },
-			yielding,
-			loopScopes: [],
-		}
+			targetReturn,
+		})
 	}
 }
 
@@ -205,4 +214,54 @@ export function parseStack(serialized: any): ExecutionStack[] {
 		}
 		return value
 	})
+}
+
+export interface Operators {
+	'+'(left: any, right: any): any
+	'-'(left: any, right: any): any
+	'*'(left: any, right: any): any
+	'/'(left: any, right: any): any
+	'%'(left: any, right: any): any
+	'>'(left: any, right: any): any
+	'<'(left: any, right: any): any
+	'>='(left: any, right: any): any
+	'<='(left: any, right: any): any
+	'=='(left: any, right: any): any
+	'!='(left: any, right: any): any
+	'!.'(argument: any): any
+	'-.'(argument: any): any
+	'+.'(argument: any): any
+	'and'(left: any, right: any): any
+	'or'(left: any, right: any): any
+}
+
+export const jsOperators: Operators = {
+	'+': (left, right) => left + right,
+	'-': (left, right) => left - right,
+	'*': (left, right) => left * right,
+	'/': (left, right) => left / right,
+	'%': (left, right) => left % right,
+	'>': (left, right) => left > right,
+	'<': (left, right) => left < right,
+	'>=': (left, right) => left >= right,
+	'<=': (left, right) => left <= right,
+	// biome-ignore-start lint/suspicious/noDoubleEquals: We keep it fuzzy for npc-s
+	'==': (left, right) => left == right,
+	'!=': (left, right) => left != right,
+	// biome-ignore-end lint/suspicious/noDoubleEquals: We keep it fuzzy for npc-s
+	'!.': (argument) => !argument,
+	'-.': (argument) => -argument,
+	'+.': (argument) => +argument,
+	'and': (left, right) => left && right,
+	'or': (left, right) => left || right,
+}
+
+export type IsaTypes = Record<string, (value: any) => boolean>
+
+export const jsIsaTypes: IsaTypes = {
+	'number': (value) => typeof value === 'number',
+	'string': (value) => typeof value === 'string',
+	'boolean': (value) => typeof value === 'boolean',
+	'map': (value) => value !== null && typeof value === 'object' && !Array.isArray(value),
+	'list': (value) => Array.isArray(value),
 }

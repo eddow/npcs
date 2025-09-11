@@ -14,8 +14,12 @@ import {
 	ASTIfClause,
 	ASTIfStatement,
 	ASTIndexExpression,
+	ASTIsaExpression,
 	type ASTListValue,
+	ASTLiteral,
+	ASTLogicalExpression,
 	ASTMemberExpression,
+	ASTParenthesisExpression,
 	ASTReturnStatement,
 	type ASTUnaryExpression,
 	ASTWhileStatement,
@@ -32,10 +36,15 @@ import {
 	type LValue,
 	type MSValue,
 	NativeFunctionDefinition,
+	stack,
 	parseStack,
 	stringifyStack,
 } from './helpers'
 import NpcS from './npcs'
+
+class ExpressionCall {
+	constructor(public readonly stack: ExecutionStack, public readonly statement: ASTBase) {}
+}
 
 export class MiniScriptExecutor {
 	public assertAST<E extends ASTBase>(
@@ -49,7 +58,10 @@ export class MiniScriptExecutor {
 		}
 	}
 	readonly script: NpcS
-	private stack: ExecutionStack[]
+	stack: ExecutionStack[]
+	expressionsCacheIndex: number = 0
+	expressionsCacheStack: number[] = []
+
 	get state(): string {
 		return stringifyStack(this.stack)
 	}
@@ -59,9 +71,7 @@ export class MiniScriptExecutor {
 	constructor(
 		specs: NpcS | string,
 		public readonly context: ExecutionContext,
-		state: string | ExecutionStack[] = [
-			{ scope: {}, ip: { indexes: [0], functionIndex: undefined }, loopScopes: [], yielding: false },
-		],
+		state: string | ExecutionStack[] = [stack()],
 	) {
 		this.script = typeof specs === 'string' ? new NpcS(specs, context) : specs
 		this.stack = typeof state === 'string' ? parseStack(state) : state
@@ -98,7 +108,7 @@ export class MiniScriptExecutor {
 	}
 
 	// Main execution entry point
-	execute(enteringScopeDepth: number = 1): FunctionResult {
+	execute(): FunctionResult {
 		while (true) {
 			// Get current statement from IP
 			const statement = this.getStatementByIP(this.stack[0].ip)
@@ -107,12 +117,17 @@ export class MiniScriptExecutor {
 			if (result)
 				switch (result.type) {
 					case 'return':
-						const leavingScope = this.stack.shift()
-						if (this.stack.length < enteringScopeDepth) return result as FunctionResult
-						this.incrementIP(this.stack[0].ip)
+						const leavingScope = this.stack.shift()!
+						if (!this.stack.length) return result as FunctionResult
 
-						if (leavingScope?.yielding && result.value !== undefined)
-							return { type: 'yield', value: result.value }
+						if (typeof leavingScope.targetReturn === 'string') {
+							this.incrementIP(this.stack[0].ip)
+							delete this.stack[0].evaluatedCache
+							if(leavingScope.targetReturn === 'yield' && result.value !== undefined)
+								return { type: 'yield', value: result.value }
+						} else {
+							this.stack[0].evaluatedCache![leavingScope.targetReturn] = result.value
+						}
 						break
 					case 'yield':
 						this.incrementIP(this.stack[0].ip)
@@ -154,12 +169,6 @@ export class MiniScriptExecutor {
 			if (lastStatement instanceof ASTClause) {
 				ip.indexes.pop()
 				this.incrementIP(ip)
-			} else if (
-				lastStatement instanceof ASTAssignmentStatement ||
-				lastStatement instanceof ASTReturnStatement
-			) {
-				// function definition
-				return null
 			} else if (lastStatement instanceof ASTWhileStatement) {
 				this.stack[0].loopScopes.shift()
 				return lastStatement
@@ -188,34 +197,112 @@ export class MiniScriptExecutor {
 
 	private executeStatement(statement: ASTBase): ExecutionResult {
 		const statementType = statement.constructor.name
-
-		switch (statementType) {
-			case 'ASTAssignmentStatement':
-				this.executeAssignment(statement as ASTAssignmentStatement)
-				break
-			case 'ASTIfStatement':
-				return this.executeIf(statement as ASTIfStatement)
-			case 'ASTWhileStatement':
-				return this.executeWhile(statement as ASTWhileStatement)
-			case 'ASTForGenericStatement':
-				return this.executeForGeneric(statement as ASTForGenericStatement)
-			case 'ASTCallStatement':
-				return this.executeProcedure(statement as ASTCallStatement)
-			case 'ASTCallExpression':
-				this.executeCall(statement as ASTCallExpression)
-				break
-			case 'ASTReturnStatement':
-				return this.executeReturn(statement as ASTReturnStatement)
-			case 'ASTBreakStatement':
-				return this.executeBreak(statement)
-			case 'ASTContinueStatement':
-				return this.executeContinue(statement)
-			case 'ASTImportCodeExpression':
-				return this.executeImport(statement)
-			default:
-				console.log(`Unknown statement type: ${statementType}`)
-				return undefined
+		this.expressionsCacheIndex = 0
+		this.expressionsCacheStack = []
+		this.stack[0].evaluatedCache ??= {}
+		let keepExpressionCache = false
+		try {
+			switch (statementType) {
+				case 'ASTAssignmentStatement':
+					this.executeAssignment(statement as ASTAssignmentStatement)
+					break
+				case 'ASTIfStatement':
+					return this.executeIf(statement as ASTIfStatement)
+				case 'ASTWhileStatement':
+					return this.executeWhile(statement as ASTWhileStatement)
+				case 'ASTForGenericStatement':
+					return this.executeForGeneric(statement as ASTForGenericStatement)
+				case 'ASTCallStatement':
+					return this.executeProcedure(statement as ASTCallStatement)
+				case 'ASTCallExpression':
+					this.executeCall(statement as ASTCallExpression)
+					break
+				case 'ASTReturnStatement':
+					return this.executeReturn(statement as ASTReturnStatement)
+				case 'ASTBreakStatement':
+					return this.executeBreak(statement)
+				case 'ASTContinueStatement':
+					return this.executeContinue(statement)
+				case 'ASTImportCodeExpression':
+					return this.executeImport(statement)
+				default:
+					console.log(`Unknown statement type: ${statementType}`)
+					return undefined
+			}
+		} catch(e) {
+			if(e instanceof ExpressionCall) {
+				this.stack.unshift(e.stack)
+				keepExpressionCache = true
+				return { type: 'branched' }
+			}
+			throw e
+		} finally {
+			if(!keepExpressionCache) {
+				delete this.stack[0].evaluatedCache
+			}
 		}
+	}
+
+	clearExpressionCache(expressionCacheStackLength: number) {
+		const toRemove = this.expressionsCacheStack.splice(expressionCacheStackLength+1)
+		for(const index of toRemove) delete this.stack[0].evaluatedCache![index]
+	}
+	private evaluateExpression(expr: ASTBase): MSValue {
+		if (!expr) return undefined
+
+		const expressionsCacheIndex = this.expressionsCacheIndex++
+
+		const expressionCacheStackLength = this.expressionsCacheStack.length
+		this.expressionsCacheStack.push(expressionsCacheIndex)
+
+		if(expressionsCacheIndex in this.stack[0].evaluatedCache!) {
+			this.clearExpressionCache(expressionCacheStackLength)
+			return this.stack[0].evaluatedCache![expressionsCacheIndex]
+		}
+		const calculated = (() => {
+			const exprType = expr.constructor.name
+
+			const lValue = this.evaluateLValue(expr)
+			if (lValue) {
+				return lValue.get()
+			}
+			switch (exprType) {
+				case 'ASTNumericLiteral':
+				case 'ASTStringLiteral':
+				case 'ASTBooleanLiteral':
+					return (expr as ASTLiteral).value
+				case 'ASTNilLiteral':
+					return null
+				case 'ASTListValue':
+					return this.evaluateExpression((expr as ASTListValue).value)
+				case 'ASTBinaryExpression':
+					return this.evaluateBinaryExpression(expr as ASTBinaryExpression)
+				case 'ASTUnaryExpression':
+					return this.evaluateUnaryExpression(expr as ASTUnaryExpression)
+				case 'ASTLogicalExpression':
+					return this.evaluateLogicalExpression(expr as ASTLogicalExpression)
+				case 'ASTCallExpression':
+					return this.executeCall(expr as ASTCallExpression, expressionCacheStackLength)
+				case 'ASTFunctionStatement':
+					return this.createFunction(expr as ASTFunctionStatement)
+				case 'ASTMapConstructorExpression':
+					return this.evaluateMapConstructor(expr)
+				case 'ASTListConstructorExpression':
+					return this.evaluateListConstructor(expr)
+				case 'ASTParenthesisExpression':
+					return this.evaluateExpression((expr as ASTParenthesisExpression).expression)
+				case 'ASTIsaExpression':
+					return this.evaluateIsaExpression(expr as ASTIsaExpression)
+				case 'ASTComparisonGroupExpression':
+					return this.evaluateComparisonGroupExpression(expr as ASTComparisonGroupExpression)
+				default:
+					console.log(`Unknown expression type: ${exprType}`)
+					return undefined
+			}
+		})()
+		this.clearExpressionCache(expressionCacheStackLength)
+		this.stack[0].evaluatedCache![expressionsCacheIndex] = calculated
+		return calculated
 	}
 
 	private evaluateLValue(expr: ASTBase): LValue | false {
@@ -243,6 +330,28 @@ export class MiniScriptExecutor {
 			set: (value: MSValue) => {
 				base[index] = value
 			},
+		}
+	}
+
+	private executeCall(statement: ASTCallExpression, eCacheStackLength?: number): MSValue {
+		// Get arguments
+		const args = statement.arguments
+		const evaluatedArgs = args ? args.map((arg: any) => this.evaluateExpression(arg)) : []
+		// Handle both func and expression properties
+		// Evaluate the function reference to get the function definition
+		const func = this.evaluateExpression(statement.base)
+
+		if (func instanceof FunctionDefinition) {
+			let returnIndex
+			if(eCacheStackLength !== undefined) {
+				returnIndex = this.expressionsCacheStack[eCacheStackLength]
+				this.clearExpressionCache(eCacheStackLength)
+			} else returnIndex = 'lose'
+			throw new ExpressionCall(func.enterCall(evaluatedArgs, returnIndex), statement)
+		} else if (func instanceof NativeFunctionDefinition) {
+			return func.evaluate(this, evaluatedArgs, statement)
+		} else {
+			throw new ExecutionError(this, statement, 'Cannot call non-function value')
 		}
 	}
 	private executeAssignment(statement: ASTAssignmentStatement): ExecutionResult {
@@ -313,36 +422,11 @@ export class MiniScriptExecutor {
 		const func = this.evaluateExpression(expr.base)
 
 		if (func instanceof FunctionDefinition) {
-			this.stack.unshift(func.enterCall(evaluatedArgs, true))
+			this.stack.unshift(func.enterCall(evaluatedArgs, 'yield'))
 			return { type: 'branched' }
 		} else if (func instanceof NativeFunctionDefinition) {
 			const value = func.evaluate(this, evaluatedArgs, statement)
 			return value !== undefined ? { type: 'yield', value: value } : undefined
-		} else {
-			throw new ExecutionError(this, statement, 'Cannot call non-function value')
-		}
-	}
-
-	private executeCall(statement: ASTCallExpression): MSValue {
-		// Get arguments
-		const args = statement.arguments
-		const evaluatedArgs = args ? args.map((arg: any) => this.evaluateExpression(arg)) : []
-		// Handle both func and expression properties
-		// Evaluate the function reference to get the function definition
-		const func = this.evaluateExpression(statement.base)
-
-		if (func instanceof FunctionDefinition) {
-			this.stack.unshift(func.enterCall(evaluatedArgs, false))
-			const result = this.execute(this.stack.length)
-
-			switch (result.type) {
-				case 'yield':
-					throw new ExecutionError(this, statement, 'Function call cannot yield')
-				case 'return':
-					return result.value
-			}
-		} else if (func instanceof NativeFunctionDefinition) {
-			return func.evaluate(this, evaluatedArgs, statement)
 		} else {
 			throw new ExecutionError(this, statement, 'Cannot call non-function value')
 		}
@@ -371,107 +455,37 @@ export class MiniScriptExecutor {
 		this.incrementIP(this.stack[0].ip)
 		return { type: 'branched' }
 	}
-
-	private evaluateExpression(expr: ASTBase): MSValue {
-		if (!expr) return undefined
-
-		const exprType = expr.constructor.name
-
-		const lValue = this.evaluateLValue(expr)
-		if (lValue) {
-			return lValue.get()
-		}
-		switch (exprType) {
-			case 'ASTNumericLiteral':
-			case 'ASTStringLiteral':
-			case 'ASTBooleanLiteral':
-				return (expr as any).value
-			case 'ASTNilLiteral':
-				return null
-			case 'ASTListValue':
-				return this.evaluateExpression((expr as ASTListValue).value)
-			case 'ASTBinaryExpression':
-				return this.evaluateBinaryExpression(expr as ASTBinaryExpression)
-			case 'ASTUnaryExpression':
-				return this.evaluateUnaryExpression(expr as ASTUnaryExpression)
-			case 'ASTCallExpression':
-				return this.executeCall(expr as ASTCallExpression)
-			case 'ASTFunctionStatement':
-				return this.createFunction(expr as ASTFunctionStatement)
-			case 'ASTMapConstructorExpression':
-				return this.evaluateMapConstructor(expr)
-			case 'ASTListConstructorExpression':
-				return this.evaluateListConstructor(expr)
-			case 'ASTParenthesisExpression':
-				return this.evaluateExpression((expr as any).expression)
-			case 'ASTIsaExpression':
-				return this.evaluateIsaExpression(expr)
-			case 'ASTLogicalExpression':
-				return this.evaluateLogicalExpression(expr)
-			case 'ASTComparisonGroupExpression':
-				return this.evaluateComparisonGroupExpression(expr as ASTComparisonGroupExpression)
-			default:
-				console.log(`Unknown expression type: ${exprType}`)
-				return undefined
-		}
-	}
-
 	private evaluateBinaryExpression(expr: ASTBinaryExpression): any {
 		const left = this.evaluateExpression(expr.left)
 		const right = this.evaluateExpression(expr.right)
-		const operator = expr.operator
-		// biome-ignore-start lint/suspicious/noDoubleEquals: We keep it fuzzy for npc-s
-		switch (operator) {
-			case '+':
-				return left + right
-			case '-':
-				return left - right
-			case '*':
-				return left * right
-			case '/':
-				return left / right
-			case '%':
-				return left % right
-			case '>':
-				return left > right
-			case '<':
-				return left < right
-			case '>=':
-				return left >= right
-			case '<=':
-				return left <= right
-			case '==':
-				return left == right
-			case '!=':
-				return left != right
-			default:
-				throw new ExecutionError(this, expr, `Unknown binary operator: ${operator}`)
-		}
-		// biome-ignore-end lint/suspicious/noDoubleEquals: We keep it fuzzy for npc-s
+		const operator = this.script.operators[expr.operator]
+		if (!operator) throw new ExecutionError(this, expr, `Unknown binary operator: ${expr.operator}`)
+		return operator(left, right)
 	}
 
 	private evaluateUnaryExpression(expr: ASTUnaryExpression): any {
 		const argument = this.evaluateExpression(expr.argument)
-		const operator = expr.operator
+		const operator = this.script.operators[(expr.operator === 'not' ? '!' : expr.operator ?? '??!?') + '.']
+		if (!operator) throw new ExecutionError(this, expr, `Unknown unary operator: ${expr.operator}`)
+		return operator(argument)
+	}
 
-		switch (operator) {
-			case 'not':
-			case '!':
-				return !argument
-			case '-':
-				return -argument
-			case '+':
-				return +argument
-			default:
-				throw new ExecutionError(this, expr, `Unknown unary operator: ${operator}`)
-		}
+	private evaluateLogicalExpression(expr: ASTLogicalExpression): any {
+		const left = this.evaluateExpression((expr as any).left)
+		const right = this.evaluateExpression((expr as any).right)
+		const operator = this.script.operators[(expr as any).operator ?? '??!?']
+		if (!operator) throw new ExecutionError(this, expr, `Unknown logical operator: ${expr.operator}`)
+		return operator(left, right)
 	}
 
 	private createFunction(expr: ASTFunctionStatement): FunctionDefinition {
 		// Find the instruction pointer for this function definition
 		// Extract parameter names
-		const parameters = ((expr as any).params || (expr as any).parameters || []).map(
-			(param: any) => param.name,
+		const parameters = expr.parameters.map(
+			(param) => {
+				this.assertAST(param, ASTIdentifier)
+				return param.name
+			}
 		)
 
 		// Return a FunctionDefinition instance
@@ -522,39 +536,13 @@ export class MiniScriptExecutor {
 	}
 
 	// New expression evaluation methods
-	private evaluateIsaExpression(expr: ASTBase): boolean {
-		const left = this.evaluateExpression((expr as any).left)
-		const right = (expr as any).right.name // Type name (number, string, boolean, map, list)
-
-		switch (right) {
-			case 'number':
-				return typeof left === 'number'
-			case 'string':
-				return typeof left === 'string'
-			case 'boolean':
-				return typeof left === 'boolean'
-			case 'map':
-				return left !== null && typeof left === 'object' && !Array.isArray(left)
-			case 'list':
-				return Array.isArray(left)
-			default:
-				return false
-		}
-	}
-
-	private evaluateLogicalExpression(expr: ASTBase): any {
-		const left = this.evaluateExpression((expr as any).left)
-		const right = this.evaluateExpression((expr as any).right)
-		const operator = (expr as any).operator
-
-		switch (operator) {
-			case 'and':
-				return left && right
-			case 'or':
-				return left || right
-			default:
-				throw new ExecutionError(this, expr, `Unknown logical operator: ${operator}`)
-		}
+	private evaluateIsaExpression(expr: ASTIsaExpression): boolean {
+		const left = this.evaluateExpression(expr.left)
+		this.assertAST(expr.right, ASTIdentifier)
+		const right = expr.right.name
+		const isaType = this.script.isaTypes[right]
+		if (!isaType) throw new ExecutionError(this, expr, `Unknown ISA type: ${right}`)
+		return isaType(left)
 	}
 
 	private evaluateComparisonGroupExpression(expr: ASTComparisonGroupExpression): boolean {

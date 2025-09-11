@@ -30,12 +30,6 @@ export function runScript(source: string, state?: string): TestResult {
 				output.push(args.join(' '))
 			},
 			yield: (arg: any) => arg,
-			len(array: any) {
-				if (!Array.isArray(array)) {
-					throw new Error('Not an array')
-				}
-				return array.length
-			},
 		}
 
 		const executor = new MiniScriptExecutor(source, context, state)

@@ -21,20 +21,7 @@ async function runScript(scriptPath: string) {
 
 	try {
 		// Determine the actual file path
-		let filePath: string
-
-		if (scriptPath.endsWith('.mns')) {
-			// Full path provided
-			filePath = resolve(scriptPath)
-		} else {
-			// Try as fixture name first, then as relative path
-			const fixturePath = join(process.cwd(), 'tests', 'fixtures', `${scriptPath}.mns`)
-			if (existsSync(fixturePath)) {
-				filePath = fixturePath
-			} else {
-				filePath = resolve(scriptPath)
-			}
-		}
+		let filePath = resolve(scriptPath)
 
 		// Check if file exists
 		if (!existsSync(filePath)) {
