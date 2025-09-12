@@ -1,4 +1,4 @@
-import NpcS from '../src/npcs.js'
+import NpcScript from '../src/npcs.js'
 
 describe('NpcS direct usage', () => {
 	it('executes a simple script and returns a value', () => {
@@ -9,7 +9,7 @@ describe('NpcS direct usage', () => {
 		}
 
 		const script = 'return 5 + 7'
-		const npc = new NpcS(script, context)
+		const npc = new NpcScript(script, context)
 		const result = npc.execute()
 
 		expect(output).toEqual([])
@@ -19,7 +19,9 @@ describe('NpcS direct usage', () => {
 	it('pauses and resumes using execute(state)', () => {
 		const output: string[] = []
 		const context = {
-			print(...args: any[]) { output.push(args.join(' ')) },
+			print(...args: any[]) {
+				output.push(args.join(' '))
+			},
 			yield: (arg: any) => arg,
 		}
 
@@ -29,14 +31,14 @@ print "Before yield: x = " + x
 yield 42
 print "After yield: x = " + x
 `
-		const npc = new NpcS(script, context)
+		const npc = new NpcScript(script, context)
 
 		const first = npc.execute()
-		expect(first).toEqual({ type: 'yield', value: expect.anything(), state: expect.any(String) })
+		expect(first).toEqual({ type: 'yield', value: expect.anything(), state: expect.anything() })
 		expect(output).toEqual(['Before yield: x = 10'])
 
 		output.length = 0
-	// @ts-expect-error Jest doesn't ts-"assert" when it "expects"
+		// @ts-expect-error Jest doesn't ts-"assert" when it "expects"
 		const second = npc.execute(first.state)
 		expect(second).toEqual({ type: 'return' })
 		expect(output).toEqual(['After yield: x = 10'])
@@ -54,14 +56,14 @@ yield "a"
 yield "b"
 return 99
 `
-		const npc = new NpcS(script, context)
+		const npc = new NpcScript(script, context)
 
 		const yielded: any[] = []
-		for (const v of npc) {
+		for (const v of npc.executor()) {
 			yielded.push(v)
 		}
 
-		expect(yielded).toEqual(["a", "b"])
+		expect(yielded).toEqual(['a', 'b'])
 		expect(output).toEqual([])
 	})
 
@@ -77,11 +79,9 @@ yield "a"
 yield "b"
 return 99
 `
-		const npc = new NpcS(script, context)
+		const npc = new NpcScript(script, context)
 
-		expect(Array.from(npc)).toEqual(["a", "b"])
+		expect(Array.from(npc.executor())).toEqual(['a', 'b'])
 		expect(output).toEqual([])
 	})
 })
-
-

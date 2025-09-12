@@ -8,10 +8,18 @@ import {
 } from 'miniscript-core'
 import { ASTProviderWithCallback } from './ast-provider-with-callback'
 import { MiniScriptExecutor } from './executor'
-import { IsaTypes, jsIsaTypes, jsOperators, type ExecutionContext, type Operators } from './helpers'
+import {
+	type ExecutionContext,
+	type ExecutionStack,
+	type FunctionDefinition,
+	type IsaTypes,
+	jsIsaTypes,
+	jsOperators,
+	type Operators,
+} from './helpers'
 export type NpcReturn =
 	| { type: 'return'; value?: any }
-	| { type: 'yield'; value: any; state: string }
+	| { type: 'yield'; value: any; state: any[] }
 
 export function lexerExceptionLocation(error: LexerException, source: string): string {
 	const lines = source.split('\n')
@@ -26,7 +34,7 @@ export function lexerExceptionLocation(error: LexerException, source: string): s
 	const selected = lines.slice(startLineIdx, endLineIdx + 1).join('\n')
 	return `${beginCaret}\n${selected}\n${endCaret}`
 }
-export default class NpcS {
+export default class NpcScript {
 	public ast: any
 	public functions: ASTFunctionStatement[] = []
 	public indexes = new Map<ASTFunctionStatement, number>()
@@ -59,18 +67,30 @@ export default class NpcS {
 					this.functions.push(func)
 				}),
 			}).parseChunk()
-		} catch(error) {
-			if(!(error instanceof LexerException))
-				throw error
-			throw new LexerException(error.message+'\n'+lexerExceptionLocation(error, source), error.range)
+		} catch (error) {
+			if (!(error instanceof LexerException)) throw error
+			throw new LexerException(
+				error.message + '\n' + lexerExceptionLocation(error, source),
+				error.range,
+			)
 		}
 	}
 	function(index?: number): ASTBaseBlock {
 		return index === undefined ? this.ast : this.functions[index]
 	}
-	execute(state?: string): NpcReturn {
-		const executor = new MiniScriptExecutor(this, this.context, state)
-		const {type, value} = executor.execute()
+
+	executor(state?: any[] | { stack: ExecutionStack[] }, context?: ExecutionContext) {
+		const ctx = !context
+			? this.context
+			: Object.setPrototypeOf(
+					Object.defineProperties({}, Object.getOwnPropertyDescriptors(context)),
+					this.context,
+				)
+		return new MiniScriptExecutor(this, ctx, state)
+	}
+	execute(state?: any[] | { stack: ExecutionStack[] }, context?: ExecutionContext): NpcReturn {
+		const executor = this.executor(state, context)
+		const { type, value } = executor.execute()
 		switch (type) {
 			case 'return':
 				return { type: 'return', value: value }
@@ -80,14 +100,22 @@ export default class NpcS {
 				return { type: 'return' }
 		}
 	}
-	*[Symbol.iterator]() {
 
-		const executor = new MiniScriptExecutor(this, this.context)
-		while(true) {
-			const {type, value} = executor.execute()
-			if(type === 'return') return value
-			else if(type === 'yield') yield value
-			else throw new Error('Unknown executor result type: ' + type)
+	evaluator<Args extends any[], Return>(
+		fct: FunctionDefinition,
+		context?: ExecutionContext,
+	): (...args: Args) => Return {
+		const that = this
+		return function (this: { push(arg: any): void } | undefined, ...args: Args) {
+			const executor = that.executor({ stack: [fct.enterCall(args)] }, context)
+			while (true) {
+				const { type, value } = executor.execute()
+				if (type === 'return') return value as Return
+				else if (type === 'yield') {
+					if (!this) throw new Error('Cannot yield in a non-generator context')
+					this.push(value)
+				} else throw new Error('Unknown executor result type: ' + type)
+			}
 		}
 	}
 }

@@ -16,31 +16,6 @@ export class ExecutionError extends Error {
 	}
 }
 
-//#region obsolete interfaces
-// Statement path for tracking nested execution position - simple array of indexes
-export interface StatementPath {
-	statementIndexes: number[] // [parentIndex, childIndex, ...] like an instruction pointer
-}
-
-// Function call frame with proper function references
-export interface FunctionCallFrame {
-	functionName: string // Reference to function in registry
-	parameters: Record<string, any> // Function parameters
-	variables: Record<string, any> // Local variables
-	statementPath: StatementPath // Current position in function
-	returnValue?: any // For when function returns
-}
-
-// Execution state interface for deep pause/resume functionality
-export interface ExecutionState {
-	variables: Record<string, any>
-	functionCallStack: FunctionCallFrame[]
-	currentStatementPath: StatementPath
-	source: string
-	executionPaused: boolean
-	pauseReason?: string
-}
-//#endregion
 export type IP = {
 	indexes: number[]
 	functionIndex?: number
@@ -55,21 +30,21 @@ export interface ForScope extends LoopScope {
 	index: number
 	variable: string
 }
-type TargetReturn = number | 'yield' | 'lose'
 export interface ExecutionStack {
 	scope: MSScope
 	ip: IP
 	loopScopes: (LoopScope | ForScope)[]
 	evaluatedCache?: Record<number, any>
-	targetReturn: TargetReturn
+	targetReturn?: number
 }
+
+export type ExecutionState = ExecutionStack[]
 
 export function stack(partial: Partial<ExecutionStack> = {}): ExecutionStack {
 	return {
-		scope: {variables: {}},
+		scope: { variables: {} },
 		ip: { indexes: [0], functionIndex: undefined },
 		loopScopes: [],
-		targetReturn: 'lose',
 		...partial,
 	}
 }
@@ -88,13 +63,13 @@ export class FunctionDefinition {
 		public parameters: string[],
 		public scope: MSScope,
 	) {}
-	enterCall(args: any[], targetReturn: TargetReturn): ExecutionStack {
+	enterCall(args: any[], targetReturn?: number): ExecutionStack {
 		const variables = {}
 		for (let i = 0; i < this.parameters.length; i++) {
 			variables[this.parameters[i]] = args[i]
 		}
 		return stack({
-			scope: {variables, parent: this.scope},
+			scope: { variables, parent: this.scope },
 			ip: { indexes: [0], functionIndex: this.index },
 			targetReturn,
 		})
@@ -111,12 +86,7 @@ export class NativeFunctionDefinition {
 	constructor(public name: string) {}
 	evaluate(executor: MiniScriptExecutor, args: any[], ast: ASTBase): MSValue {
 		const evaluation = executor.context[this.name]
-		if (!evaluation)
-			throw new ExecutionError(
-				executor,
-				ast,
-				'Native value not found',
-			)
+		if (!evaluation) throw new ExecutionError(executor, ast, 'Native value not found')
 		return evaluation(...args)
 	}
 }
@@ -131,31 +101,32 @@ export interface LValue {
 }
 
 export function stringifyStack(stack: ExecutionStack[]): any {
-
-	return JSON.parse(stringify(stack, (_key, value) => {
-		if (value && typeof value === 'object') {
-			// Handle function definitions - serialize as plain object for reinstantiation
-			if (value instanceof FunctionDefinition) {
-				return {
-					__type: 'FunctionDefinition',
-					index: value.index,
-					parameters: value.parameters,
-					scope: value.scope,
+	return JSON.parse(
+		stringify(stack, (_key, value) => {
+			if (value && typeof value === 'object') {
+				// Handle function definitions - serialize as plain object for reinstantiation
+				if (value instanceof FunctionDefinition) {
+					return {
+						__type: 'FunctionDefinition',
+						index: value.index,
+						parameters: value.parameters,
+						scope: value.scope,
+					}
+				}
+				// Handle native function definitions - serialize as plain object for reinstantiation
+				if (value instanceof NativeFunctionDefinition) {
+					return {
+						__type: 'NativeFunctionDefinition',
+						name: value.name,
+					}
 				}
 			}
-			// Handle native function definitions - serialize as plain object for reinstantiation
-			if (value instanceof NativeFunctionDefinition) {
-				return {
-					__type: 'NativeFunctionDefinition',
-					name: value.name,
-				}
-			}
-		}
-		return value
-	}))
+			return value
+		}),
+	)
 }
 
-export function parseStack(serialized: string): ExecutionStack[] {
+export function parseStack(serialized: any): ExecutionStack[] {
 	return parse(JSON.stringify(serialized), (_key, value) => {
 		if (value && typeof value === 'object') {
 			// Restore function definitions
@@ -187,8 +158,8 @@ export interface Operators {
 	'!.'(argument: any): any
 	'-.'(argument: any): any
 	'+.'(argument: any): any
-	'and'(left: any, right: any): any
-	'or'(left: any, right: any): any
+	and(left: any, right: any): any
+	or(left: any, right: any): any
 }
 
 export const jsOperators: Operators = {
@@ -208,16 +179,16 @@ export const jsOperators: Operators = {
 	'!.': (argument) => !argument,
 	'-.': (argument) => -argument,
 	'+.': (argument) => +argument,
-	'and': (left, right) => left && right,
-	'or': (left, right) => left || right,
+	and: (left, right) => left && right,
+	or: (left, right) => left || right,
 }
 
 export type IsaTypes = Record<string, (value: any) => boolean>
 
 export const jsIsaTypes: IsaTypes = {
-	'number': (value) => typeof value === 'number',
-	'string': (value) => typeof value === 'string',
-	'boolean': (value) => typeof value === 'boolean',
-	'map': (value) => value !== null && typeof value === 'object' && !Array.isArray(value),
-	'list': (value) => Array.isArray(value),
+	number: (value) => typeof value === 'number',
+	string: (value) => typeof value === 'string',
+	boolean: (value) => typeof value === 'boolean',
+	map: (value) => value !== null && typeof value === 'object' && !Array.isArray(value),
+	list: (value) => Array.isArray(value),
 }

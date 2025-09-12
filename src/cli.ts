@@ -21,7 +21,7 @@ async function runScript(scriptPath: string) {
 
 	try {
 		// Determine the actual file path
-		let filePath = resolve(scriptPath)
+		const filePath = resolve(scriptPath)
 
 		// Check if file exists
 		if (!existsSync(filePath)) {

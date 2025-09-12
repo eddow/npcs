@@ -11,12 +11,12 @@ prompt = function(text)
 	return sentence
 end function
 
-// --- Game State ---
 push = function(list, value)
 	list[list.length] = value
 	return list.length
 end function
 
+// --- Game State ---
 inventory = []
 gold = 0
 hasOpenedChest = false

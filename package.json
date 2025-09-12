@@ -2,13 +2,13 @@
   "name": "npc-script",
   "version": "1.0.0",
   "description": "MiniScript executor with linear stateful execution",
-  "main": "src/executor.ts",
+  "main": "src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/executor.d.ts",
-      "import": "./dist/executor.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
-    "./src": "./src/executor.ts"
+    "./src": "./src/index.ts"
   },
   "files": [
     "dist",

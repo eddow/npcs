@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { ExecutionContext, NpcS } from '../src'
+import { ExecutionContext, NpcScript } from '../src'
 import { LexerException } from 'miniscript-core'
 import { lexerExceptionLocation } from '../src/npcs'
 
@@ -67,7 +67,7 @@ function main() {
 
 	try {
 		// Create game
-		const npc = new NpcS(source, context)
+		const npc = new NpcScript(source, context)
 
 		// Execute game
 		const result = npc.execute(priorState)

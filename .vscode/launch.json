@@ -34,7 +34,11 @@
 			"type": "node",
 			"request": "launch",
 			"program": "${workspaceFolder}/games/play.ts",
-			"args": ["${workspaceFolder}/games/game.npcs", "${workspaceFolder}/game.json", "${input:sentence}"],
+			"args": [
+				"${workspaceFolder}/games/game.npcs",
+				"${workspaceFolder}/game.json",
+				"${input:sentence}"
+			],
 			"runtimeExecutable": "npx",
 			"runtimeArgs": ["tsx"],
 			"console": "integratedTerminal",

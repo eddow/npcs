@@ -19,21 +19,19 @@ describe('Yield Execution', () => {
 	})
 
 	it('should yield on a returning statement', () => {
-			const first = runFixture('yielding')
+		const first = runFixture('yielding')
 
-			expect(first.success).toBe(true)
-			expect(first.output).toEqual([
-				'Hello, World!',
-			])
-			expect(first.result).toEqual({ type: 'yield', value: 'Greeting sent to World' })
-			const second = runFixture('yielding', first.state)
+		expect(first.success).toBe(true)
+		expect(first.output).toEqual(['Hello, World!'])
+		expect(first.result).toEqual({ type: 'yield', value: 'Greeting sent to World' })
+		const second = runFixture('yielding', first.state)
 
-			expect(second.success).toBe(true)
-			expect(second.output).toEqual([
-				'*Shake hands*',
-				'Calculation result: 25',
-				'Function returned: 25',
-			])
+		expect(second.success).toBe(true)
+		expect(second.output).toEqual([
+			'*Shake hands*',
+			'Calculation result: 25',
+			'Function returned: 25',
+		])
 	})
 
 	describe('Additional Yield Variants', () => {
@@ -94,7 +92,7 @@ yield double(21)`
 			expect(second.output).toEqual([])
 			expect(second.result).toEqual({ type: 'return' })
 		})
-		
+
 		it('should yield the return value when calling a yielding function as a statement', () => {
 			const code = `
 work = function(n)
@@ -124,7 +122,7 @@ print "after work"`
 			expect(third.result).toEqual({ type: 'return' })
 		})
 	})
-	
+
 	describe('Pause in Control Flow', () => {
 		it('should pause and resume inside if statement', () => {
 			const first = runFixture('pause-if')
