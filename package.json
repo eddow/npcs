@@ -28,13 +28,13 @@
     "dev": "tsx test.ts"
   },
   "dependencies": {
-    "flatted": "^3.3.3",
     "miniscript-core": "^1.6.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.3",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.10.2",
+    "flatted": "^3.3.3",
     "jest": "^30.1.3",
     "ts-jest": "^29.4.1",
     "tsx": "^4.20.5",

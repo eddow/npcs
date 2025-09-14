@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { ExecutionContext, NpcScript } from '../src'
+import { parse, stringify } from 'flatted'
+import { ExecutionContext, NpcScript, reviveState, serializeState } from '../src'
 import { LexerException } from 'miniscript-core'
 import { lexerExceptionLocation } from '../src/npcs'
 
@@ -61,7 +62,7 @@ function main() {
 	let priorState: any | undefined
 	if (existsSync(gameStatePath)) {
 		try {
-			priorState = JSON.parse(readFileSync(gameStatePath, 'utf-8'))
+			priorState = parse(readFileSync(gameStatePath, 'utf-8'), reviveState)
 		} catch {}
 	}
 
@@ -80,7 +81,7 @@ function main() {
 		} else if (result.type === 'yield') {
 			console.log('⏸️ yield:', result.value)
 			// Persist state for next run
-			writeFileSync(gameStatePath, JSON.stringify(result.state), 'utf-8')
+			writeFileSync(gameStatePath, stringify(result.state, serializeState), 'utf-8')
 			console.log(`💾 saved state -> ${gameStatePath}`)
 		}
 	} catch (error) {

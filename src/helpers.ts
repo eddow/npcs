@@ -1,4 +1,3 @@
-import { parse, stringify } from 'flatted'
 import type { ASTBase } from 'miniscript-core'
 import type { MiniScriptExecutor } from './executor'
 
@@ -30,7 +29,7 @@ export interface ForScope extends LoopScope {
 	index: number
 	variable: string
 }
-export interface ExecutionStack {
+export interface ExecutionStackEntry {
 	scope: MSScope
 	ip: IP
 	loopScopes: (LoopScope | ForScope)[]
@@ -38,9 +37,9 @@ export interface ExecutionStack {
 	targetReturn?: number
 }
 
-export type ExecutionState = ExecutionStack[]
+export type ExecutionState = ExecutionStackEntry[]
 
-export function stack(partial: Partial<ExecutionStack> = {}): ExecutionStack {
+export function stack(partial: Partial<ExecutionStackEntry> = {}): ExecutionStackEntry {
 	return {
 		scope: { variables: {} },
 		ip: { indexes: [0], functionIndex: undefined },
@@ -63,7 +62,7 @@ export class FunctionDefinition {
 		public parameters: string[],
 		public scope: MSScope,
 	) {}
-	enterCall(args: any[], targetReturn?: number): ExecutionStack {
+	enterCall(args: any[], targetReturn?: number): ExecutionStackEntry {
 		const variables = {}
 		for (let i = 0; i < this.parameters.length; i++) {
 			variables[this.parameters[i]] = args[i]
@@ -73,6 +72,9 @@ export class FunctionDefinition {
 			ip: { indexes: [0], functionIndex: this.index },
 			targetReturn,
 		})
+	}
+	call(args: any[]): ExecutionState {
+		return [this.enterCall(args)]
 	}
 }
 
@@ -87,7 +89,9 @@ export class NativeFunctionDefinition {
 	evaluate(executor: MiniScriptExecutor, args: any[], ast: ASTBase): MSValue {
 		const evaluation = executor.context[this.name]
 		if (!evaluation) throw new ExecutionError(executor, ast, 'Native value not found')
-		return evaluation(...args)
+		if (typeof evaluation !== 'function')
+			throw new ExecutionError(executor, ast, `Native value ${this.name} is not a function`)
+		return evaluation.apply(executor.context, args)
 	}
 }
 
@@ -100,47 +104,41 @@ export interface LValue {
 	set(value: MSValue): void
 }
 
-export function stringifyStack(stack: ExecutionStack[]): any {
-	return JSON.parse(
-		stringify(stack, (_key, value) => {
-			if (value && typeof value === 'object') {
-				// Handle function definitions - serialize as plain object for reinstantiation
-				if (value instanceof FunctionDefinition) {
-					return {
-						__type: 'FunctionDefinition',
-						index: value.index,
-						parameters: value.parameters,
-						scope: value.scope,
-					}
-				}
-				// Handle native function definitions - serialize as plain object for reinstantiation
-				if (value instanceof NativeFunctionDefinition) {
-					return {
-						__type: 'NativeFunctionDefinition',
-						name: value.name,
-					}
-				}
-			}
-			return value
-		}),
-	)
-}
-
-export function parseStack(serialized: any): ExecutionStack[] {
-	return parse(JSON.stringify(serialized), (_key, value) => {
-		if (value && typeof value === 'object') {
-			// Restore function definitions
-			if (value.__type === 'FunctionDefinition') {
-				return new FunctionDefinition(value.index, value.parameters, value.scope)
-			}
-
-			// Restore native function definitions
-			if (value.__type === 'NativeFunctionDefinition') {
-				return new NativeFunctionDefinition(value.name)
+export function serializeState(_key, value) {
+	if (value && typeof value === 'object') {
+		// Handle function definitions - serialize as plain object for reinstantiation
+		if (value instanceof FunctionDefinition) {
+			return {
+				__type: 'FunctionDefinition',
+				index: value.index,
+				parameters: value.parameters,
+				scope: value.scope,
 			}
 		}
-		return value
-	})
+		// Handle native function definitions - serialize as plain object for reinstantiation
+		if (value instanceof NativeFunctionDefinition) {
+			return {
+				__type: 'NativeFunctionDefinition',
+				name: value.name,
+			}
+		}
+	}
+	return value
+}
+
+export function reviveState(_key, value) {
+	if (value && typeof value === 'object') {
+		// Restore function definitions
+		if (value.__type === 'FunctionDefinition') {
+			return new FunctionDefinition(value.index, value.parameters, value.scope)
+		}
+
+		// Restore native function definitions
+		if (value.__type === 'NativeFunctionDefinition') {
+			return new NativeFunctionDefinition(value.name)
+		}
+	}
+	return value
 }
 
 export interface Operators {

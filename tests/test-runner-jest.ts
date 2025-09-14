@@ -1,6 +1,18 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { parse, stringify } from 'flatted'
 import { MiniScriptExecutor } from '../src/executor.js'
+import type { ExecutionStackEntry, ExecutionState } from '../src/helpers.js'
+import { reviveState, serializeState } from '../src/helpers.js'
+
+// Helper functions to handle circular references in ExecutionState
+function stringifyStack(stack: ExecutionStackEntry[]): any {
+	return JSON.parse(stringify(stack, serializeState))
+}
+
+function parseStack(serialized: any): ExecutionStackEntry[] {
+	return parse(JSON.stringify(serialized), reviveState)
+}
 
 export interface TestResult {
 	success: boolean
@@ -32,13 +44,21 @@ export function runScript(source: string, state?: string): TestResult {
 			yield: (arg: any) => arg,
 		}
 
-		const executor = new MiniScriptExecutor(source, context, state)
+		const parsedState: ExecutionState | undefined = state ? parseStack(parse(state)) : undefined
+		const executor = new MiniScriptExecutor(source, context, parsedState)
 		const result = executor.execute()
 		const executionTime = Date.now() - startTime
 
-		return { success: true, output, executionTime, result, state: executor.state }
+		return {
+			success: true,
+			output,
+			executionTime,
+			result,
+			state: stringify(stringifyStack(executor.state)),
+		}
 	} catch (error: any) {
 		const executionTime = Date.now() - startTime
+		console.log('Error in test runner:', error)
 		return { success: false, output, error: error, executionTime }
 	}
 }

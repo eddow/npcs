@@ -10,7 +10,7 @@ import { ASTProviderWithCallback } from './ast-provider-with-callback'
 import { MiniScriptExecutor } from './executor'
 import {
 	type ExecutionContext,
-	type ExecutionStack,
+	type ExecutionState,
 	type FunctionDefinition,
 	type IsaTypes,
 	jsIsaTypes,
@@ -19,7 +19,7 @@ import {
 } from './helpers'
 export type NpcReturn =
 	| { type: 'return'; value?: any }
-	| { type: 'yield'; value: any; state: any[] }
+	| { type: 'yield'; value: any; state: ExecutionState }
 
 export function lexerExceptionLocation(error: LexerException, source: string): string {
 	const lines = source.split('\n')
@@ -70,7 +70,7 @@ export default class NpcScript {
 		} catch (error) {
 			if (!(error instanceof LexerException)) throw error
 			throw new LexerException(
-				error.message + '\n' + lexerExceptionLocation(error, source),
+				`${error.message}\n${lexerExceptionLocation(error, source)}`,
 				error.range,
 			)
 		}
@@ -79,7 +79,7 @@ export default class NpcScript {
 		return index === undefined ? this.ast : this.functions[index]
 	}
 
-	executor(state?: any[] | { stack: ExecutionStack[] }, context?: ExecutionContext) {
+	executor(state?: ExecutionState, context?: ExecutionContext) {
 		const ctx = !context
 			? this.context
 			: Object.setPrototypeOf(
@@ -88,7 +88,7 @@ export default class NpcScript {
 				)
 		return new MiniScriptExecutor(this, ctx, state)
 	}
-	execute(state?: any[] | { stack: ExecutionStack[] }, context?: ExecutionContext): NpcReturn {
+	execute(state?: ExecutionState, context?: ExecutionContext): NpcReturn {
 		const executor = this.executor(state, context)
 		const { type, value } = executor.execute()
 		switch (type) {
@@ -107,14 +107,14 @@ export default class NpcScript {
 	): (...args: Args) => Return {
 		const that = this
 		return function (this: { push(arg: any): void } | undefined, ...args: Args) {
-			const executor = that.executor({ stack: [fct.enterCall(args)] }, context)
+			const executor = that.executor(fct.call(args), context)
 			while (true) {
 				const { type, value } = executor.execute()
 				if (type === 'return') return value as Return
 				else if (type === 'yield') {
 					if (!this) throw new Error('Cannot yield in a non-generator context')
 					this.push(value)
-				} else throw new Error('Unknown executor result type: ' + type)
+				} else throw new Error(`Unknown executor result type: ${type}`)
 			}
 		}
 	}

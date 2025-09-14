@@ -28,7 +28,8 @@ import {
 	type ExecutionContext,
 	ExecutionError,
 	type ExecutionResult,
-	type ExecutionStack,
+	type ExecutionStackEntry,
+	type ExecutionState,
 	type ForScope,
 	FunctionDefinition,
 	type FunctionResult,
@@ -37,16 +38,14 @@ import {
 	type MSScope,
 	type MSValue,
 	NativeFunctionDefinition,
-	parseStack,
 	stack,
-	stringifyStack,
 } from './helpers'
 import NpcScript from './npcs'
 
 // Meant to be thrown by executeCall to signal a branched execution
 class ExpressionCall {
 	constructor(
-		public readonly stack: ExecutionStack,
+		public readonly stack: ExecutionStackEntry,
 		public readonly statement: ASTBase,
 	) {}
 }
@@ -63,22 +62,22 @@ export class MiniScriptExecutor {
 		}
 	}
 	readonly script: NpcScript
-	private stack: ExecutionStack[]
+	private stack: ExecutionStackEntry[]
 	expressionsCacheIndex: number = 0
 	expressionsCacheStack: number[] = []
-	get state(): any[] {
-		return stringifyStack(this.stack)
+	get state(): ExecutionState {
+		return this.stack
 	}
-	set state(state: any[] | { stack: ExecutionStack[] }) {
-		this.stack = 'stack' in state ? state.stack : parseStack(state)
+	set state(state: ExecutionState) {
+		this.stack = state
 	}
 	constructor(
 		specs: NpcScript | string,
 		public readonly context: ExecutionContext,
-		state?: any[] | { stack: ExecutionStack[] },
+		state?: ExecutionState,
 	) {
 		this.script = typeof specs === 'string' ? new NpcScript(specs, context) : specs
-		this.stack = state ? ('stack' in state ? state.stack : parseStack(state)) : [stack()]
+		this.stack = state || [stack()]
 	}
 
 	// Variable access methods
@@ -108,9 +107,11 @@ export class MiniScriptExecutor {
 			}
 			scope = scope.parent
 		}
-		if (name in this.context)
-			throw new ExecutionError(this, statement, `Cannot set ${name} native value`)
-		this.stack[0].scope.variables[name] = value
+		if (name in this.context) {
+			if (!Object.getOwnPropertyDescriptor(this.context, name)?.set)
+				throw new ExecutionError(this, statement, `Cannot set ${name} native value`)
+			this.context[name] = value
+		} else this.stack[0].scope.variables[name] = value
 	}
 
 	// Main execution entry point
@@ -156,7 +157,7 @@ export class MiniScriptExecutor {
 					yield value
 					break
 				default:
-					throw new Error('Unknown executor result type: ' + type)
+					throw new Error(`Unknown executor result type: ${type}`)
 			}
 		}
 	}
@@ -495,7 +496,7 @@ export class MiniScriptExecutor {
 	private evaluateUnaryExpression(expr: ASTUnaryExpression): any {
 		const argument = this.evaluateExpression(expr.argument)
 		const operator =
-			this.script.operators[(expr.operator === 'not' ? '!' : (expr.operator ?? '??!?')) + '.']
+			this.script.operators[`${expr.operator === 'not' ? '!' : (expr.operator ?? '??!?')}.`]
 		if (!operator) throw new ExecutionError(this, expr, `Unknown unary operator: ${expr.operator}`)
 		return operator(argument)
 	}

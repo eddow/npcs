@@ -32,6 +32,7 @@ describe('Yield Execution', () => {
 			'Calculation result: 25',
 			'Function returned: 25',
 		])
+		expect(second.result).toEqual({ type: 'return' })
 	})
 
 	describe('Additional Yield Variants', () => {
