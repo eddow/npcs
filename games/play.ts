@@ -51,12 +51,12 @@ function main() {
 
 	// Build execution context with utilities
 	const sentence = words.join(' ')
-	const context = {
+	const context: ExecutionContext = {
 		print(...args: any[]) {
 			console.log(...args)
 		},
-		sentence,
-	} as ExecutionContext
+		sentence
+	}
 
 	// Load previous state if any
 	let priorState: any | undefined
@@ -68,10 +68,10 @@ function main() {
 
 	try {
 		// Create game
-		const npc = new NpcScript(source, context)
+		const npc = new NpcScript(source)
 
 		// Execute game
-		const result = npc.execute(priorState)
+		const result = npc.execute(context, priorState)
 		if (result.type === 'return') {
 			console.log('✅ return:', result.value)
 			// Clear saved state on completion

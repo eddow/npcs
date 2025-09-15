@@ -275,4 +275,105 @@ end while
 			])
 		})
 	})
+
+	describe('Slice Operations', () => {
+		it('should handle basic string and list slicing', () => {
+			const result = runFixture('slice-operations')
+
+			expect(result.success).toBe(true)
+			expect(result.output).toEqual([
+				'String slice [7:12]: World',
+				'String slice [0:5]: Hello',
+				'String slice [7:]: World!',
+				'List slice [1:4]: 20,30,40',
+				'List slice [0:3]: 10,20,30',
+				'List slice [2:]: 30,40,50',
+				'Empty slice: ',
+				'Negative start slice: ',
+				'Negative end list slice: ',
+				'Single char: H',
+				'Single element: 20'
+			])
+		})
+
+		it('should handle edge cases and boundary conditions', () => {
+			const result = runFixture('slice-edge-cases')
+
+			expect(result.success).toBe(true)
+			expect(result.output).toEqual([
+				'Start at end: ',
+				'End before start: ',
+				'Full slice: Hello',
+				'Negative start: llo',
+				'Negative end: H',
+				'Both negative: ',
+				'Large start: ',
+				'Large end: 2,3,4,5',
+				'Empty string slice: ',
+				'Empty list slice: '
+			])
+		})
+
+		it('should handle inline slice expressions', () => {
+			const snippet = `
+text = "Hello, World!"
+numbers = [1, 2, 3, 4, 5]
+
+// Inline slicing
+print "Inline slice: " + text[7:12]
+print "Inline list slice: " + numbers[1:4]
+print "Single element: " + numbers[2:3]
+`
+			const result = runScript(snippet)
+			expect(result.success).toBe(true)
+			expect(result.output).toEqual([
+				'Inline slice: World',
+				'Inline list slice: 2,3,4',
+				'Single element: 3'
+			])
+		})
+
+		it('should handle slice with variables', () => {
+			const snippet = `
+text = "Programming"
+start = 2
+endIndex = 7
+result = text[start:endIndex]
+print "Variable slice: " + result
+`
+			const result = runScript(snippet)
+			expect(result.success).toBe(true)
+			expect(result.output).toEqual(['Variable slice: ogram'])
+		})
+
+		it('should throw error for invalid slice targets', () => {
+			const snippet = `
+number = 42
+result = number[0:2]
+`
+			const result = runScript(snippet)
+			expect(result.success).toBe(false)
+			expect(result.error?.message).toContain('Slice operation can only be applied to strings or lists')
+		})
+
+		it('should throw error for non-numeric start index', () => {
+			const snippet = `
+text = "Hello"
+result = text["a":2]
+`
+			const result = runScript(snippet)
+			expect(result.success).toBe(false)
+			expect(result.error?.message).toContain('Slice start index must be a number')
+		})
+
+		it('should throw error for non-numeric end index', () => {
+			const snippet = `
+text = "Hello"
+result = text[0:"b"]
+`
+			const result = runScript(snippet)
+			expect(result.success).toBe(false)
+			expect(result.error?.message).toContain('Slice end index must be a number')
+		})
+	})
 })

@@ -1,0 +1,38 @@
+// Edge cases and error conditions for slice operations
+text = "Hello"
+numbers = [1, 2, 3, 4, 5]
+
+// Boundary conditions
+startAtEnd = text[5:7]
+endBeforeStart = text[3:2]
+fullSlice = text[0:5]
+
+print "Start at end: " + startAtEnd
+print "End before start: " + endBeforeStart
+print "Full slice: " + fullSlice
+
+// Negative indices
+negStart = text[-2:5]
+negEnd = text[0:-1]
+bothNeg = text[-4:-2]
+
+print "Negative start: " + negStart
+print "Negative end: " + negEnd
+print "Both negative: " + bothNeg
+
+// Large indices (should be clamped)
+largeStart = text[10:15]
+largeEnd = numbers[1:100]
+
+print "Large start: " + largeStart
+print "Large end: " + largeEnd
+
+// Empty sequences
+emptyString = ""
+emptyList = []
+
+emptySlice1 = emptyString[0:1]
+emptySlice2 = emptyList[0:1]
+
+print "Empty string slice: " + emptySlice1
+print "Empty list slice: " + emptySlice2

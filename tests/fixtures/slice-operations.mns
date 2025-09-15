@@ -1,0 +1,37 @@
+// Slice operations for strings and lists
+text = "Hello, World!"
+numbers = [10, 20, 30, 40, 50]
+
+// Basic string slicing
+subtext1 = text[7:12]
+subtext2 = text[0:5]
+subtext3 = text[7:]
+
+print "String slice [7:12]: " + subtext1
+print "String slice [0:5]: " + subtext2
+print "String slice [7:]: " + subtext3
+
+// Basic list slicing
+sublist1 = numbers[1:4]
+sublist2 = numbers[0:3]
+sublist3 = numbers[2:]
+
+print "List slice [1:4]: " + sublist1
+print "List slice [0:3]: " + sublist2
+print "List slice [2:]: " + sublist3
+
+// Edge cases
+emptySlice = text[5:5]
+negativeStart = text[-6:-1]
+negativeEnd = numbers[-3:-1]
+
+print "Empty slice: " + emptySlice
+print "Negative start slice: " + negativeStart
+print "Negative end list slice: " + negativeEnd
+
+// Single character/element
+singleChar = text[0:1]
+singleElement = numbers[1:2]
+
+print "Single char: " + singleChar
+print "Single element: " + singleElement

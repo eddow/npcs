@@ -9,8 +9,8 @@ describe('NpcS direct usage', () => {
 		}
 
 		const script = 'return 5 + 7'
-		const npc = new NpcScript(script, context)
-		const result = npc.execute()
+		const npc = new NpcScript(script)
+		const result = npc.execute(context)
 
 		expect(output).toEqual([])
 		expect(result).toEqual({ type: 'return', value: 12 })
@@ -31,15 +31,15 @@ print "Before yield: x = " + x
 yield 42
 print "After yield: x = " + x
 `
-		const npc = new NpcScript(script, context)
+		const npc = new NpcScript(script)
 
-		const first = npc.execute()
+		const first = npc.execute(context)
 		expect(first).toEqual({ type: 'yield', value: expect.anything(), state: expect.anything() })
 		expect(output).toEqual(['Before yield: x = 10'])
 
 		output.length = 0
 		// @ts-expect-error Jest doesn't ts-"assert" when it "expects"
-		const second = npc.execute(first.state)
+		const second = npc.execute(context, first.state)
 		expect(second).toEqual({ type: 'return' })
 		expect(output).toEqual(['After yield: x = 10'])
 	})
@@ -56,10 +56,10 @@ yield "a"
 yield "b"
 return 99
 `
-		const npc = new NpcScript(script, context)
+		const npc = new NpcScript(script)
 
 		const yielded: any[] = []
-		for (const v of npc.executor()) {
+		for (const v of npc.executor(context)) {
 			yielded.push(v)
 		}
 
@@ -79,9 +79,9 @@ yield "a"
 yield "b"
 return 99
 `
-		const npc = new NpcScript(script, context)
+		const npc = new NpcScript(script)
 
-		expect(Array.from(npc.executor())).toEqual(['a', 'b'])
+		expect(Array.from(npc.executor(context))).toEqual(['a', 'b'])
 		expect(output).toEqual([])
 	})
 })

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse, stringify } from 'flatted'
 import { MiniScriptExecutor } from '../src/executor.js'
-import type { ExecutionStackEntry, ExecutionState } from '../src/helpers.js'
+import type { ExecutionContext, ExecutionStackEntry, ExecutionState } from '../src/helpers.js'
 import { reviveState, serializeState } from '../src/helpers.js'
 
 // Helper functions to handle circular references in ExecutionState
@@ -37,7 +37,7 @@ export function runScript(source: string, state?: string): TestResult {
 	const output: string[] = []
 
 	try {
-		const context = {
+		const context: ExecutionContext = {
 			print(...args: any[]) {
 				output.push(args.join(' '))
 			},

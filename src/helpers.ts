@@ -77,23 +77,9 @@ export class FunctionDefinition {
 		return [this.enterCall(args)]
 	}
 }
-
 export type ExecutionContext = Record<string, any>
 
-export class NativeFunctionDefinition {
-	/**
-	 * @param evaluation - function to evaluate the function as an expression. Returns a value to place in the expression
-	 * @param statement - function to call the function as a statement. If returns a result, the result is yielded
-	 */
-	constructor(public name: string) {}
-	evaluate(executor: MiniScriptExecutor, args: any[], ast: ASTBase): MSValue {
-		const evaluation = executor.context[this.name]
-		if (!evaluation) throw new ExecutionError(executor, ast, 'Native value not found')
-		if (typeof evaluation !== 'function')
-			throw new ExecutionError(executor, ast, `Native value ${this.name} is not a function`)
-		return evaluation.apply(executor.context, args)
-	}
-}
+
 
 export type BranchedResult = { type: 'branched' }
 export type FunctionResult = { type: 'return' | 'yield'; value?: any }
@@ -105,6 +91,11 @@ export interface LValue {
 }
 
 export function serializeState(_key, value) {
+	if(typeof value === 'function') {
+		throw new Error(`Not implemented: Functions cannot be serialized
+In order to have native functions in the serialized state (in variables or used as parameters),
+	a custom (de)serializer has to be provided`)
+	}
 	if (value && typeof value === 'object') {
 		// Handle function definitions - serialize as plain object for reinstantiation
 		if (value instanceof FunctionDefinition) {
@@ -113,13 +104,6 @@ export function serializeState(_key, value) {
 				index: value.index,
 				parameters: value.parameters,
 				scope: value.scope,
-			}
-		}
-		// Handle native function definitions - serialize as plain object for reinstantiation
-		if (value instanceof NativeFunctionDefinition) {
-			return {
-				__type: 'NativeFunctionDefinition',
-				name: value.name,
 			}
 		}
 	}
@@ -131,11 +115,6 @@ export function reviveState(_key, value) {
 		// Restore function definitions
 		if (value.__type === 'FunctionDefinition') {
 			return new FunctionDefinition(value.index, value.parameters, value.scope)
-		}
-
-		// Restore native function definitions
-		if (value.__type === 'NativeFunctionDefinition') {
-			return new NativeFunctionDefinition(value.name)
 		}
 	}
 	return value
@@ -189,4 +168,9 @@ export const jsIsaTypes: IsaTypes = {
 	boolean: (value) => typeof value === 'boolean',
 	map: (value) => value !== null && typeof value === 'object' && !Array.isArray(value),
 	list: (value) => Array.isArray(value),
+}
+
+export type Callable = FunctionDefinition | Function
+export function isCallable(value: any): value is Callable {
+	return value instanceof FunctionDefinition || typeof value === 'function'
 }

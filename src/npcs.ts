@@ -37,7 +37,7 @@ export function lexerExceptionLocation(error: LexerException, source: string): s
 export default class NpcScript {
 	public ast: any
 	public functions: ASTFunctionStatement[] = []
-	public indexes = new Map<ASTFunctionStatement, number>()
+	public functionIndexes = new Map<ASTFunctionStatement, number>()
 
 	public sourceLocation(expr: ASTBase): string {
 		const source = this.source
@@ -55,7 +55,6 @@ export default class NpcScript {
 	}
 	constructor(
 		public source: string,
-		public context: ExecutionContext,
 		public operators: Operators = jsOperators,
 		public isaTypes: IsaTypes = jsIsaTypes,
 	) {
@@ -63,7 +62,7 @@ export default class NpcScript {
 			this.ast = new Parser(source, {
 				lexer: new Lexer(source),
 				astProvider: new ASTProviderWithCallback((func) => {
-					this.indexes.set(func, this.functions.length)
+					this.functionIndexes.set(func, this.functions.length)
 					this.functions.push(func)
 				}),
 			}).parseChunk()
@@ -78,18 +77,12 @@ export default class NpcScript {
 	function(index?: number): ASTBaseBlock {
 		return index === undefined ? this.ast : this.functions[index]
 	}
-
-	executor(state?: ExecutionState, context?: ExecutionContext) {
-		const ctx = !context
-			? this.context
-			: Object.setPrototypeOf(
-					Object.defineProperties({}, Object.getOwnPropertyDescriptors(context)),
-					this.context,
-				)
-		return new MiniScriptExecutor(this, ctx, state)
+	
+	executor(context: ExecutionContext, state?: ExecutionState) {
+		return new MiniScriptExecutor(this, context, state)
 	}
-	execute(state?: ExecutionState, context?: ExecutionContext): NpcReturn {
-		const executor = this.executor(state, context)
+	execute(context: ExecutionContext, state?: ExecutionState): NpcReturn {
+		const executor = this.executor(context, state)
 		const { type, value } = executor.execute()
 		switch (type) {
 			case 'return':
@@ -103,11 +96,11 @@ export default class NpcScript {
 
 	evaluator<Args extends any[], Return>(
 		fct: FunctionDefinition,
-		context?: ExecutionContext,
+		context: ExecutionContext,
 	): (...args: Args) => Return {
 		const that = this
 		return function (this: { push(arg: any): void } | undefined, ...args: Args) {
-			const executor = that.executor(fct.call(args), context)
+			const executor = that.executor(context, fct.call(args))
 			while (true) {
 				const { type, value } = executor.execute()
 				if (type === 'return') return value as Return
