@@ -15,7 +15,7 @@ print "person isa map: " + (person isa map)
 print "fruits isa list: " + (fruits isa list)
 
 // Negation using not() - this is the correct way
-print "x isa not number: " + (not (x isa number))
+print "x isa not number: " + (not x isa number)
 print "name isa not string: " + (not (name isa string))
 
 // Negation using comparison - alternative way

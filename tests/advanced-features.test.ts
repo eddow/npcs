@@ -250,6 +250,19 @@ describe('Advanced MiniScript Features', () => {
 		})
 	})
 
+	describe('For..in over map', () => {
+		it('should iterate map keys in insertion order', () => {
+			const result = runFixture('for-in-map')
+			expect(result.success).toBe(true)
+			expect(result.output).toEqual([
+				'Map keys:',
+				'  - name',
+				'  - age',
+				'  - city',
+			])
+		})
+	})
+
 	describe('Comprehensive Integration', () => {
 		it('should handle all advanced features together', () => {
 			const result = runScript('print "=== Advanced MiniScript Features Demo ==="')

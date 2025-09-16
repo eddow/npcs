@@ -2,12 +2,14 @@ import type { ASTBase } from 'miniscript-core'
 import type { MiniScriptExecutor } from './executor'
 
 export class ExecutionError extends Error {
+	public error?: Error
 	constructor(
 		public executor: MiniScriptExecutor,
 		public statement: ASTBase,
-		message: string,
+		message: string | Error,
 	) {
-		super(message)
+		super(typeof message === 'string' ? message : message.message)
+		this.error = typeof message === 'string' ? undefined : message
 		this.name = 'ExecutionError'
 	}
 	public toString(): string {
@@ -24,6 +26,10 @@ export interface LoopScope {
 	ipDepth: number
 }
 
+export interface WhileScope extends LoopScope {
+	occurrences: number
+}
+
 export interface ForScope extends LoopScope {
 	iterator: MSValue[]
 	index: number
@@ -32,9 +38,10 @@ export interface ForScope extends LoopScope {
 export interface ExecutionStackEntry {
 	scope: MSScope
 	ip: IP
-	loopScopes: (LoopScope | ForScope)[]
+	loopScopes: (LoopScope | ForScope | WhileScope)[]
 	evaluatedCache?: Record<number, any>
 	targetReturn?: number
+	loopOccurrences?: number
 }
 
 export type ExecutionState = ExecutionStackEntry[]
@@ -135,8 +142,6 @@ export interface Operators {
 	'!.'(argument: any): any
 	'-.'(argument: any): any
 	'+.'(argument: any): any
-	and(left: any, right: any): any
-	or(left: any, right: any): any
 }
 
 export const jsOperators: Operators = {
@@ -156,8 +161,6 @@ export const jsOperators: Operators = {
 	'!.': (argument) => !argument,
 	'-.': (argument) => -argument,
 	'+.': (argument) => +argument,
-	and: (left, right) => left && right,
-	or: (left, right) => left || right,
 }
 
 export type IsaTypes = Record<string, (value: any) => boolean>

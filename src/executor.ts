@@ -15,9 +15,11 @@ import {
 	ASTIfStatement,
 	ASTIndexExpression,
 	type ASTIsaExpression,
+	ASTListConstructorExpression,
 	type ASTListValue,
 	type ASTLiteral,
 	type ASTLogicalExpression,
+	ASTMapConstructorExpression,
 	ASTMemberExpression,
 	ASTParenthesisExpression,
 	type ASTReturnStatement,
@@ -41,6 +43,7 @@ import {
 	type MSScope,
 	type MSValue,
 	stack,
+	WhileScope,
 } from './helpers'
 import NpcScript from './npcs'
 
@@ -115,9 +118,16 @@ export class MiniScriptExecutor {
 			}
 			scope = scope.parent
 		}
-		if (!(name in this.context)) this.stack[0].scope.variables[name] = value
-		else if (!Reflect.set(this.context, name, value, this.context))
-			throw new ExecutionError(this, statement, `Cannot set ${name} native value`)
+		let propertyDescriptor: PropertyDescriptor | undefined
+		if (name in this.context) {
+			let browser = this.context as any
+			while(!propertyDescriptor && browser && browser !== Object.prototype) {
+				propertyDescriptor = Object.getOwnPropertyDescriptor(browser, name)
+				browser = Object.getPrototypeOf(browser)
+			}
+		}
+		if (!propertyDescriptor?.set || !Reflect.set(this.context, name, value, this.context))
+			this.stack[0].scope.variables[name] = value
 	}
 
 	// Main execution entry point
@@ -129,6 +139,7 @@ export class MiniScriptExecutor {
 			const result = statement
 				? this.executeStatement(statement)
 				: ({ type: 'return' } as FunctionResult)
+			delete this.stack[0].loopOccurrences
 			if (result)
 				switch (result.type) {
 					case 'return': {
@@ -199,7 +210,8 @@ export class MiniScriptExecutor {
 				ip.indexes.pop()
 				this.incrementIP(ip)
 			} else if (lastStatement instanceof ASTWhileStatement) {
-				this.stack[0].loopScopes.shift()
+				const whileLoop = this.stack[0].loopScopes.shift() as WhileScope
+				this.stack[0].loopOccurrences = whileLoop.occurrences
 				return lastStatement
 			} else if (lastStatement instanceof ASTForGenericStatement) {
 				const forLoop = this.stack[0].loopScopes[0] as ForScope
@@ -290,12 +302,12 @@ export class MiniScriptExecutor {
 			return this.stack[0].evaluatedCache![expressionsCacheIndex]
 		}
 		const calculated = (() => {
-			const exprType = expr.type
 
 			const lValue = this.evaluateLValue(expr)
 			if (lValue) {
 				return lValue.get()
 			}
+			const exprType = expr.type
 			switch (exprType) {
 				case 'NumericLiteral':
 				case 'StringLiteral':
@@ -318,9 +330,9 @@ export class MiniScriptExecutor {
 				case 'FunctionDeclaration':
 					return this.createFunction(expr as ASTFunctionStatement)
 				case 'MapConstructorExpression':
-					return this.evaluateMapConstructor(expr)
+					return this.evaluateMapConstructor(expr as ASTMapConstructorExpression)
 				case 'ListConstructorExpression':
-					return this.evaluateListConstructor(expr)
+					return this.evaluateListConstructor(expr as ASTListConstructorExpression)
 				case 'ParenthesisExpression':
 					return this.evaluateExpression((expr as ASTParenthesisExpression).expression)
 				case 'IsaExpression':
@@ -359,6 +371,9 @@ export class MiniScriptExecutor {
 		} else {
 			return false
 		}
+		// It can be a string, a date, ... too
+		if(!base /*|| typeof base !== 'object'*/)
+			throw new ExecutionError(this, expr, `Invalid collection \`${base}\` for index \`${index}\``)
 		return {
 			get: () => base[index],
 			set: (value: MSValue) => {
@@ -371,8 +386,8 @@ export class MiniScriptExecutor {
 		try {
 			return func.apply(this.context, args)
 		} catch (e) {
-			console.error(`At: ${this.script.sourceLocation(ast)}`)
-			throw e
+			//console.error(`At: ${this.script.sourceLocation(ast)}`)
+			throw new ExecutionError(this, ast, e as Error)
 		}
 	}
 
@@ -443,8 +458,11 @@ export class MiniScriptExecutor {
 	private executeWhile(statement: ASTWhileStatement): ExecutionResult {
 		// Check if we're entering the loop for the first time
 		if (this.evaluateExpression(statement.condition)) {
+			const occurrences = (this.stack[0].loopOccurrences ?? 0)+1
+			if(occurrences > 1000)
+				throw new ExecutionError(this, statement, 'While loop "stack overflow": has more than 1000 occurrences')
 			// Enter the while loop body - push index 0 for first statement in the block
-			this.stack[0].loopScopes.unshift({ ipDepth: this.stack[0].ip.indexes.length })
+			this.stack[0].loopScopes.unshift({ ipDepth: this.stack[0].ip.indexes.length, occurrences })
 			this.stack[0].ip.indexes.push(0)
 			return { type: 'branched' } // Continue execution in the new block
 		}
@@ -525,12 +543,13 @@ export class MiniScriptExecutor {
 	}
 
 	private evaluateLogicalExpression(expr: ASTLogicalExpression): any {
-		const left = this.evaluateExpression((expr as any).left)
-		const right = this.evaluateExpression((expr as any).right)
-		const operator = this.script.operators[(expr as any).operator ?? '??!?']
-		if (!operator)
-			throw new ExecutionError(this, expr, `Unknown logical operator: ${expr.operator}`)
-		return operator(left, right)
+		const breakOn = {
+			'and': false,
+			'or': true,
+		}[expr.operator]
+		if(!!this.evaluateExpression(expr.left) === breakOn) return breakOn
+
+		return this.evaluateExpression(expr.right)
 	}
 
 	private createFunction(expr: ASTFunctionStatement): FunctionDefinition {
@@ -545,35 +564,31 @@ export class MiniScriptExecutor {
 		return new FunctionDefinition(this.script.functionIndexes.get(expr)!, parameters, this.stack[0].scope)
 	}
 
-	private evaluateMapConstructor(expr: ASTBase): any {
+	private evaluateMapConstructor(expr: ASTMapConstructorExpression): any {
 		const obj: any = {}
-		if ((expr as any).fields) {
-			;(expr as any).fields.forEach((field: any) => {
-				// For ASTMapKeyString, the key is field.key.name (identifier)
+		if (expr.fields) {
+			for(const field of expr.fields) {
+				this.assertAST(field.key, ASTIdentifier)
 				const key = field.key.name
 				const value = this.evaluateExpression(field.value)
 				obj[key] = value
-			})
+			}
 		}
 		return obj
 	}
 
-	private evaluateListConstructor(expr: ASTBase): any {
-		const arr: any[] = []
-		if ((expr as any).fields) {	// TODO: vire tes forEach
-			;(expr as any).fields.forEach((field: any) => {
-				arr.push(this.evaluateExpression(field))
-			})
-		}
-		return arr
+	private evaluateListConstructor(expr: ASTListConstructorExpression): any {
+		return expr.fields?.map((field: any) => this.evaluateExpression(field)) ?? []
 	}
 
 	private executeForGeneric(statement: ASTForGenericStatement): ExecutionResult {
 		const variable = statement.variable.name
-		const iterator = this.evaluateExpression(statement.iterator)
-		if (!Array.isArray(iterator)) {
-			throw new ExecutionError(this, statement, 'For loop iterator must be a list')
+		let iterator = this.evaluateExpression(statement.iterator)
+		if(typeof iterator !== 'object') {
+			throw new ExecutionError(this, statement, 'For loop iterator must be an map or a list')
 		}
+		if (!Array.isArray(iterator))
+			iterator = Object.keys(iterator)
 		this.stack[0].loopScopes.unshift({
 			iterator,
 			index: 0,

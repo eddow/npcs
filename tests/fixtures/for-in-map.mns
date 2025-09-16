@@ -1,0 +1,12 @@
+// For..in over map should iterate keys in insertion order
+person = {name: "John", age: 30, city: "Paris"}
+
+print "Map keys:"
+for key in person
+    print "  - " + key
+end for
+
+
+
+
+
