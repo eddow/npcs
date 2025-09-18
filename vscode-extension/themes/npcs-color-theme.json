@@ -1,0 +1,176 @@
+{
+  "name": "NPCS Color Theme",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#1e1e1e",
+    "editor.foreground": "#d4d4d4"
+  },
+  "tokenColors": [
+    {
+      "name": "NPCS Keywords",
+      "scope": [
+        "keyword.control.npcs",
+        "keyword.other.function.npcs",
+        "keyword.other.isa.npcs"
+      ],
+      "settings": {
+        "foreground": "#569cd6",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "NPCS Built-in Functions",
+      "scope": [
+        "support.function.builtin.npcs"
+      ],
+      "settings": {
+        "foreground": "#dcdcaa"
+      }
+    },
+    {
+      "name": "NPCS Function Calls",
+      "scope": [
+        "entity.name.function.call.npcs"
+      ],
+      "settings": {
+        "foreground": "#4ec9b0"
+      }
+    },
+    {
+      "name": "NPCS Statements",
+      "scope": [
+        "entity.name.function.statement.npcs"
+      ],
+      "settings": {
+        "foreground": "#ff2222"
+      }
+    },
+    {
+      "name": "NPCS Function Definitions",
+      "scope": [
+        "entity.name.function.definition.npcs"
+      ],
+      "settings": {
+        "foreground": "#4ec9b0",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "NPCS Variables",
+      "scope": [
+        "variable.other.npcs"
+      ],
+      "settings": {
+        "foreground": "#9cdcfe"
+      }
+    },
+    {
+      "name": "NPCS Yielding Statements",
+      "scope": [
+        "entity.name.function.yielding.npcs"
+      ],
+      "settings": {
+        "foreground": "#ff6b6b",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "name": "NPCS Assignment Values",
+      "scope": [
+        "meta.assignment.value.npcs"
+      ],
+      "settings": {
+        "foreground": "#d4d4d4"
+      }
+    },
+    {
+      "name": "NPCS Yielding Arguments",
+      "scope": [
+        "meta.yielding-statement.arguments.npcs"
+      ],
+      "settings": {
+        "foreground": "#d4d4d4"
+      }
+    },
+    {
+      "name": "NPCS Strings",
+      "scope": [
+        "string.quoted.double.npcs",
+        "string.quoted.single.npcs"
+      ],
+      "settings": {
+        "foreground": "#ce9178"
+      }
+    },
+    {
+      "name": "NPCS Numbers",
+      "scope": [
+        "constant.numeric.npcs"
+      ],
+      "settings": {
+        "foreground": "#b5cea8"
+      }
+    },
+    {
+      "name": "NPCS Booleans",
+      "scope": [
+        "constant.language.boolean.npcs"
+      ],
+      "settings": {
+        "foreground": "#569cd6"
+      }
+    },
+    {
+      "name": "NPCS Comments",
+      "scope": [
+        "comment.line.double-slash.npcs",
+        "comment.block.npcs"
+      ],
+      "settings": {
+        "foreground": "#6a9955",
+        "fontStyle": "italic"
+      }
+    },
+    {
+      "name": "NPCS Operators",
+      "scope": [
+        "keyword.operator.assignment.npcs",
+        "keyword.operator.arithmetic.npcs",
+        "keyword.operator.comparison.npcs",
+        "keyword.operator.logical.npcs"
+      ],
+      "settings": {
+        "foreground": "#d4d4d4"
+      }
+    },
+    {
+      "name": "NPCS Objects",
+      "scope": [
+        "meta.object.npcs"
+      ],
+      "settings": {
+        "foreground": "#d4d4d4"
+      }
+    },
+    {
+      "name": "NPCS Arrays",
+      "scope": [
+        "meta.array.npcs"
+      ],
+      "settings": {
+        "foreground": "#d4d4d4"
+      }
+    },
+    {
+      "name": "NPCS Punctuation",
+      "scope": [
+        "punctuation.separator.key-value.npcs",
+        "punctuation.separator.dictionary.npcs",
+        "punctuation.separator.array.npcs"
+      ],
+      "settings": {
+        "foreground": "#d4d4d4"
+      }
+    }
+  ]
+}

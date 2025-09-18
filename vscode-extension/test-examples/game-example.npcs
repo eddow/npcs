@@ -1,0 +1,160 @@
+// Game example showcasing NPCS features
+// This demonstrates the stateful execution capabilities
+
+// Game state
+player = {name: "Hero", health: 100, gold: 50}
+inventory = ["sword", "potion"]
+currentRoom = "tavern"
+
+// Utility functions
+addGold = function(amount)
+    player.gold = player.gold + amount
+    print "You gained " + amount + " gold. Total: " + player.gold
+end function
+
+useItem = function(itemName)
+    if inventory.indexOf(itemName) >= 0 then
+        print "You used " + itemName
+        // Remove item logic would go here
+        return true
+    else
+        print "You don't have " + itemName
+        return false
+    end if
+end function
+
+// Room functions
+tavern = function()
+    print "You are in the Tavern of the Golden Dragon."
+    print "The barkeep nods at you. 'What'll it be?'"
+    
+    while true
+        print "Commands: drink, rest, shop, leave"
+        choice = prompt("tavern> ")
+        
+        if choice == "drink" then
+            if player.gold >= 5 then
+                player.gold = player.gold - 5
+                print "You enjoy a refreshing ale. (-5 gold)"
+            else
+                print "You don't have enough gold for a drink."
+            end if
+        end if
+        
+        if choice == "rest" then
+            player.health = 100
+            print "You rest and recover to full health."
+        end if
+        
+        if choice == "shop" then
+            shop()
+        end if
+        
+        if choice == "leave" then
+            print "You step outside into the town square."
+            return
+        end if
+    end while
+end function
+
+shop = function()
+    print "Welcome to the General Store!"
+    print "Items for sale:"
+    print "  - Health Potion (10 gold)"
+    print "  - Magic Scroll (25 gold)"
+    
+    while true
+        print "Commands: buy potion, buy scroll, back"
+        choice = prompt("shop> ")
+        
+        if choice == "buy potion" then
+            if player.gold >= 10 then
+                player.gold = player.gold - 10
+                inventory.push("potion")
+                print "You bought a health potion!"
+            else
+                print "Not enough gold!"
+            end if
+        end if
+        
+        if choice == "buy scroll" then
+            if player.gold >= 25 then
+                player.gold = player.gold - 25
+                inventory.push("scroll")
+                print "You bought a magic scroll!"
+            else
+                print "Not enough gold!"
+            end if
+        end if
+        
+        if choice == "back" then
+            return
+        end if
+    end while
+end function
+
+// Combat system
+fight = function(enemy)
+    print "You encounter a " + enemy + "!"
+    print "Combat begins..."
+    
+    // Simple combat loop
+    rounds = 0
+    while player.health > 0 and rounds < 10
+        print "Round " + (rounds + 1)
+        print "Your health: " + player.health
+        
+        // Player action
+        print "Commands: attack, use potion, flee"
+        action = prompt("combat> ")
+        
+        if action == "attack" then
+            damage = 20 + rnd() * 10
+            print "You deal " + damage + " damage!"
+        end if
+        
+        if action == "use potion" then
+            if useItem("potion") then
+                player.health = player.health + 30
+                print "You recover 30 health!"
+            end if
+        end if
+        
+        if action == "flee" then
+            print "You flee from combat!"
+            return false
+        end if
+        
+        rounds = rounds + 1
+        
+        // Yield to allow state saving
+        yield "Combat round " + rounds + " completed"
+    end while
+    
+    if player.health > 0 then
+        print "You defeated the " + enemy + "!"
+        addGold(15)
+        return true
+    else
+        print "You were defeated!"
+        return false
+    end if
+end function
+
+// Main game loop
+print "Welcome to NPCS Adventure!"
+print "Your character: " + player.name
+print "Starting health: " + player.health
+print "Starting gold: " + player.gold
+
+// Start the game
+tavern()
+
+// Adventure sequence
+print "You venture into the forest..."
+if fight("goblin") then
+    print "Victory! You return to town."
+    tavern()
+end if
+
+print "Game over. Thanks for playing!"

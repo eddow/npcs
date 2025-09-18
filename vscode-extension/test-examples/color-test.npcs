@@ -1,0 +1,47 @@
+// NPCS Color Test - Different Syntax Elements
+
+// Keywords (should be blue)
+function testFunction()
+    if true then
+        while false
+            for item in items
+                break
+            end for
+        end while
+    end if
+end function
+
+// Built-in functions (should be yellow)
+print "Hello World"
+len "test"
+str 42
+val "123"
+
+// Function calls (should be teal)
+myFunction()
+anotherFunction(param1, param2)
+
+// Statements (should be light blue)
+print "This is a statement"
+yield "This yields"
+return "This returns"
+
+// Strings (should be orange)
+text1 = "Double quotes"
+text2 = 'Single quotes'
+
+// Numbers (should be green)
+number1 = 42
+number2 = 3.14
+number3 = 100
+
+// Booleans (should be blue)
+flag1 = true
+flag2 = false
+
+// Comments (should be gray italic)
+// This is a comment
+
+// Objects and arrays
+person = {name: "John", age: 30}
+items = ["apple", "banana", "orange"]

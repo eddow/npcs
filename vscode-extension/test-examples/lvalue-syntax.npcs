@@ -1,0 +1,73 @@
+// NPCS LValue Syntax Test
+
+// Function definition (should be teal/bold)
+into = function(path)
+	target = path[path.length-1]
+	if walkTo(path) and tile == tileAt(target) then
+		walk.moveTo target
+	end if
+end function
+
+// Assignment statements (lValue = something)
+// Simple lValue
+name = "John"
+age = 25
+isActive = true
+
+// Complex lValue with dot notation
+player.name = "Alice"
+inventory.items = ["sword", "potion"]
+game.state = "running"
+
+// Complex lValue with bracket notation
+items[0] = "apple"
+player["health"] = 100
+config["theme"] = "dark"
+
+// Complex lValue with combinations
+player.inventory[0] = "magic sword"
+game.players[playerId].name = "Bob"
+config.settings["ui"]["theme"] = "dark"
+data.users[0].profile.name = "Charlie"
+
+// Yielding statements (lValue arguments)
+// Simple lValue
+print "Hello World"
+len myArray
+str myNumber
+
+// Complex lValue with dot notation
+player.health 100
+inventory.add "sword"
+game.start "level1"
+
+// Complex lValue with bracket notation
+items[0] "apple"
+player["health"] 50
+config["debug"] true
+
+// Complex lValue with combinations
+player.inventory[0] "magic sword"
+game.players[playerId].name "David"
+walk.moveTo target
+config.settings["ui"]["theme"] "light"
+
+// Function calls (with parentheses)
+myFunction()
+player.getName()
+inventory.getItem(0)
+game.getPlayerById(playerId)
+
+// Keywords (should be blue)
+if true then
+	while false
+		for item in items
+			break
+		end for
+	end while
+end if
+
+// Built-in functions (should be yellow)
+print "Built-in"
+len myString
+str myNumber

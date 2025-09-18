@@ -1,0 +1,46 @@
+// NPCS Corrected Syntax Test
+
+// Function definition (should be teal/bold)
+into = function(path)
+	target = path[path.length-1]
+	if walkTo(path) and tile == tileAt(target) then
+		walk.moveTo target
+	end if
+end function
+
+// More examples
+myFunction = function(param1, param2)
+	result = param1 + param2
+	return result
+end function
+
+// Variable assignments (should be light blue)
+name = "John"
+age = 25
+isActive = true
+items = ["apple", "banana"]
+
+// Statements (should be red)
+print "Hello World"
+player.health 100
+inventory.add "sword"
+walk.moveTo target
+
+// Function calls (should be teal)
+myFunction()
+player.getName()
+inventory.getItem(0)
+
+// Keywords (should be blue)
+if true then
+	while false
+		for item in items
+			break
+		end for
+	end while
+end if
+
+// Built-in functions (should be yellow)
+print "Built-in"
+len myString
+str myNumber

@@ -1,0 +1,131 @@
+{
+  "Function Definition": {
+    "prefix": "func",
+    "body": [
+      "${1:functionName} = function(${2:params})",
+      "\t${3:// function body}",
+      "end function"
+    ],
+    "description": "Define a function"
+  },
+  "If Statement": {
+    "prefix": "if",
+    "body": [
+      "if ${1:condition} then",
+      "\t${2:// code}",
+      "end if"
+    ],
+    "description": "If statement"
+  },
+  "If-Else Statement": {
+    "prefix": "ifelse",
+    "body": [
+      "if ${1:condition} then",
+      "\t${2:// code}",
+      "else",
+      "\t${3:// code}",
+      "end if"
+    ],
+    "description": "If-else statement"
+  },
+  "While Loop": {
+    "prefix": "while",
+    "body": [
+      "while ${1:condition}",
+      "\t${2:// code}",
+      "end while"
+    ],
+    "description": "While loop"
+  },
+  "For Loop": {
+    "prefix": "for",
+    "body": [
+      "for ${1:item} in ${2:collection}",
+      "\t${3:// code}",
+      "end for"
+    ],
+    "description": "For loop"
+  },
+  "Statement": {
+    "prefix": "stmt",
+    "body": [
+      "${1:functionName} ${2:...}"
+    ],
+    "description": "General statement: functionName ... (any number of arguments)"
+  },
+  "Variable Assignment": {
+    "prefix": "var",
+    "body": [
+      "${1:variableName} = ${2:value}"
+    ],
+    "description": "Variable assignment"
+  },
+  "Object Literal": {
+    "prefix": "obj",
+    "body": [
+      "${1:objectName} = {",
+      "\t${2:key}: ${3:value}",
+      "}"
+    ],
+    "description": "Object literal"
+  },
+  "Array Literal": {
+    "prefix": "arr",
+    "body": [
+      "${1:arrayName} = [${2:item1}, ${3:item2}]"
+    ],
+    "description": "Array literal"
+  },
+  "Yield Statement": {
+    "prefix": "yield",
+    "body": [
+      "yield ${1:value}"
+    ],
+    "description": "Yield statement for pausing execution"
+  },
+  "Return Statement": {
+    "prefix": "return",
+    "body": [
+      "return ${1:value}"
+    ],
+    "description": "Return statement"
+  },
+  "Break Statement": {
+    "prefix": "break",
+    "body": [
+      "break"
+    ],
+    "description": "Break statement"
+  },
+  "Continue Statement": {
+    "prefix": "continue",
+    "body": [
+      "continue"
+    ],
+    "description": "Continue statement"
+  },
+  "ISA Check": {
+    "prefix": "isa",
+    "body": [
+      "${1:value} isa ${2:type}"
+    ],
+    "description": "ISA type check"
+  },
+  "Comment Block": {
+    "prefix": "comment",
+    "body": [
+      "// ${1:comment}"
+    ],
+    "description": "Comment"
+  },
+  "Game Function Template": {
+    "prefix": "gamefunc",
+    "body": [
+      "${1:functionName} = function()",
+      "\tprint \"${2:description}\"",
+      "\t${3:// game logic}",
+      "end function"
+    ],
+    "description": "Game function template"
+  }
+}

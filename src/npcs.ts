@@ -2,7 +2,6 @@ import {
 	type ASTBase,
 	type ASTBaseBlock,
 	type ASTFunctionStatement,
-	Lexer,
 	LexerException,
 	ParserException,
 } from 'miniscript-core'
@@ -64,7 +63,6 @@ export default class NpcScript {
 	) {
 		try {
 			this.ast = new ExtParser(source, {
-				lexer: new Lexer(source),
 				astProvider: new ASTProviderWithCallback((func) => {
 					this.functionIndexes.set(func, this.functions.length)
 					this.functions.push(func)

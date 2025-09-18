@@ -39,5 +39,13 @@
     "ts-jest": "^29.4.1",
     "tsx": "^4.20.5",
     "typescript": "^5.7.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eddow/npcs.git"
+  },
+  "homepage": "https://github.com/eddow/npcs#readme",
+  "bugs": {
+    "url": "https://github.com/eddow/npcs/issues"
   }
 }

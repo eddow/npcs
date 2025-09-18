@@ -1,0 +1,24 @@
+// NPCS Syntax Highlighting Test
+print "Hello World"
+
+// Keywords
+test = function()
+    if true then
+        return "test"
+    end if
+end function
+
+// Numbers and strings
+number = 42
+text = "Hello"
+quote = 'Single quotes'
+
+// Arrays and objects
+items = ["apple", "banana"]
+person = {name: "John", age: 30}
+
+// Built-in functions
+print len(text)
+print str(number)
+
+

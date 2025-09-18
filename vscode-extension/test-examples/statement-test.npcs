@@ -1,0 +1,50 @@
+// NPCS Statement Test - Different Function Spec Patterns
+
+// Simple function spec
+print "Hello World"
+len myArray
+str myNumber
+
+// Function spec with dot notation
+player.name "John"
+inventory.add "sword"
+game.state "running"
+
+// Function spec with bracket notation
+items[0] "apple"
+player["health"] 100
+config["debug"] true
+
+// Function spec with complex combinations
+player.inventory[0] "sword"
+game.players[playerId].name "Alice"
+config.settings["theme"] "dark"
+
+// Function spec with nested brackets and dots
+data.users[0].profile.name "Bob"
+game.levels[currentLevel].enemies[0].health 50
+config.ui.colors["primary"] "#ff0000"
+
+// Function calls (with parentheses) - should be different color
+myFunction()
+player.getName()
+inventory.getItem(0)
+game.getPlayerById(playerId)
+
+// Built-in functions (should be yellow)
+print "Built-in function"
+len myString
+str myNumber
+val "123"
+
+// Keywords (should be blue)
+function testFunction()
+    if true then
+        return "test"
+    end if
+end function
+
+// Variables and assignments
+name = "John"
+age = 25
+isActive = true

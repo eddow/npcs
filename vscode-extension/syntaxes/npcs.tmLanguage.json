@@ -1,0 +1,253 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "NPCS",
+  "scopeName": "source.npcs",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#function-calls"
+    },
+    {
+      "include": "#function-definitions"
+    },
+    {
+      "include": "#assignment-statements"
+    },
+    {
+      "include": "#yielding-statements"
+    },
+    {
+      "include": "#objects"
+    },
+    {
+      "include": "#arrays"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.npcs",
+          "begin": "//",
+          "end": "$"
+        },
+        {
+          "name": "comment.block.npcs",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.npcs",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.npcs",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.npcs",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.npcs",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "statements": {
+      "patterns": [
+        {
+          "name": "meta.statement.npcs",
+          "match": "^\\s*([a-zA-Z_][a-zA-Z0-9_]*(?:\\.[a-zA-Z_][a-zA-Z0-9_]*|\\[[^\\]]+\\])*)\\s+(.+)$",
+          "captures": {
+            "1": { "name": "entity.name.function.statement.npcs" },
+            "2": { "name": "meta.statement.arguments.npcs" }
+          }
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.npcs",
+          "match": "\\b\\d+(\\.\\d+)?\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.npcs",
+          "match": "\\b(if|then|else|end if|while|end while|for|in|end for|break|continue|return)\\b"
+        },
+        {
+          "name": "keyword.other.function.npcs",
+          "match": "\\b(function|end function)\\b"
+        },
+        {
+          "name": "keyword.other.isa.npcs",
+          "match": "\\b(isa|not)\\b"
+        },
+        {
+          "name": "constant.language.boolean.npcs",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "constant.language.null.npcs",
+          "match": "\\b(null|undefined)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.assignment.npcs",
+          "match": "="
+        },
+        {
+          "name": "keyword.operator.arithmetic.npcs",
+          "match": "\\+|-|\\*|/|%|\\^"
+        },
+        {
+          "name": "keyword.operator.comparison.npcs",
+          "match": "==|!=|<=|>=|<|>"
+        },
+        {
+          "name": "keyword.operator.logical.npcs",
+          "match": "\\band\\b|\\bor\\b"
+        }
+      ]
+    },
+    "function-calls": {
+      "patterns": [
+        {
+          "name": "support.function.builtin.npcs",
+          "match": "\\b(print|len|str|val|abs|floor|ceil|round|sqrt|sin|cos|tan|atan|atan2|pi|rnd|split|join|indexOf|slice|push|pop|insert|remove|sort|shuffle|sum|min|max|mean|median|mode|range|keys|values|hasIndex|hasKey|type|isa|not|and|or|yield)\\b"
+        },
+        {
+          "name": "entity.name.function.call.npcs",
+          "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*(?:\\.[a-zA-Z_][a-zA-Z0-9_]*|\\[[^\\]]+\\])*\\s*(?=\\()"
+        }
+      ]
+    },
+    "function-definitions": {
+      "patterns": [
+        {
+          "name": "meta.function.definition.npcs",
+          "match": "^\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*(=)\\s*(function)\\b",
+          "captures": {
+            "1": { "name": "entity.name.function.definition.npcs" },
+            "2": { "name": "keyword.operator.assignment.npcs" },
+            "3": { "name": "keyword.other.function.npcs" }
+          }
+        }
+      ]
+    },
+    "assignment-statements": {
+      "patterns": [
+        {
+          "name": "meta.assignment.npcs",
+          "match": "^\\s*(?!(?:if|then|else|end if|while|end while|for|in|end for|function|end function|return|break|continue)\\b)([a-zA-Z_][a-zA-Z0-9_]*(?:\\.[a-zA-Z_][a-zA-Z0-9_]*|\\[[^\\]]+\\])*)\\s*(=)",
+          "captures": {
+            "1": { "name": "variable.other.npcs" },
+            "2": { "name": "keyword.operator.assignment.npcs" }
+          }
+        }
+      ]
+    },
+    "yielding-statements": {
+      "patterns": [
+        {
+          "name": "meta.yielding-statement.npcs",
+          "match": "^\\s*(?!(?:if|then|else|end if|while|end while|for|in|end for|function|end function|return|break|continue)\\b)([a-zA-Z_][a-zA-Z0-9_]*(?:\\.[a-zA-Z_][a-zA-Z0-9_]*|\\[[^\\]]+\\])*)\\s+(.+)$",
+          "captures": {
+            "1": { "name": "entity.name.function.yielding.npcs" },
+            "2": { "name": "meta.yielding-statement.arguments.npcs" }
+          }
+        }
+      ]
+    },
+    "objects": {
+      "patterns": [
+        {
+          "name": "meta.object.npcs",
+          "begin": "\\{",
+          "end": "\\}",
+          "patterns": [
+            {
+              "include": "#strings"
+            },
+            {
+              "include": "#numbers"
+            },
+            {
+              "include": "#objects"
+            },
+            {
+              "include": "#arrays"
+            },
+            {
+              "name": "punctuation.separator.key-value.npcs",
+              "match": ":"
+            },
+            {
+              "name": "punctuation.separator.dictionary.npcs",
+              "match": ","
+            }
+          ]
+        }
+      ]
+    },
+    "arrays": {
+      "patterns": [
+        {
+          "name": "meta.array.npcs",
+          "begin": "\\[",
+          "end": "\\]",
+          "patterns": [
+            {
+              "include": "#strings"
+            },
+            {
+              "include": "#numbers"
+            },
+            {
+              "include": "#objects"
+            },
+            {
+              "include": "#arrays"
+            },
+            {
+              "name": "punctuation.separator.array.npcs",
+              "match": ","
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

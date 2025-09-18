@@ -1,0 +1,46 @@
+// Hello World example for NPCS
+print "Hello, World!"
+
+// Variable assignment
+name = "NPCS Developer"
+print "Welcome to NPCS, " + name + "!"
+
+// Function definition
+greet = function(person)
+    return "Hello, " + person + "!"
+end function
+
+// Function call
+message = greet("VSCode User")
+print message
+
+// Conditional statement
+age = 25
+if age >= 18 then
+    print "You are an adult"
+else
+    print "You are a minor"
+end if
+
+// Loop example
+print "Counting from 1 to 5:"
+i = 1
+while i <= 5
+    print "Number: " + i
+    i = i + 1
+end while
+
+// Array example
+fruits = ["apple", "banana", "orange"]
+print "Fruits:"
+for fruit in fruits
+    print "  - " + fruit
+end for
+
+// Object example
+person = {name: "Alice", age: 30, city: "New York"}
+print "Person: " + person.name + ", age " + person.age + ", from " + person.city
+
+// Yield example (for stateful execution)
+yield "Script paused here"
+print "Script resumed!"

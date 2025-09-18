@@ -16,6 +16,27 @@
 				"clear": false
 			},
 			"problemMatcher": []
+		},
+		{
+			"label": "npm: compile - vscode-extension",
+			"type": "shell",
+			"command": "npm",
+			"args": ["run", "compile"],
+			"options": {
+				"cwd": "${workspaceFolder}/vscode-extension"
+			},
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"problemMatcher": [
+				"$tsc"
+			]
 		}
 	],
 	"inputs": [

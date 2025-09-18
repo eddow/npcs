@@ -47,6 +47,18 @@
 			"env": {
 				"NODE_ENV": "development"
 			}
+		},
+		{
+			"name": "Launch NPCS Extension",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}/vscode-extension"
+			],
+			"outFiles": [
+				"${workspaceFolder}/vscode-extension/out/**/*.js"
+			],
+			"preLaunchTask": "npm: compile - vscode-extension"
 		}
 	],
 	"inputs": [

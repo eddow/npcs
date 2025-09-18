@@ -1,0 +1,36 @@
+// NPCS Function Definition Test
+
+// Function definitions (should have teal/bold function name, blue 'function' keyword)
+dropAll = function()
+	print "Dropping all items"
+end function
+
+myFunction = function(param1, param2)
+	result = param1 + param2
+	return result
+end function
+
+// Assignment statements (should have light blue lValue, white value)
+name = "John"
+age = 25
+items = ["apple", "banana"]
+
+// Yielding statements (should have red/bold lValue, white args)
+print "Hello World"
+player.health 100
+inventory.add "sword"
+
+// Function calls (should have teal lValue)
+myFunction()
+dropAll()
+player.getName()
+
+// Keywords (should be blue)
+if true then
+	while false
+		for item in items
+			break
+		end for
+	end while
+end if
+

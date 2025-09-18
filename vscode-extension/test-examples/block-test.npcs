@@ -1,0 +1,38 @@
+// NPCS Block Delimiter Test
+
+// Function definition
+myFunction = function(param1, param2)
+	// Assignment statement
+	result = param1 + param2
+	
+	// Yielding statement
+	print "Calculating..."
+	
+	// If block
+	if result > 10 then
+		print "Result is large"
+	else
+		print "Result is small"
+	end if
+	
+	// While block
+	counter = 0
+	while counter < 5
+		print "Counter: " + counter
+		counter = counter + 1
+	end while
+	
+	// For block
+	items = ["apple", "banana", "orange"]
+	for item in items
+		print "Item: " + item
+	end for
+	
+	// Return statement
+	return result
+end function
+
+// Test the function
+result = myFunction(5, 3)
+print "Final result: " + result
+

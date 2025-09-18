@@ -1,0 +1,117 @@
+{
+  "name": "npcs-language-support",
+  "displayName": "NPCS Language Support",
+  "description": "Language support for NPCS (MiniScript-based scripting language)",
+  "version": "1.0.0",
+  "publisher": "your-publisher-name",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets"
+  ],
+  "keywords": [
+    "npcs",
+    "miniscript",
+    "scripting",
+    "game",
+    "npc"
+  ],
+  "activationEvents": [
+    "onLanguage:npcs"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "npcs",
+        "aliases": [
+          "NPCS",
+          "npcs"
+        ],
+        "extensions": [
+          ".npcs"
+        ],
+        "configuration": "./language-configuration.json",
+        "firstLine": "^//.*NPCS|^//.*npcs"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "npcs",
+        "scopeName": "source.npcs",
+        "path": "./syntaxes/npcs.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "npcs",
+        "path": "./snippets/npcs.json"
+      }
+    ],
+    "themes": [
+      {
+        "label": "NPCS Color Theme",
+        "uiTheme": "vs-dark",
+        "path": "./themes/npcs-color-theme.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "npcs.runScript",
+        "title": "Run NPCS Script",
+        "category": "NPCS"
+      },
+      {
+        "command": "npcs.debugScript",
+        "title": "Debug NPCS Script",
+        "category": "NPCS"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "resourceExtname == .npcs",
+          "command": "npcs.runScript",
+          "group": "navigation"
+        },
+        {
+          "when": "resourceExtname == .npcs",
+          "command": "npcs.debugScript",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "when": "resourceExtname == .npcs",
+          "command": "npcs.runScript",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "npx vsce package",
+    "build:package": "npm run compile && npx vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/node": "16.x",
+    "typescript": "^4.9.4"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eddow/npcs.git"
+  },
+  "homepage": "https://github.com/eddow/npcs#readme",
+  "bugs": {
+    "url": "https://github.com/eddow/npcs/issues"
+  }
+}
