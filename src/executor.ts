@@ -125,8 +125,9 @@ export class MiniScriptExecutor {
 				propertyDescriptor = Object.getOwnPropertyDescriptor(browser, name)
 				browser = Object.getPrototypeOf(browser)
 			}
-		}
-		if (!propertyDescriptor?.set || !Reflect.set(this.context, name, value, this.context))
+			if (!propertyDescriptor?.set || !Reflect.set(this.context, name, value, this.context))
+				throw new ExecutionError(this, statement, `Cannot set variable ${name}`)
+		} else
 			this.stack[0].scope.variables[name] = value
 	}
 
