@@ -34,9 +34,7 @@
 				"showReuseMessage": true,
 				"clear": false
 			},
-			"problemMatcher": [
-				"$tsc"
-			]
+			"problemMatcher": ["$tsc"]
 		}
 	],
 	"inputs": [

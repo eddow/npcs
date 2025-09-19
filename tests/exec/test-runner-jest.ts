@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse, stringify } from 'flatted'
-import { MiniScriptExecutor } from '../src/executor.js'
-import type { ExecutionContext, ExecutionStackEntry, ExecutionState } from '../src/helpers.js'
-import { reviveState, serializeState } from '../src/helpers.js'
+import { MiniScriptExecutor } from '../../src/executor.js'
+import type { ExecutionContext, ExecutionStackEntry, ExecutionState } from '../../src/helpers.js'
+import { reviveState, serializeState } from '../../src/helpers.js'
 
 // Helper functions to handle circular references in ExecutionState
 function stringifyStack(stack: ExecutionStackEntry[]): any {
@@ -24,7 +24,7 @@ export interface TestResult {
 }
 
 export function runFixture(fixtureName: string, state?: string): TestResult {
-	const fixturePath = join(process.cwd(), 'tests', 'fixtures', `${fixtureName}.mns`)
+	const fixturePath = join(process.cwd(), 'tests/exec', 'fixtures', `${fixtureName}.mns`)
 	return runFile(fixturePath, state)
 }
 

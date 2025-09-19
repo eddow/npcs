@@ -1,4 +1,4 @@
-import NpcScript from '../src/npcs.js'
+import NpcScript from '../../src/npcs.js'
 
 describe('NpcS direct usage', () => {
 	it('executes a simple script and returns a value', () => {

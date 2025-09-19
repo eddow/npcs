@@ -1,11 +1,4 @@
-import {
-	type ASTBase,
-	type ASTBaseBlock,
-	type ASTFunctionStatement,
-	LexerException,
-	ParserException,
-} from 'miniscript-core'
-import { ASTProviderWithCallback } from './ast-provider-with-callback'
+import { ASTProviderWithCallback } from './script'
 import { MiniScriptExecutor } from './executor'
 import {
 	type ExecutionContext,
@@ -16,12 +9,22 @@ import {
 	jsOperators,
 	type Operators,
 } from './helpers'
-import { ExtParser } from './msExt'
+import {
+	type ASTBase,
+	type ASTBaseBlock,
+	type ASTFunctionStatement,
+	LexerException,
+	Parser,
+	ParserException,
+} from './script'
 export type NpcReturn =
 	| { type: 'return'; value?: any }
 	| { type: 'yield'; value: any; state: ExecutionState }
 
-export function lexerExceptionLocation(error: LexerException|ParserException, source: string): string {
+export function lexerExceptionLocation(
+	error: LexerException | ParserException,
+	source: string,
+): string {
 	const lines = source.split('\n')
 	const startLineIdx = Math.max(0, error.range.start.line - 1)
 	const endLineIdx = Math.max(0, error.range.end.line - 1)
@@ -51,7 +54,7 @@ export default class NpcScript {
 		const lineIdx = expr.start.line - 1
 		const colIdx = Math.max(1, expr.start.character)
 		const lineText = lines[lineIdx] ?? ''
-		
+
 		const caretIndent = lineText.substring(0, colIdx - 1).replace(/[^\t]/g, ' ')
 		const caretLine = `${caretIndent}^`
 		return `${coords}\n${lineText}\n${caretLine}`
@@ -62,14 +65,14 @@ export default class NpcScript {
 		public isaTypes: IsaTypes = jsIsaTypes,
 	) {
 		try {
-			this.ast = new ExtParser(source, {
+			this.ast = new Parser(source, {
 				astProvider: new ASTProviderWithCallback((func) => {
 					this.functionIndexes.set(func, this.functions.length)
 					this.functions.push(func)
 				}),
 			}).parseChunk()
 		} catch (error) {
-			if (error instanceof LexerException || error instanceof ParserException) 
+			if (error instanceof LexerException || error instanceof ParserException)
 				console.error(lexerExceptionLocation(error, source))
 			throw error
 		}
@@ -77,7 +80,7 @@ export default class NpcScript {
 	function(index?: number): ASTBaseBlock {
 		return index === undefined ? this.ast : this.functions[index]
 	}
-	
+
 	executor(context: ExecutionContext, state?: ExecutionState) {
 		return new MiniScriptExecutor(this, context, state)
 	}

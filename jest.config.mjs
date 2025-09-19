@@ -3,7 +3,6 @@ export default {
 	testEnvironment: 'node',
 	roots: ['<rootDir>/tests'],
 	testMatch: [
-		'**/__tests__/**/*.ts',
 		'**/?(*.)+(spec|test).ts'
 	],
 	transform: {
@@ -24,8 +23,4 @@ export default {
 	moduleNameMapper: {
 		'^(\\.{1,2}/.*)\\.js$': '$1',
 	},
-	// Handle miniscript-core as CommonJS
-	transformIgnorePatterns: [
-		'node_modules/(?!(miniscript-core)/)'
-	],
 };

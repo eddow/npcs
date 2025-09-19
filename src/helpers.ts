@@ -1,5 +1,5 @@
-import type { ASTBase } from 'miniscript-core'
 import type { MiniScriptExecutor } from './executor'
+import type { ASTBase } from './script'
 
 export class ExecutionError extends Error {
 	public error?: Error
@@ -86,8 +86,6 @@ export class FunctionDefinition {
 }
 export type ExecutionContext = Record<string, any>
 
-
-
 export type BranchedResult = { type: 'branched' }
 export type FunctionResult = { type: 'return' | 'yield'; value?: any }
 export type ExecutionResult = BranchedResult | FunctionResult | undefined | void
@@ -98,7 +96,7 @@ export interface LValue {
 }
 
 export function serializeState(_key, value) {
-	if(typeof value === 'function') {
+	if (typeof value === 'function') {
 		throw new Error(`Not implemented: Functions cannot be serialized
 In order to have native functions in the serialized state (in variables or used as parameters),
 	a custom (de)serializer has to be provided`)

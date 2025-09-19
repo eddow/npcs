@@ -1,7 +1,7 @@
 export { MiniScriptExecutor } from './executor'
 export {
-	ExecutionError,
 	type ExecutionContext,
+	ExecutionError,
 	type ExecutionState,
 	FunctionDefinition,
 	type FunctionResult,

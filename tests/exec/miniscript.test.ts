@@ -27,6 +27,35 @@ return tf(2)
 		})
 	})
 
+	describe('New operator', () => {
+		it('should create an object with the given prototype', () => {
+			const snippet = `
+proto = {name: "base", x: 1}
+obj = new proto
+print obj.name
+print obj.x
+obj.x = 2
+print obj.x
+print proto.x
+`
+			const result = runScript(snippet)
+			expect(result.success).toBe(true)
+			expect(result.output).toEqual(['base', '1', '2', '1'])
+		})
+
+		it('should throw when operand is not an object or function', () => {
+			const snippet = `
+x = 5
+y = new x
+`
+			const result = runScript(snippet)
+			expect(result.success).toBe(false)
+			expect(result.error?.message).toContain(
+				"'new' operator expects an object or function prototype",
+			)
+		})
+	})
+
 	describe('Scope System', () => {
 		it('should capture variables in closures by reference (counter)', () => {
 			const snippet = `
@@ -213,15 +242,10 @@ print tmp
 	})
 
 	describe('Error Handling', () => {
-		it('should handle undefined variables gracefully', () => {
+		it('should handle undefined variables with an error', () => {
 			const result = runFixture('error-handling')
 
-			expect(result.success).toBe(true)
-			expect(result.output).toEqual([
-				'This should show undefined: undefined',
-				'Parameter x: undefined',
-				'Function result: undefined',
-			])
+			expect(result.success).toBe(false)
 		})
 	})
 
@@ -292,7 +316,7 @@ end while
 				'Negative start slice: ',
 				'Negative end list slice: ',
 				'Single char: H',
-				'Single element: 20'
+				'Single element: 20',
 			])
 		})
 
@@ -310,7 +334,7 @@ end while
 				'Large start: ',
 				'Large end: 2,3,4,5',
 				'Empty string slice: ',
-				'Empty list slice: '
+				'Empty list slice: ',
 			])
 		})
 
@@ -329,7 +353,7 @@ print "Single element: " + numbers[2:3]
 			expect(result.output).toEqual([
 				'Inline slice: World',
 				'Inline list slice: 2,3,4',
-				'Single element: 3'
+				'Single element: 3',
 			])
 		})
 
@@ -353,7 +377,9 @@ result = number[0:2]
 `
 			const result = runScript(snippet)
 			expect(result.success).toBe(false)
-			expect(result.error?.message).toContain('Slice operation can only be applied to strings or lists')
+			expect(result.error?.message).toContain(
+				'Slice operation can only be applied to strings or lists',
+			)
 		})
 
 		it('should throw error for non-numeric start index', () => {

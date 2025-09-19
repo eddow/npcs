@@ -254,12 +254,7 @@ describe('Advanced MiniScript Features', () => {
 		it('should iterate map keys in insertion order', () => {
 			const result = runFixture('for-in-map')
 			expect(result.success).toBe(true)
-			expect(result.output).toEqual([
-				'Map keys:',
-				'  - name',
-				'  - age',
-				'  - city',
-			])
+			expect(result.output).toEqual(['Map keys:', '  - name', '  - age', '  - city'])
 		})
 	})
 

@@ -1,3 +1,5 @@
+Source: https://github.com/ayecue/miniscript-core
+
 # MiniScript Executor
 
 A comprehensive MiniScript executor with linear stateful execution.

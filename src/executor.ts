@@ -1,4 +1,23 @@
 import {
+	type Callable,
+	type ExecutionContext,
+	ExecutionError,
+	type ExecutionResult,
+	type ExecutionStackEntry,
+	type ExecutionState,
+	type ForScope,
+	FunctionDefinition,
+	type FunctionResult,
+	type IP,
+	isCallable,
+	type LValue,
+	type MSScope,
+	type MSValue,
+	stack,
+	type WhileScope,
+} from './helpers'
+import NpcScript from './npcs'
+import {
 	type ASTAssignmentStatement,
 	type ASTBase,
 	ASTBaseBlock,
@@ -15,37 +34,18 @@ import {
 	ASTIfStatement,
 	ASTIndexExpression,
 	type ASTIsaExpression,
-	ASTListConstructorExpression,
+	type ASTListConstructorExpression,
 	type ASTListValue,
 	type ASTLiteral,
 	type ASTLogicalExpression,
-	ASTMapConstructorExpression,
+	type ASTMapConstructorExpression,
 	ASTMemberExpression,
 	ASTParenthesisExpression,
 	type ASTReturnStatement,
-	ASTSliceExpression,
+	type ASTSliceExpression,
 	type ASTUnaryExpression,
 	ASTWhileStatement,
-} from 'miniscript-core'
-import {
-	Callable,
-	type ExecutionContext,
-	ExecutionError,
-	type ExecutionResult,
-	type ExecutionStackEntry,
-	type ExecutionState,
-	type ForScope,
-	FunctionDefinition,
-	type FunctionResult,
-	type IP,
-	isCallable,
-	type LValue,
-	type MSScope,
-	type MSValue,
-	stack,
-	WhileScope,
-} from './helpers'
-import NpcScript from './npcs'
+} from './script'
 
 // Meant to be thrown by executeCall to signal a branched execution
 class ExpressionCall {
@@ -91,7 +91,7 @@ export class MiniScriptExecutor {
 	}
 
 	// Variable access methods
-	private getVariable(name: string): any {
+	private getVariable(name: string, statement: ASTBase): any {
 		for (const scope of this.stack[0].loopScopes)
 			if ('variable' in scope && scope.variable === name) return scope.iterator[scope.index]
 		let scope: MSScope | undefined = this.stack[0].scope
@@ -99,9 +99,8 @@ export class MiniScriptExecutor {
 			if (name in scope.variables) return scope.variables[name]
 			scope = scope.parent
 		}
-		if (name in this.context) {
-			return Reflect.get(this.context, name)
-		}
+		if (name in this.context) return Reflect.get(this.context, name)
+		throw new ExecutionError(this, statement, `Variable ${name} not found`)
 	}
 
 	private setVariable(name: string, value: any, statement: ASTBase): void {
@@ -121,14 +120,13 @@ export class MiniScriptExecutor {
 		let propertyDescriptor: PropertyDescriptor | undefined
 		if (name in this.context) {
 			let browser = this.context as any
-			while(!propertyDescriptor && browser && browser !== Object.prototype) {
+			while (!propertyDescriptor && browser && browser !== Object.prototype) {
 				propertyDescriptor = Object.getOwnPropertyDescriptor(browser, name)
 				browser = Object.getPrototypeOf(browser)
 			}
 			if (!propertyDescriptor?.set || !Reflect.set(this.context, name, value, this.context))
 				throw new ExecutionError(this, statement, `Cannot set variable ${name}`)
-		} else
-			this.stack[0].scope.variables[name] = value
+		} else this.stack[0].scope.variables[name] = value
 	}
 
 	// Main execution entry point
@@ -290,7 +288,7 @@ export class MiniScriptExecutor {
 		for (const index of toRemove) delete this.stack[0].evaluatedCache![index]
 	}
 	private evaluateExpression(expr: ASTBase): MSValue {
-		while(expr instanceof ASTParenthesisExpression) expr = expr.expression
+		while (expr instanceof ASTParenthesisExpression) expr = expr.expression
 		if (!expr) return undefined
 
 		const expressionsCacheIndex = this.expressionsCacheIndex++
@@ -303,7 +301,6 @@ export class MiniScriptExecutor {
 			return this.stack[0].evaluatedCache![expressionsCacheIndex]
 		}
 		const calculated = (() => {
-
 			const lValue = this.evaluateLValue(expr)
 			if (lValue) {
 				return lValue.get()
@@ -355,7 +352,7 @@ export class MiniScriptExecutor {
 	private evaluateLValue(expr: ASTBase): LValue | false {
 		if (expr instanceof ASTIdentifier)
 			return {
-				get: () => this.getVariable(expr.name),
+				get: () => this.getVariable(expr.name, expr),
 				set: (value: MSValue) => {
 					this.setVariable(expr.name, value, expr)
 				},
@@ -373,7 +370,7 @@ export class MiniScriptExecutor {
 			return false
 		}
 		// It can be a string, a date, ... too
-		if(!base /*|| typeof base !== 'object'*/)
+		if (!base /*|| typeof base !== 'object'*/)
 			throw new ExecutionError(this, expr, `Invalid collection \`${base}\` for index \`${index}\``)
 		return {
 			get: () => base[index],
@@ -410,7 +407,7 @@ export class MiniScriptExecutor {
 			throw new ExecutionError(this, statement, 'Cannot call non-function value')
 		}
 	}
-	
+
 	private executeAssignment(statement: ASTAssignmentStatement): ExecutionResult {
 		// Check if this is a member expression assignment (e.g., person.age = 40)
 		const lValue = this.evaluateLValue(statement.variable)
@@ -459,9 +456,13 @@ export class MiniScriptExecutor {
 	private executeWhile(statement: ASTWhileStatement): ExecutionResult {
 		// Check if we're entering the loop for the first time
 		if (this.evaluateExpression(statement.condition)) {
-			const occurrences = (this.stack[0].loopOccurrences ?? 0)+1
-			if(occurrences > 1000)
-				throw new ExecutionError(this, statement, 'While loop "stack overflow": has more than 1000 occurrences')
+			const occurrences = (this.stack[0].loopOccurrences ?? 0) + 1
+			if (occurrences > 1000)
+				throw new ExecutionError(
+					this,
+					statement,
+					'While loop "stack overflow": has more than 1000 occurrences',
+				)
 			// Enter the while loop body - push index 0 for first statement in the block
 			this.stack[0].loopScopes.unshift({ ipDepth: this.stack[0].ip.indexes.length, occurrences })
 			this.stack[0].ip.indexes.push(0)
@@ -478,20 +479,19 @@ export class MiniScriptExecutor {
 	): ExecutionResult {
 		// Evaluate the function reference to get the function definition
 		// Function is evaluated *after* the arguments so that it does not have to be serialized (in case of native functions)
-		const [evaluatedArgs, func, source] =
-			isCallable(statement)
-				? [[], statement, from!]
-				: (() => {
-						const expr = statement.expression
-						this.assertAST(expr, ASTCallExpression)
-						// Get arguments
-						const args = expr.arguments
-						return [
-							args ? args.map((arg: any) => this.evaluateExpression(arg)) : [],
-							this.evaluateExpression(expr.base),
-							statement,
-						]
-					})()
+		const [evaluatedArgs, func, source] = isCallable(statement)
+			? [[], statement, from!]
+			: (() => {
+					const expr = statement.expression
+					this.assertAST(expr, ASTCallExpression)
+					// Get arguments
+					const args = expr.arguments
+					return [
+						args ? args.map((arg: any) => this.evaluateExpression(arg)) : [],
+						this.evaluateExpression(expr.base),
+						statement,
+					]
+				})()
 
 		if (func instanceof FunctionDefinition) {
 			this.stack.unshift(func.enterCall(evaluatedArgs))
@@ -537,6 +537,16 @@ export class MiniScriptExecutor {
 
 	private evaluateUnaryExpression(expr: ASTUnaryExpression): any {
 		const argument = this.evaluateExpression(expr.argument)
+		// Special handling for 'new' operator: create an object with given prototype
+		if (expr.operator === 'new') {
+			if (argument === null || (typeof argument !== 'object' && typeof argument !== 'function'))
+				throw new ExecutionError(
+					this,
+					expr,
+					`'new' operator expects an object or function prototype, got ${typeof argument}`,
+				)
+			return Object.create(argument, {})
+		}
 		const operator =
 			this.script.operators[`${expr.operator === 'not' ? '!' : (expr.operator ?? '??!?')}.`]
 		if (!operator) throw new ExecutionError(this, expr, `Unknown unary operator: ${expr.operator}`)
@@ -545,10 +555,10 @@ export class MiniScriptExecutor {
 
 	private evaluateLogicalExpression(expr: ASTLogicalExpression): any {
 		const breakOn = {
-			'and': false,
-			'or': true,
+			and: false,
+			or: true,
 		}[expr.operator]
-		if(!!this.evaluateExpression(expr.left) === breakOn) return breakOn
+		if (!!this.evaluateExpression(expr.left) === breakOn) return breakOn
 
 		return this.evaluateExpression(expr.right)
 	}
@@ -562,13 +572,17 @@ export class MiniScriptExecutor {
 		})
 
 		// Return a FunctionDefinition instance
-		return new FunctionDefinition(this.script.functionIndexes.get(expr)!, parameters, this.stack[0].scope)
+		return new FunctionDefinition(
+			this.script.functionIndexes.get(expr)!,
+			parameters,
+			this.stack[0].scope,
+		)
 	}
 
 	private evaluateMapConstructor(expr: ASTMapConstructorExpression): any {
 		const obj: any = {}
 		if (expr.fields) {
-			for(const field of expr.fields) {
+			for (const field of expr.fields) {
 				this.assertAST(field.key, ASTIdentifier)
 				const key = field.key.name
 				const value = this.evaluateExpression(field.value)
@@ -585,11 +599,10 @@ export class MiniScriptExecutor {
 	private executeForGeneric(statement: ASTForGenericStatement): ExecutionResult {
 		const variable = statement.variable.name
 		let iterator = this.evaluateExpression(statement.iterator)
-		if(typeof iterator !== 'object') {
+		if (typeof iterator !== 'object') {
 			throw new ExecutionError(this, statement, 'For loop iterator must be an map or a list')
 		}
-		if (!Array.isArray(iterator))
-			iterator = Object.keys(iterator)
+		if (!Array.isArray(iterator)) iterator = Object.keys(iterator)
 		this.stack[0].loopScopes.unshift({
 			iterator,
 			index: 0,
@@ -665,7 +678,11 @@ export class MiniScriptExecutor {
 
 		// Validate that base is sliceable (string or array)
 		if (typeof base !== 'string' && !Array.isArray(base)) {
-			throw new ExecutionError(this, expr, 'Slice operation can only be applied to strings or lists')
+			throw new ExecutionError(
+				this,
+				expr,
+				'Slice operation can only be applied to strings or lists',
+			)
 		}
 
 		// Handle EmptyExpression for omitted end index (e.g., text[7:])
@@ -674,11 +691,11 @@ export class MiniScriptExecutor {
 			if (typeof left !== 'number') {
 				throw new ExecutionError(this, expr, 'Slice start index must be a number')
 			}
-			
+
 			// Handle negative indices
 			const length = base.length
 			const startIndex = left < 0 ? Math.max(0, length + left) : Math.min(length, left)
-			
+
 			// Return slice from start to end
 			return base.slice(startIndex)
 		}
