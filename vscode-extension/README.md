@@ -41,7 +41,10 @@ The extension automatically recognizes `.npcs` files and provides language suppo
 
 Type the following prefixes and press `Tab` to expand:
 
-- `func` - Function definition
+- `func` - Anonymous function definition
+- `nfunc` - Named function definition
+- `funcdef` - Named function with default parameters
+- `afuncdef` - Anonymous function with default parameters
 - `if` - If statement
 - `ifelse` - If-else statement
 - `while` - While loop
@@ -75,6 +78,8 @@ Hover over any built-in function or keyword to see detailed information about it
 NPCS is a MiniScript-based scripting language with the following features:
 
 - **Variables and Functions**: Full support for variable declarations and function definitions
+- **Named Functions**: Support for both `function name()` and `name = function()` syntax
+- **Default Parameters**: Function parameters can have default values using `param = value` syntax
 - **Control Flow**: `if/else`, `while`, and `for` loops with `break` and `continue`
 - **Data Types**: Numbers, strings, booleans, objects, and arrays
 - **Object Creation**: `{key: value}` syntax with property access
@@ -143,3 +148,6 @@ This extension is provided as-is for the NPCS scripting language project.
 - Error detection
 - Code snippets
 - Run script functionality
+- Named function syntax support (`function name()`)
+- Default parameter syntax support (`param = value`)
+- Enhanced function definition snippets

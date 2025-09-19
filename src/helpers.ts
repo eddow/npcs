@@ -68,11 +68,13 @@ export class FunctionDefinition {
 		public index: number,
 		public parameters: string[],
 		public scope: MSScope,
+		public parameterDefaults: any[] = [],
 	) {}
 	enterCall(args: any[], targetReturn?: number): ExecutionStackEntry {
 		const variables = {}
 		for (let i = 0; i < this.parameters.length; i++) {
-			variables[this.parameters[i]] = args[i]
+			variables[this.parameters[i]] =
+				args[i] !== undefined ? args[i] : this.parameterDefaults[i]
 		}
 		return stack({
 			scope: { variables, parent: this.scope },
@@ -109,6 +111,7 @@ In order to have native functions in the serialized state (in variables or used 
 				index: value.index,
 				parameters: value.parameters,
 				scope: value.scope,
+				parameterDefaults: value.parameterDefaults,
 			}
 		}
 	}
@@ -119,7 +122,12 @@ export function reviveState(_key, value) {
 	if (value && typeof value === 'object') {
 		// Restore function definitions
 		if (value.__type === 'FunctionDefinition') {
-			return new FunctionDefinition(value.index, value.parameters, value.scope)
+			return new FunctionDefinition(
+				value.index,
+				value.parameters,
+				value.scope,
+				value.parameterDefaults ?? [],
+			)
 		}
 	}
 	return value

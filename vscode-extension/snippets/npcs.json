@@ -1,12 +1,39 @@
 {
-  "Function Definition": {
+  "Function Definition (Anonymous)": {
     "prefix": "func",
     "body": [
       "${1:functionName} = function(${2:params})",
       "\t${3:// function body}",
       "end function"
     ],
-    "description": "Define a function"
+    "description": "Define an anonymous function"
+  },
+  "Function Definition (Named)": {
+    "prefix": "nfunc",
+    "body": [
+      "function ${1:functionName}(${2:params})",
+      "\t${3:// function body}",
+      "end function"
+    ],
+    "description": "Define a named function"
+  },
+  "Function with Default Parameters": {
+    "prefix": "funcdef",
+    "body": [
+      "function ${1:functionName}(${2:param1} = ${3:defaultValue}, ${4:param2})",
+      "\t${5:// function body}",
+      "end function"
+    ],
+    "description": "Define a function with default parameters"
+  },
+  "Anonymous Function with Default Parameters": {
+    "prefix": "afuncdef",
+    "body": [
+      "${1:functionName} = function(${2:param1} = ${3:defaultValue}, ${4:param2})",
+      "\t${5:// function body}",
+      "end function"
+    ],
+    "description": "Define an anonymous function with default parameters"
   },
   "If Statement": {
     "prefix": "if",

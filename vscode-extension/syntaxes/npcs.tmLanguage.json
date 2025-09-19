@@ -153,13 +153,62 @@
     "function-definitions": {
       "patterns": [
         {
-          "name": "meta.function",
-          "match": "^\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*(=)\\s*(function)\\b",
-          "captures": {
+          "name": "meta.function.named",
+          "begin": "^\\s*(function)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*(\\()",
+          "beginCaptures": {
+            "1": { "name": "storage.type.function" },
+            "2": { "name": "entity.name.function" },
+            "3": { "name": "punctuation.definition.parameters.begin" }
+          },
+          "end": "\\)",
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.parameters.end" }
+          },
+          "patterns": [
+            {
+              "include": "#function-parameters"
+            }
+          ]
+        },
+        {
+          "name": "meta.function.anonymous",
+          "begin": "^\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*(=)\\s*(function)\\s*(\\()",
+          "beginCaptures": {
             "1": { "name": "entity.name.function" },
             "2": { "name": "keyword.operator.assignment" },
-            "3": { "name": "storage.type.function" }
+            "3": { "name": "storage.type.function" },
+            "4": { "name": "punctuation.definition.parameters.begin" }
+          },
+          "end": "\\)",
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.parameters.end" }
+          },
+          "patterns": [
+            {
+              "include": "#function-parameters"
+            }
+          ]
+        }
+      ]
+    },
+    "function-parameters": {
+      "patterns": [
+        {
+          "name": "meta.parameter.default",
+          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*(=)\\s*([^,)]+)",
+          "captures": {
+            "1": { "name": "variable.parameter" },
+            "2": { "name": "keyword.operator.assignment" },
+            "3": { "name": "meta.default-value" }
           }
+        },
+        {
+          "name": "variable.parameter",
+          "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+        },
+        {
+          "name": "punctuation.separator.parameter",
+          "match": ","
         }
       ]
     },

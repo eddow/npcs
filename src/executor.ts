@@ -576,12 +576,20 @@ export class MiniScriptExecutor {
 			this.assertAST(param, ASTIdentifier)
 			return param.name
 		})
+		// Extract default values aligned with parameters
+		const parameterDefaults = expr.parameters.map((param) => {
+			if (param instanceof ASTAssignmentStatement) {
+				return this.evaluateExpression(param.init!)
+			}
+			return undefined
+		})
 
 		// Return a FunctionDefinition instance
 		return new FunctionDefinition(
 			this.script.functionIndexes.get(expr)!,
 			parameters as string[],
 			this.stack[0].scope,
+			parameterDefaults,
 		)
 	}
 

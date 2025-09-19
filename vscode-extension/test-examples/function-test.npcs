@@ -1,7 +1,7 @@
 // NPCS Function Definition Test
 
 // Function definitions (should have teal/bold function name, blue 'function' keyword)
-dropAll = function()
+function dropAll()
 	print "Dropping all items"
 end function
 

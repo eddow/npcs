@@ -103,7 +103,7 @@ function add(a, b)
     return a + b
 end function
 
-function greet(name)
+function greet(name = "World")
     return "Hello " + name
 end function
 
@@ -120,7 +120,7 @@ return "done"
 		expect(output).toEqual([
 			'Hello from named function',
 			'8',
-			'Hello undefined',
+			'Hello World',
 			'Hello Alice'
 		])
 	})

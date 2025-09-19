@@ -17,7 +17,7 @@ with `function XXX(...)` being equivalent to `XXX = function(...)`
 # Ideas for later
 
 ## Assignment expression
-as well as statement
+as well as statement?
 
 ## Ternary
 "yes" if condition else "false"

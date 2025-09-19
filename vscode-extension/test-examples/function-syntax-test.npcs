@@ -1,0 +1,45 @@
+// Test file for new function syntax highlighting
+
+// Named function without parameters
+function myFunction()
+    return "Hello from named function"
+end function
+
+// Named function with parameters
+function add(a, b)
+    return a + b
+end function
+
+// Named function with default parameters
+function greet(name = "World", age = 25)
+    return "Hello " + name + ", age " + age
+end function
+
+// Anonymous function (old syntax)
+anonFunc = function()
+    return "Anonymous function"
+end function
+
+// Anonymous function with default parameters
+anonWithDefaults = function(x = 42, y = "test")
+    return x + " " + y
+end function
+
+// Mixed parameter types
+function mixedParams(required, optional = "default", another = 100)
+    return required + " " + optional + " " + another
+end function
+
+// Function calls
+print myFunction()
+print add(5, 3)
+print greet()
+print greet("Alice")
+print greet("Bob", 30)
+print anonFunc()
+print anonWithDefaults()
+print anonWithDefaults(10)
+print mixedParams("test")
+print mixedParams("test", "custom")
+print mixedParams("test", "custom", 200)
+

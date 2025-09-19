@@ -328,7 +328,7 @@ function validateDocument(document, diagnosticCollection) {
         const ifOpen = /^if\b.*\bthen\b/i;
         const forOpen = /^for\b.*\bin\b/i;
         const whileOpen = /^while\b/i;
-        const funcOpen = /^[A-Za-z_][A-Za-z0-9_]*\s*=\s*function\b/i;
+        const funcOpen = /^(?:[A-Za-z_][A-Za-z0-9_]*\s*=\s*function|function\s+[A-Za-z_][A-Za-z0-9_]*)\b/i;
         const endIf = /^end\s+if\b/i;
         const endFor = /^end\s+for\b/i;
         const endWhile = /^end\s+while\b/i;
@@ -462,7 +462,7 @@ class NpcsFoldingProvider {
                 stack.push({ type: 'while', line: i });
                 continue;
             }
-            if (/^[A-Za-z_][A-Za-z0-9_]*\s*=\s*function\b/i.test(line)) {
+            if (/^(?:[A-Za-z_][A-Za-z0-9_]*\s*=\s*function|function\s+[A-Za-z_][A-Za-z0-9_]*)\b/i.test(line)) {
                 stack.push({ type: 'function', line: i });
                 continue;
             }

@@ -341,7 +341,7 @@ function validateDocument(document: vscode.TextDocument, diagnosticCollection: v
         const ifOpen = /^if\b.*\bthen\b/i;
         const forOpen = /^for\b.*\bin\b/i;
         const whileOpen = /^while\b/i;
-        const funcOpen = /^[A-Za-z_][A-Za-z0-9_]*\s*=\s*function\b/i;
+        const funcOpen = /^(?:[A-Za-z_][A-Za-z0-9_]*\s*=\s*function|function\s+[A-Za-z_][A-Za-z0-9_]*)\b/i;
         const endIf = /^end\s+if\b/i;
         const endFor = /^end\s+for\b/i;
         const endWhile = /^end\s+while\b/i;
@@ -449,7 +449,7 @@ class NpcsFoldingProvider implements vscode.FoldingRangeProvider {
             }
             if (/^for\b.*\bin\b/i.test(line)) { stack.push({ type: 'for', line: i }); continue; }
             if (/^while\b/i.test(line)) { stack.push({ type: 'while', line: i }); continue; }
-            if (/^[A-Za-z_][A-Za-z0-9_]*\s*=\s*function\b/i.test(line)) { stack.push({ type: 'function', line: i }); continue; }
+            if (/^(?:[A-Za-z_][A-Za-z0-9_]*\s*=\s*function|function\s+[A-Za-z_][A-Za-z0-9_]*)\b/i.test(line)) { stack.push({ type: 'function', line: i }); continue; }
 
             if (/^end\s+if\b/i.test(line)) {
                 const top = stack.pop();
