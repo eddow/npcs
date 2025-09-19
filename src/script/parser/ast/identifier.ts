@@ -8,12 +8,12 @@ export enum ASTIdentifierKind {
 }
 
 export interface ASTIdentifierOptions extends ASTBaseOptions {
-	name: string
+	name?: string
 	kind: ASTIdentifierKind
 }
 
 export class ASTIdentifier extends ASTBase {
-	name: string
+	name?: string
 	kind: ASTIdentifierKind
 
 	constructor(options: ASTIdentifierOptions) {

@@ -20,7 +20,7 @@ export default class Lexer {
 	content: string
 	length: number
 	index: number
-	tokenStart: number | null
+	tokenStart?: number
 	line: number
 	lineStart: number
 	offset: number
@@ -37,7 +37,6 @@ export default class Lexer {
 		this.content = content
 		this.length = content.length
 		this.index = 0
-		this.tokenStart = null
 		this.tabWidth = tabWidth
 		this.line = 1
 		this.lineStart = 0
@@ -96,7 +95,7 @@ export default class Lexer {
 		[CharacterCode.ASTERISK]: function asteriskHandler(this, afterSpace) {
 			if (CharacterCode.EQUAL === this.codeAt(1))
 				return this.scanPunctuator(Operator.MultiplyShorthand, afterSpace)
-			return this.scanPunctuator(Operator.Asterik, afterSpace)
+			return this.scanPunctuator(Operator.Asterisk, afterSpace)
 		},
 		[CharacterCode.SLASH]: function slashHandler(this, afterSpace) {
 			if (CharacterCode.EQUAL === this.codeAt(1))
@@ -157,7 +156,7 @@ export default class Lexer {
 			value: Operator.EndOfLine,
 			line: this.line,
 			lineStart: this.lineStart,
-			range: [this.tokenStart, this.index],
+			range: [this.tokenStart!, this.index],
 			offsetRange: [this.offset, this.offset],
 			afterSpace,
 		})
@@ -173,7 +172,7 @@ export default class Lexer {
 			value,
 			line: this.line,
 			lineStart: this.lineStart,
-			range: [this.tokenStart, this.index],
+			range: [this.tokenStart!, this.index],
 			offsetRange: [this.offset, this.offset],
 			afterSpace,
 		})
@@ -206,7 +205,7 @@ export default class Lexer {
 			raw: value,
 			line: this.line,
 			lineStart: this.lineStart,
-			range: [this.tokenStart, this.index],
+			range: [this.tokenStart!, this.index],
 			offsetRange: [this.offset, this.offset],
 			afterSpace,
 		})
@@ -219,11 +218,10 @@ export default class Lexer {
 	createNull(afterSpace: boolean) {
 		const literalToken = new LiteralToken({
 			type: TokenType.NilLiteral,
-			value: null,
 			raw: Literal.Null,
 			line: this.line,
 			lineStart: this.lineStart,
-			range: [this.tokenStart, this.index],
+			range: [this.tokenStart!, this.index],
 			offsetRange: [this.offset, this.offset],
 			afterSpace,
 		})
@@ -239,7 +237,7 @@ export default class Lexer {
 			value: Operator.SliceSeparator,
 			line: this.line,
 			lineStart: this.lineStart,
-			range: [this.tokenStart, this.index],
+			range: [this.tokenStart!, this.index],
 			offsetRange: [this.offset, this.offset],
 			afterSpace,
 		})
@@ -255,7 +253,7 @@ export default class Lexer {
 			value,
 			line: this.line,
 			lineStart: this.lineStart,
-			range: [this.tokenStart, this.index],
+			range: [this.tokenStart!, this.index],
 			offsetRange: [this.offset, this.offset],
 			afterSpace,
 		})
@@ -272,7 +270,7 @@ export default class Lexer {
 			raw: raw,
 			line: this.line,
 			lineStart: this.lineStart,
-			range: [this.tokenStart, this.index],
+			range: [this.tokenStart!, this.index],
 			offsetRange: [this.offset, this.offset],
 			afterSpace,
 		})
@@ -329,7 +327,7 @@ export default class Lexer {
 			raw: rawString,
 			line: beginLine,
 			lineStart: beginLineStart,
-			range: [this.tokenStart, this.index],
+			range: [this.tokenStart!, this.index],
 			offsetRange: [strStartOffset, endOffset],
 			afterSpace,
 			lastLine: this.line,
@@ -351,13 +349,13 @@ export default class Lexer {
 
 		if (validator.isWinNewline(this.codeAt(), this.codeAt(1))) this.index++
 
-		const value = this.content.slice(this.tokenStart + 2, this.index)
+		const value = this.content.slice(this.tokenStart! + 2, this.index)
 		const token = new Token({
 			type: TokenType.Comment,
 			value,
 			line: beginLine,
 			lineStart: beginLineStart,
-			range: [this.tokenStart, this.index],
+			range: [this.tokenStart!, this.index],
 			offsetRange: [this.offset, this.offset],
 			afterSpace,
 		})
@@ -397,7 +395,7 @@ export default class Lexer {
 			return this.raise(
 				`Invalid numeric literal: ${raw}`,
 				new Range(
-					new Position(this.line, this.tokenStart - this.offset + 1),
+					new Position(this.line, this.tokenStart! - this.offset + 1),
 					new Position(this.line, this.index - this.offset + 1),
 				),
 			)
@@ -449,7 +447,7 @@ export default class Lexer {
 			value,
 			line: this.line,
 			lineStart: this.lineStart,
-			range: [this.tokenStart, this.index],
+			range: [this.tokenStart!, this.index],
 			offsetRange: [this.offset, this.offset],
 			afterSpace,
 		})
@@ -607,7 +605,7 @@ export default class Lexer {
 				value: '',
 				line: this.line,
 				lineStart: this.lineStart,
-				range: [this.tokenStart, this.index],
+				range: [this.tokenStart!, this.index],
 				offsetRange: [this.offset, this.offset],
 			})
 		}

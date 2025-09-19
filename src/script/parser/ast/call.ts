@@ -13,7 +13,7 @@ export class ASTCallStatement extends ASTBase {
 	}
 
 	toString(): string {
-		return `CallStatment[${this.start}-${this.end}][${this.expression}]`
+		return `CallStatement[${this.start}-${this.end}][${this.expression}]`
 	}
 
 	clone(): ASTCallStatement {

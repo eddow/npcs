@@ -1,11 +1,11 @@
 import { ASTBase, type ASTBaseOptions, ASTType } from './base'
 
 export interface ASTListValueOptions extends ASTBaseOptions {
-	value: ASTBase
+	value?: ASTBase
 }
 
 export class ASTListValue extends ASTBase {
-	value: ASTBase
+	value?: ASTBase
 
 	constructor(options: ASTListValueOptions) {
 		super(ASTType.ListValue, options)
@@ -18,7 +18,7 @@ export class ASTListValue extends ASTBase {
 
 	clone(): ASTListValue {
 		return new ASTListValue({
-			value: this.value.clone(),
+			value: this.value?.clone(),
 			start: this.start,
 			end: this.end,
 			range: this.range,
@@ -32,19 +32,19 @@ export interface ASTListConstructorExpressionOptions extends ASTBaseOptions {
 }
 
 export class ASTListConstructorExpression extends ASTBase {
-	fields: ASTListValue[]
+	fields?: ASTListValue[]
 
 	constructor(options: ASTListConstructorExpressionOptions) {
 		super(ASTType.ListConstructorExpression, options)
-		this.fields = options.fields || []
+		this.fields = options.fields
 	}
 
 	toString(): string {
-		if (this.fields.length === 0) {
+		if (this.fields!.length === 0) {
 			return `ListConstructor[${this.start}-${this.end}][]`
 		}
 
-		const body = this.fields
+		const body = this.fields!
 			.map((item) => `${item}`)
 			.join('\n')
 			.split('\n')
@@ -56,7 +56,7 @@ export class ASTListConstructorExpression extends ASTBase {
 
 	clone(): ASTListConstructorExpression {
 		return new ASTListConstructorExpression({
-			fields: this.fields.map((it) => it.clone()),
+			fields: this.fields?.map((it) => it.clone()),
 			start: this.start,
 			end: this.end,
 			range: this.range,

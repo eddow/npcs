@@ -3,18 +3,18 @@ import { ASTBase, type ASTBaseOptions, ASTType } from './base'
 
 export abstract class ASTLiteral extends ASTBase {
 	abstract value: number | string | boolean | null
-	abstract raw: string
+	abstract raw?: string
 	abstract clone(): ASTLiteral
 }
 
 export interface ASTLiteralOptions<T> extends ASTBaseOptions {
 	value: T
-	raw: string
+	raw?: string
 }
 
 export class ASTNumericLiteral extends ASTLiteral {
 	value: number
-	raw: string
+	raw?: string
 	negated: boolean
 
 	constructor(options: ASTLiteralOptions<number>) {
@@ -46,7 +46,7 @@ export class ASTNumericLiteral extends ASTLiteral {
 
 export class ASTBooleanLiteral extends ASTLiteral {
 	value: boolean
-	raw: string
+	raw?: string
 	negated: boolean
 
 	constructor(options: ASTLiteralOptions<boolean>) {
@@ -78,7 +78,7 @@ export class ASTBooleanLiteral extends ASTLiteral {
 
 export class ASTStringLiteral extends ASTLiteral {
 	value: string
-	raw: string
+	raw?: string
 
 	constructor(options: ASTLiteralOptions<string>) {
 		super(ASTType.StringLiteral, options)
@@ -104,7 +104,7 @@ export class ASTStringLiteral extends ASTLiteral {
 
 export class ASTNilLiteral extends ASTLiteral {
 	value: null
-	raw: string
+	raw?: string
 
 	constructor(options: ASTLiteralOptions<null>) {
 		super(ASTType.NilLiteral, options)

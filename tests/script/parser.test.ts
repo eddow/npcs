@@ -165,5 +165,37 @@ describe('parse', () => {
 			expect(lexer.errors).toMatchSnapshot()
 			expect(parser.errors).toMatchSnapshot()
 		})
+
+		test('named function syntax', () => {
+			const content = `
+				function myFunction()
+					return "Hello from named function"
+				end function
+
+				function add(a, b)
+					return a + b
+				end function
+
+				function greet(name = "World")
+					return "Hello " + name
+				end function
+
+				// Test that both syntaxes work
+				myFunc = function()
+					return "Anonymous function"
+				end function
+			`
+			const lexer = new Lexer(content, { unsafe: true, tabWidth: 2 })
+			const parser = new Parser(content, {
+				unsafe: true,
+				lexer,
+			})
+
+			const ast = parser.parseChunk()
+
+			expect(lexer.errors).toMatchSnapshot()
+			expect(parser.errors).toMatchSnapshot()
+			expect(ast.toString()).toMatchSnapshot()
+		})
 	})
 })

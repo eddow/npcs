@@ -84,4 +84,78 @@ return 99
 		expect(Array.from(npc.executor(context))).toEqual(['a', 'b'])
 		expect(output).toEqual([])
 	})
+
+	it('executes named function definitions', () => {
+		const output: string[] = []
+		const context = {
+			print: (...args: any[]) => {
+				output.push(args.join(' '))
+			},
+			yield: (arg: any) => arg,
+		}
+
+		const script = `
+function myFunction()
+    return "Hello from named function"
+end function
+
+function add(a, b)
+    return a + b
+end function
+
+function greet(name)
+    return "Hello " + name
+end function
+
+print myFunction()
+print add(5, 3)
+print greet()
+print greet("Alice")
+return "done"
+`
+		const npc = new NpcScript(script)
+		const result = npc.execute(context)
+
+		expect(result).toEqual({ type: 'return', value: 'done' })
+		expect(output).toEqual([
+			'Hello from named function',
+			'8',
+			'Hello undefined',
+			'Hello Alice'
+		])
+	})
+
+	it('executes both named and anonymous function syntax', () => {
+		const output: string[] = []
+		const context = {
+			print: (...args: any[]) => {
+				output.push(args.join(' '))
+			},
+			yield: (arg: any) => arg,
+		}
+
+		const script = `
+// Named function
+function namedFunc()
+    return "Named function"
+end function
+
+// Anonymous function
+anonFunc = function()
+    return "Anonymous function"
+end function
+
+print namedFunc()
+print anonFunc()
+return "done"
+`
+		const npc = new NpcScript(script)
+		const result = npc.execute(context)
+
+		expect(result).toEqual({ type: 'return', value: 'done' })
+		expect(output).toEqual([
+			'Named function',
+			'Anonymous function'
+		])
+	})
 })

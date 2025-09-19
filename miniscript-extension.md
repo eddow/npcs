@@ -9,10 +9,12 @@ like
 this
 */
 
-# Ideas for later
-
 ## named functions
 function like.this(...)
+
+with `function XXX(...)` being equivalent to `XXX = function(...)`
+
+# Ideas for later
 
 ## Assignment expression
 as well as statement

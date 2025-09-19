@@ -1,13 +1,13 @@
 import { ASTBase, type ASTBaseOptions, ASTType } from './base'
 
 export interface ASTMapKeyStringOptions extends ASTBaseOptions {
-	key: ASTBase
-	value: ASTBase
+	key?: ASTBase
+	value?: ASTBase
 }
 
 export class ASTMapKeyString extends ASTBase {
-	key: ASTBase
-	value: ASTBase
+	key?: ASTBase
+	value?: ASTBase
 
 	constructor(options: ASTMapKeyStringOptions) {
 		super(ASTType.MapKeyString, options)
@@ -21,8 +21,8 @@ export class ASTMapKeyString extends ASTBase {
 
 	clone(): ASTMapKeyString {
 		return new ASTMapKeyString({
-			key: this.key.clone(),
-			value: this.value.clone(),
+			key: this.key?.clone(),
+			value: this.value?.clone(),
 			start: this.start,
 			end: this.end,
 			range: this.range,

@@ -1,6 +1,6 @@
 export enum Operator {
 	Plus = '+',
-	Asterik = '*',
+	Asterisk = '*',
 	Minus = '-',
 	Slash = '/',
 	Power = '^',

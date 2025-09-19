@@ -50,17 +50,17 @@ export enum ASTType {
 }
 
 export interface ASTBaseOptions {
-	start: Position | null
-	end: Position | null
-	range: [number, number]
+	start?: Position
+	end?: Position
+	range: [number, number?]
 	scope?: ASTBaseBlockWithScope
 }
 
 export class ASTBase {
 	readonly type: string
-	start: Position | null
-	end: Position | null
-	range: [number, number]
+	start?: Position
+	end?: Position
+	range: [number, number?]
 	scope?: ASTBaseBlockWithScope
 
 	constructor(type: string, options: ASTBaseOptions) {
@@ -68,7 +68,7 @@ export class ASTBase {
 		this.start = options.start
 		this.end = options.end
 		this.range = options.range
-		this.scope = options.scope || null
+		this.scope = options.scope
 	}
 
 	toString(): string {
@@ -162,13 +162,13 @@ export class ASTBaseBlockWithScope extends ASTBaseBlock {
 }
 
 export interface ASTCommentOptions extends ASTBaseOptions {
-	value: string
+	value?: string
 	isMultiline?: boolean
 	isStatement: boolean
 }
 
 export class ASTComment extends ASTBase {
-	value: string
+	value?: string
 	isMultiline: boolean
 	isStatement: boolean
 

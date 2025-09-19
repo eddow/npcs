@@ -15,9 +15,9 @@ export enum TokenType {
 	Invalid = 'Invalid',
 }
 
-export class BaseTokenOptions<T> {
+export interface BaseTokenOptions<T> {
 	type: string
-	value: T
+	value?: T
 	line: number
 	lineStart: number
 	range: [number, number]
@@ -29,14 +29,14 @@ export class BaseTokenOptions<T> {
 
 export class BaseToken<T> {
 	readonly type: string
-	readonly value: T
+	readonly value?: T
 	readonly line: number
 	readonly lineStart: number
 	readonly range: [number, number]
 	readonly afterSpace: boolean
 
 	// used for literals
-	raw: string
+	raw?: string
 
 	// used for string literals
 	readonly lastLine?: number
@@ -54,7 +54,7 @@ export class BaseToken<T> {
 		this.range = options.range
 		this.lastLine = options.lastLine
 		this.lastLineStart = options.lastLineStart
-		this.afterSpace = options.afterSpace
+		this.afterSpace = options.afterSpace ?? false
 
 		const offsetRange = options.offsetRange
 		const range = options.range
@@ -66,9 +66,9 @@ export class BaseToken<T> {
 	toString(): string {
 		const startLine = this.line
 		const endLine = this.lastLine !== undefined ? this.lastLine : this.line
-		const columLeft = this.start.character
-		const columRight = this.end.character
-		const location = `${startLine}:${columLeft} - ${endLine}:${columRight}`
+		const columnLeft = this.start.character
+		const columnRight = this.end.character
+		const location = `${startLine}:${columnLeft} - ${endLine}:${columnRight}`
 
 		return `${this.type}[${location}: value = '${this.value}']`
 	}
@@ -77,11 +77,11 @@ export class BaseToken<T> {
 export class Token extends BaseToken<string> {}
 
 export interface TokenLiteralOptions extends BaseTokenOptions<string | number | boolean> {
-	raw: string
+	raw?: string
 }
 
 export class LiteralToken extends BaseToken<string | number | boolean> {
-	declare readonly raw: string
+	declare readonly raw?: string
 
 	constructor(options: TokenLiteralOptions) {
 		super(options)
@@ -91,9 +91,9 @@ export class LiteralToken extends BaseToken<string | number | boolean> {
 	toString(): string {
 		const startLine = this.line
 		const endLine = this.lastLine !== undefined ? this.lastLine : this.line
-		const columLeft = this.start.character
-		const columRight = this.end.character
-		const location = `${startLine}:${columLeft} - ${endLine}:${columRight}`
+		const columnLeft = this.start.character
+		const columnRight = this.end.character
+		const location = `${startLine}:${columnLeft} - ${endLine}:${columnRight}`
 
 		return `${this.type}[${location}: value = ${this.raw}]`
 	}

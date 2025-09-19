@@ -10,7 +10,7 @@ import {
 	type ASTComment,
 	type ASTForGenericStatement,
 	type ASTFunctionStatement,
-	type ASTIdentifier,
+	ASTIdentifier,
 	ASTIdentifierKind,
 	type ASTListValue,
 	ASTLiteral,
@@ -55,11 +55,11 @@ import { Stack } from './utils/stack'
 
 export default class Parser {
 	// runtime
-	token: Token | null
-	previousToken: Token | null
-	currentScope: ASTBaseBlockWithScope | null
+	token?: Token
+	previousToken?: Token
+	currentScope?: ASTBaseBlockWithScope
 	outerScopes: ASTBaseBlockWithScope[]
-	currentAssignment: ASTAssignmentStatement | null
+	currentAssignment?: ASTAssignmentStatement
 	iteratorStack: (ASTForGenericStatement | ASTWhileStatement)[]
 
 	// helpers
@@ -78,17 +78,13 @@ export default class Parser {
 	unsafe: boolean
 	errors: Error[]
 
-	constructor(content: string, { validator = new Validator(), astProvider = new ASTProvider(), lexer, unsafe = false, tabWidth = 1 } = {}) {
+	constructor(content: string, { validator = new Validator(), astProvider = new ASTProvider(), lexer, unsafe = false, tabWidth = 1 }: { validator?: Validator; astProvider?: ASTProvider; lexer?: Lexer; unsafe?: boolean; tabWidth?: number } = {}) {
 		this.content = content
 		this.backPatches = new Stack()
 		this.statementErrors = []
 		this.lexer = lexer || new Lexer(content, { unsafe, tabWidth })
-		this.token = null
-		this.previousToken = null
 		this.lineRegistry = new LineRegistry()
 		this.scopes = []
-		this.currentScope = null
-		this.currentAssignment = null
 		this.outerScopes = []
 		this.iteratorStack = []
 		this.literals = []
@@ -105,7 +101,7 @@ export default class Parser {
 	}
 
 	isType(type: TokenType): boolean {
-		return this.token !== null && type === this.token.type
+		return type === this.token?.type
 	}
 
 	consume(selector: Selector): boolean {
@@ -126,37 +122,37 @@ export default class Parser {
 		return false
 	}
 
-	requireType(type: TokenType, from?: ASTPosition): Token | null {
+	requireType(type: TokenType, from?: ASTPosition): Token | undefined {
 		const token = this.token
 
 		if (!token || token.type !== type) {
 			this.raise(
 				`got ${token || 'undefined'} where ${type} is required`,
-				new Range(from || token?.start, token?.end),
+				new Range(from || token!.start, token!.end),
 			)
-			return null
+			return
 		}
 
 		this.next()
 		return token
 	}
 
-	requireToken(selector: Selector, from?: ASTPosition): Token | null {
+	requireToken(selector: Selector, from?: ASTPosition): Token | undefined {
 		const token = this.token
 
 		if (!token || !selector(token)) {
 			this.raise(
 				`got ${token || 'undefined'} where "${getSelectorValue(selector)}" is required`,
-				new Range(from || token?.start, token?.end),
+				new Range(from || token!.start, token!.end),
 			)
-			return null
+			return
 		}
 
 		this.next()
 		return token
 	}
 
-	requireTokenOfAny(selectorGroup: SelectorGroup, from?: ASTPosition): Token | null {
+	requireTokenOfAny(selectorGroup: SelectorGroup, from?: ASTPosition): Token | undefined {
 		const token = this.token
 
 		if (token && selectorGroup(token)) {
@@ -168,10 +164,10 @@ export default class Parser {
 			`got ${token || 'undefined'} where any of ${getSelectorsFromGroup(selectorGroup)
 				.map((selector: Selector) => `"${getSelectorValue(selector)}"`)
 				.join(', ')} is required`,
-			new Range(from || token?.start, token?.end),
+			new Range(from || token!.start, token!.end),
 		)
 
-		return undefined
+		return
 	}
 
 	skipNewlines(): number {
@@ -182,7 +178,7 @@ export default class Parser {
 				const comment = this.astProvider.comment({
 					value: this.token.value,
 					start: this.token.start,
-					end: this.token.end,
+					end: this.token!.end,
 					range: this.token.range,
 					scope: this.currentScope,
 					isStatement,
@@ -203,7 +199,7 @@ export default class Parser {
 	}
 
 	pushScope(scope: ASTBaseBlockWithScope) {
-		if (this.currentScope !== null) {
+		if (this.currentScope) {
 			this.scopes.push(scope)
 			this.outerScopes.push(this.currentScope)
 		}
@@ -262,8 +258,7 @@ export default class Parser {
 		const start = this.token!.start
 		const chunk = this.astProvider.chunk({
 			start,
-			end: undefined,
-			range: [this.token!.range[0], undefined],
+			range: [this.token!.range[0]],
 		})
 		const pending = new PendingChunk(chunk, this.lineRegistry)
 
@@ -316,15 +311,15 @@ export default class Parser {
 		if (this.iteratorStack.length === 0) {
 			this.raise(
 				`'continue' without open loop block`,
-				new Range(this.previousToken.start, this.previousToken.end),
+				new Range(this.previousToken!.start, this.previousToken!.end),
 			)
 		}
 
 		const item = this.astProvider.continueStatement({
 			iterator: this.iteratorStack[this.iteratorStack.length - 1],
-			start: this.previousToken.start,
-			end: this.previousToken.end,
-			range: this.previousToken.range,
+			start: this.previousToken!.start,
+			end: this.previousToken!.end,
+			range: this.previousToken!.range,
 			scope: this.currentScope,
 		})
 
@@ -338,15 +333,15 @@ export default class Parser {
 		if (this.iteratorStack.length === 0) {
 			this.raise(
 				`'break' without open loop block`,
-				new Range(this.previousToken.start, this.previousToken.end),
+				new Range(this.previousToken!.start, this.previousToken!.end),
 			)
 		}
 
 		const item = this.astProvider.breakStatement({
 			iterator: this.iteratorStack[this.iteratorStack.length - 1],
-			start: this.previousToken.start,
-			end: this.previousToken.end,
-			range: this.previousToken.range,
+			start: this.previousToken!.start,
+			end: this.previousToken!.end,
+			range: this.previousToken!.range,
 			scope: this.currentScope,
 		})
 
@@ -423,11 +418,20 @@ export default class Parser {
 				this.parseBreakStatement()
 				return
 			}
+			case Keyword.Function: {
+				const pendingBlock = this.backPatches.peek()
+				const item = this.parseFunctionDeclaration(false, true)
+				if (item.end != null) {
+					this.lineRegistry.addItemToLines(item)
+				}
+				pendingBlock.body.push(item)
+				return
+			}
 		}
 
 		this.raise(
 			`unexpected keyword ${this.token} at start of line`,
-			new Range(this.token.start, this.token.end),
+			new Range(this.token!.start, this.token!.end),
 		)
 	}
 
@@ -435,15 +439,15 @@ export default class Parser {
 		if (this.iteratorStack.length === 0) {
 			this.raise(
 				`'continue' without open loop block`,
-				new Range(this.previousToken.start, this.previousToken.end),
+				new Range(this.previousToken!.start, this.previousToken!.end),
 			)
 		}
 
 		return this.astProvider.continueStatement({
 			iterator: this.iteratorStack[this.iteratorStack.length - 1],
-			start: this.previousToken.start,
-			end: this.previousToken.end,
-			range: this.previousToken.range,
+			start: this.previousToken!.start,
+			end: this.previousToken!.end,
+			range: this.previousToken!.range,
 			scope: this.currentScope,
 		})
 	}
@@ -452,15 +456,15 @@ export default class Parser {
 		if (this.iteratorStack.length === 0) {
 			this.raise(
 				`'break' without open loop block`,
-				new Range(this.previousToken.start, this.previousToken.end),
+				new Range(this.previousToken!.start, this.previousToken!.end),
 			)
 		}
 
 		return this.astProvider.breakStatement({
 			iterator: this.iteratorStack[this.iteratorStack.length - 1],
-			start: this.previousToken.start,
-			end: this.previousToken.end,
-			range: this.previousToken.range,
+			start: this.previousToken!.start,
+			end: this.previousToken!.end,
+			range: this.previousToken!.range,
 			scope: this.currentScope,
 		})
 	}
@@ -497,9 +501,9 @@ export default class Parser {
 	}
 
 	parseAssignment(): ASTBase {
-		const scope = this.currentScope
+		const scope = this.currentScope!
 		const startToken = this.token!
-		const expr = this.parseExpr(null, true, true)
+		const expr = this.parseExpr(true, true)
 
 		if (this.token && SelectorGroups.AssignmentEndOfExpr(this.token)) {
 			return expr
@@ -510,19 +514,17 @@ export default class Parser {
 
 			const assignmentStatement = this.astProvider.assignmentStatement({
 				variable: expr,
-				init: null,
 				start: startToken.start,
-				range: [startToken.range[0], null],
-				end: null,
+				range: [startToken.range[0]],
 				scope,
 			})
 			const previousAssignment = this.currentAssignment
 
 			this.currentAssignment = assignmentStatement
 
-			assignmentStatement.init = this.parseExpr(assignmentStatement)
-			assignmentStatement.end = this.previousToken.end
-			assignmentStatement.range[1] = this.previousToken.range[1]
+		assignmentStatement.init = this.parseExpr(false, false, assignmentStatement)
+		assignmentStatement.end = this.previousToken!.end
+		assignmentStatement.range[1] = this.previousToken!.range[1]
 
 			this.currentAssignment = previousAssignment
 
@@ -536,10 +538,8 @@ export default class Parser {
 
 			const assignmentStatement = this.astProvider.assignmentStatement({
 				variable: expr,
-				init: null,
 				start: startToken.start,
-				range: [startToken.range[0], null],
-				end: null,
+				range: [startToken.range[0]],
 				scope,
 			})
 			const previousAssignment = this.currentAssignment
@@ -547,8 +547,8 @@ export default class Parser {
 			this.currentAssignment = assignmentStatement
 
 			const binaryExpressionTokenStart = this.token
-			const operator = <Operator>op.value.charAt(0)
-			const rightExpr = this.parseExpr(assignmentStatement)
+			const operator = <Operator>op.value!.charAt(0)
+			const rightExpr = this.parseExpr(false, false, assignmentStatement)
 			const right = this.astProvider.parenthesisExpression({
 				start: rightExpr.start,
 				end: rightExpr.end,
@@ -561,12 +561,12 @@ export default class Parser {
 				left: expr.clone(),
 				right,
 				start: binaryExpressionTokenStart.start,
-				end: this.previousToken.end,
-				range: [binaryExpressionTokenStart.range[0], this.previousToken.range[1]],
-				scope,
-			})
-			assignmentStatement.end = this.previousToken.end
-			assignmentStatement.range[1] = this.previousToken.range[1]
+			end: this.previousToken!.end,
+			range: [binaryExpressionTokenStart.range[0], this.previousToken!.range[1]],
+			scope,
+		})
+		assignmentStatement.end = this.previousToken!.end
+		assignmentStatement.range[1] = this.previousToken!.range[1]
 
 			this.currentAssignment = previousAssignment
 
@@ -575,10 +575,10 @@ export default class Parser {
 			return assignmentStatement
 		}
 
-		const expressions = []
+		const expressions: ASTBase[] = []
 
 		while (this.token && !Selectors.EndOfFile(this.token)) {
-			const arg = this.parseExpr(null)
+			const arg = this.parseExpr()
 			expressions.push(arg)
 
 			if (this.token && SelectorGroups.BlockEndOfLine(this.token)) break
@@ -601,8 +601,8 @@ export default class Parser {
 			return this.astProvider.callStatement({
 				expression: expr,
 				start: startToken.start,
-				end: this.previousToken.end,
-				range: [startToken.range[0], this.previousToken.range[1]],
+				end: this.previousToken!.end,
+				range: [startToken.range[0], this.previousToken!.range[1]],
 				scope,
 			})
 		}
@@ -612,38 +612,36 @@ export default class Parser {
 				base: expr,
 				arguments: expressions,
 				start: startToken.start,
-				end: this.previousToken.end,
-				range: [startToken.range[0], this.previousToken.range[1]],
+				end: this.previousToken!.end,
+				range: [startToken.range[0], this.previousToken!.range[1]],
 				scope,
 			}),
 			start: startToken.start,
-			end: this.previousToken.end,
-			range: [startToken.range[0], this.previousToken.range[1]],
+			end: this.previousToken!.end,
+			range: [startToken.range[0], this.previousToken!.range[1]],
 			scope,
 		})
 	}
 
 	parseReturnStatement(): ASTReturnStatement {
-		const scope = this.currentScope
-		const startToken = this.previousToken
-		let expression = null
+		const scope = this.currentScope!
+		const startToken = this.previousToken!
+		let expression: ASTBase | undefined
 
 		const returnStatement = this.astProvider.returnStatement({
-			argument: null,
 			start: startToken.start,
-			end: null,
-			range: [startToken.range[0], null],
+			range: [startToken.range[0]],
 			scope,
 		})
 
-		if (SelectorGroups.ReturnStatementEnd(this.token)) {
-			returnStatement.end = this.previousToken.end
-			returnStatement.range[1] = this.previousToken.range[1]
+		if (SelectorGroups.ReturnStatementEnd(this.token!)) {
+			returnStatement.end = this.previousToken!.end
+			returnStatement.range[1] = this.previousToken!.range[1]
 		} else {
-			expression = this.parseExpr(returnStatement)
+			expression = this.parseExpr(false, false, returnStatement)
 
-			returnStatement.end = this.previousToken.end
-			returnStatement.range[1] = this.previousToken.range[1]
+			returnStatement.end = this.previousToken!.end
+			returnStatement.range[1] = this.previousToken!.range[1]
 			returnStatement.argument = expression
 		}
 
@@ -653,30 +651,29 @@ export default class Parser {
 	}
 
 	parseIfStatement(): void {
-		const startToken = this.previousToken
-		const ifCondition = this.parseExpr(null)
+		const startToken = this.previousToken!
+		const ifCondition = this.parseExpr()
 
 		this.lineRegistry.addItemToLines(ifCondition)
-		this.requireToken(Selectors.Then, startToken.start)
+		this.requireToken(Selectors.Then, startToken!.start)
 
-		if (!SelectorGroups.BlockEndOfLine(this.token)) {
-			this.parseIfShortcutStatement(ifCondition, startToken)
+		if (!SelectorGroups.BlockEndOfLine(this.token!)) {
+			this.parseIfShortcutStatement(ifCondition, startToken!)
 			return
 		}
 
 		const ifStatement = this.astProvider.ifStatement({
 			clauses: [],
 			start: startToken.start,
-			end: null,
-			range: [startToken.range[0], null],
+			range: [startToken.range[0]],
 			scope: this.currentScope,
 		})
 
 		const clause = this.astProvider.ifClause({
 			condition: ifCondition,
 			start: startToken.start,
-			end: this.token.end,
-			range: [startToken.range[0], this.token.range[1]],
+			end: this.token!.end,
+			range: [startToken.range[0], this.token!.range[1]],
 			scope: this.currentScope,
 		})
 
@@ -688,36 +685,34 @@ export default class Parser {
 		const pendingBlock = this.backPatches.peek()
 
 		if (!isPendingIf(pendingBlock)) {
-			this.raise('no matching open if block', new Range(this.token.start, this.token.end))
+			this.raise('no matching open if block', new Range(this.token!.start, this.token!.end))
 
 			return
 		}
 
-		pendingBlock.next(this.previousToken)
+		pendingBlock.next(this.previousToken!)
 
 		switch (type) {
 			case ASTType.ElseifClause: {
-				const ifStatementStartToken = this.token
-				const ifCondition = this.parseExpr(null)
+				const ifStatementStartToken = this.token!
+				const ifCondition = this.parseExpr()
 
 				this.requireToken(Selectors.Then, ifStatementStartToken.start)
 
 				pendingBlock.currentClause = this.astProvider.elseifClause({
 					condition: ifCondition,
 					start: ifStatementStartToken.start,
-					end: null,
-					range: [ifStatementStartToken.range[0], null],
+					range: [ifStatementStartToken.range[0]],
 					scope: this.currentScope,
 				})
 				break
 			}
 			case ASTType.ElseClause: {
-				const elseStatementStartToken = this.token
+				const elseStatementStartToken = this.token!
 
 				pendingBlock.currentClause = this.astProvider.elseClause({
 					start: elseStatementStartToken.start,
-					end: null,
-					range: [elseStatementStartToken.range[0], null],
+					range: [elseStatementStartToken.range[0]],
 					scope: this.currentScope,
 				})
 				break
@@ -725,7 +720,7 @@ export default class Parser {
 		}
 
 		if (type === null) {
-			pendingBlock.complete(this.previousToken)
+			pendingBlock.complete(this.previousToken!)
 			this.backPatches.pop()
 
 			this.backPatches.peek().body.push(pendingBlock.block)
@@ -738,8 +733,7 @@ export default class Parser {
 		const ifStatement = this.astProvider.ifShortcutStatement({
 			clauses,
 			start: startToken.start,
-			end: null,
-			range: [startToken.range[0], null],
+			range: [startToken.range[0]],
 			scope: this.currentScope,
 		})
 		const item = this.parseShortcutStatement()
@@ -749,8 +743,8 @@ export default class Parser {
 				condition,
 				body: [item],
 				start: startToken.start,
-				end: this.token.end,
-				range: [startToken.range[0], this.token.range[1]],
+				end: this.token!.end,
+				range: [startToken.range[0], this.token!.range[1]],
 				scope: this.currentScope,
 			}),
 		)
@@ -758,46 +752,45 @@ export default class Parser {
 		if (Selectors.Else(this.token)) {
 			this.next()
 
-			const elseItemStartToken = this.token
+			const elseItemStartToken = this.token!
 			const elseItem = this.parseShortcutStatement()
 
 			clauses.push(
 				this.astProvider.elseShortcutClause({
 					body: [elseItem],
 					start: elseItemStartToken.start,
-					end: this.token.end,
-					range: [elseItemStartToken.range[0], this.token.range[1]],
+					end: this.token!.end,
+					range: [elseItemStartToken.range[0], this.token!.range[1]],
 					scope: this.currentScope,
 				}),
 			)
 		}
 
-		ifStatement.end = this.token.end
-		ifStatement.range[1] = this.token.range[1]
+		ifStatement.end = this.token!.end
+		ifStatement.range[1] = this.token!.range[1]
 
 		this.lineRegistry.addItemToLines(ifStatement)
 		block.body.push(ifStatement)
 	}
 
 	parseWhileStatement(): void {
-		const startToken = this.previousToken
-		const condition = this.parseExpr(null)
+		const startToken = this.previousToken!
+		const condition = this.parseExpr()
 
 		if (!condition) {
-			this.raise(`while requires a condition`, new Range(startToken.start, this.token.end))
+			this.raise(`while requires a condition`, new Range(startToken!.start, this.token!.end))
 
 			return
 		}
 
-		if (!SelectorGroups.BlockEndOfLine(this.token)) {
-			return this.parseWhileShortcutStatement(condition, startToken)
+		if (!SelectorGroups.BlockEndOfLine(this.token!)) {
+			return this.parseWhileShortcutStatement(condition, startToken!)
 		}
 
 		const whileStatement = this.astProvider.whileStatement({
 			condition,
 			start: startToken.start,
-			end: null,
-			range: [startToken.range[0], null],
+			range: [startToken.range[0]],
 			scope: this.currentScope,
 		})
 
@@ -810,12 +803,12 @@ export default class Parser {
 		const pendingBlock = this.backPatches.peek()
 
 		if (!isPendingWhile(pendingBlock)) {
-			this.raise('no matching open while block', new Range(this.token.start, this.token.end))
+			this.raise('no matching open while block', new Range(this.token!.start, this.token!.end))
 
 			return
 		}
 
-		pendingBlock.complete(this.previousToken)
+		pendingBlock.complete(this.previousToken!)
 		this.iteratorStack.pop()
 		this.backPatches.pop()
 		this.backPatches.peek().body.push(pendingBlock.block)
@@ -829,8 +822,8 @@ export default class Parser {
 			condition,
 			body: [item],
 			start: startToken.start,
-			end: this.previousToken.end,
-			range: [startToken.range[0], this.previousToken.range[1]],
+			end: this.previousToken!.end,
+			range: [startToken.range[0], this.previousToken!.range[1]],
 			scope: this.currentScope,
 		})
 
@@ -839,33 +832,33 @@ export default class Parser {
 	}
 
 	parseForStatement(): void {
-		const scope = this.currentScope
-		const startToken = this.previousToken
+		const scope = this.currentScope!
+		const startToken = this.previousToken!
 		const variable = this.parseIdentifier(ASTIdentifierKind.ForInVariable) as ASTIdentifier
 
 		this.requireToken(Selectors.In, startToken.start)
 
-		const iterator = this.parseExpr(null)
+		const iterator = this.parseExpr()
 
 		if (!iterator) {
 			this.raise(
 				`sequence expression expected for 'for' loop`,
-				new Range(startToken.start, this.token.end),
+				new Range(startToken.start, this.token!.end),
 			)
 
 			return
 		}
 
-		if (!SelectorGroups.BlockEndOfLine(this.token)) {
-			return this.parseForShortcutStatement(variable, iterator, startToken)
+		if (!SelectorGroups.BlockEndOfLine(this.token!)) {
+			return this.parseForShortcutStatement(variable, iterator, startToken!)
 		}
 
 		const forStatement = this.astProvider.forGenericStatement({
 			variable,
 			iterator,
 			start: startToken.start,
-			end: this.previousToken.end,
-			range: [startToken.range[0], this.previousToken.range[1]],
+			end: this.previousToken!.end,
+			range: [startToken.range[0], this.previousToken!.range[1]],
 			scope,
 		})
 
@@ -880,19 +873,19 @@ export default class Parser {
 		const pendingBlock = this.backPatches.peek()
 
 		if (!isPendingFor(pendingBlock)) {
-			this.raise('no matching open for block', new Range(this.token.start, this.token.end))
+			this.raise('no matching open for block', new Range(this.token!.start, this.token!.end))
 
 			return
 		}
 
-		pendingBlock.complete(this.previousToken)
+		pendingBlock.complete(this.previousToken!)
 		this.iteratorStack.pop()
 		this.backPatches.pop()
 		this.backPatches.peek().body.push(pendingBlock.block)
 	}
 
 	parseForShortcutStatement(variable: ASTIdentifier, iterator: ASTBase, startToken: Token): void {
-		const scope = this.currentScope
+		const scope = this.currentScope!
 		const block = this.backPatches.peek()
 		const item = this.parseShortcutStatement()
 
@@ -901,8 +894,8 @@ export default class Parser {
 			iterator,
 			body: [item],
 			start: startToken.start,
-			end: this.previousToken.end,
-			range: [startToken.range[0], this.previousToken.range[1]],
+			end: this.previousToken!.end,
+			range: [startToken.range[0], this.previousToken!.range[1]],
 			scope: this.currentScope,
 		})
 
@@ -911,65 +904,76 @@ export default class Parser {
 		block.body.push(forStatement)
 	}
 
-	parseExpr(base: ASTBase, asLval: boolean = false, statementStart: boolean = false): ASTBase {
-		return this.parseFunctionDeclaration(base, asLval, statementStart)
+	parseExpr(asLVal: boolean = false, statementStart: boolean = false, base?: ASTBase): ASTBase {
+		return this.parseFunctionDeclaration(asLVal, statementStart, base)
 	}
 
 	parseFunctionDeclaration(
-		base: ASTBase,
-		asLval: boolean = false,
+		asLVal: boolean = false,
 		statementStart: boolean = false,
+		base?: ASTBase,
 	): ASTFunctionStatement | ASTBase {
-		if (!Selectors.Function(this.token)) return this.parseOr(asLval, statementStart)
+		if (!Selectors.Function(this.token!)) return this.parseOr(asLVal, statementStart)
 
 		this.next()
 
-		const functionStartToken = this.previousToken
+		const functionStartToken = this.previousToken!
+		
+		// Check if this is a named function: function X(...)
+		let functionName: ASTIdentifier | null = null
+		if (statementStart && this.isType(TokenType.Identifier)) {
+			// This is a named function declaration
+			const parsed = this.parseIdentifier(ASTIdentifierKind.Variable)
+			if (parsed instanceof ASTIdentifier) {
+				functionName = parsed
+			}
+		}
+
 		const functionStatement = this.astProvider.functionStatement({
 			start: functionStartToken.start,
-			end: null,
-			range: [functionStartToken.range[0], null],
+ // Will be set when function is finalized
+			range: [functionStartToken.range[0]],
 			scope: this.currentScope,
 			parent: this.outerScopes[this.outerScopes.length - 1],
-			assignment: this.currentAssignment,
+			assignment: this.currentAssignment!,
 		})
-		const parameters = []
+		const parameters: ASTBase[] = []
 
 		this.pushScope(functionStatement)
 
-		if (!SelectorGroups.BlockEndOfLine(this.token)) {
+		if (!SelectorGroups.BlockEndOfLine(this.token!)) {
 			this.requireToken(Selectors.LParenthesis, functionStartToken.start)
 
-			while (!SelectorGroups.FunctionDeclarationArgEnd(this.token)) {
+			while (!SelectorGroups.FunctionDeclarationArgEnd(this.token!)) {
 				const parameter = this.parseIdentifier(ASTIdentifierKind.Argument)
-				const parameterStartToken = parameter
+				const parameterStartToken = parameter!
 
 				if (this.consume(Selectors.Assign)) {
-					const defaultValue = this.parseExpr(null)
+					const defaultValue = this.parseExpr()
 
 					if (defaultValue instanceof ASTLiteral) {
 						const assign = this.astProvider.assignmentStatement({
 							variable: parameter,
 							init: defaultValue,
 							start: parameterStartToken.start,
-							end: this.previousToken.end,
-							range: [parameterStartToken.range[0], this.previousToken.range[1]],
+							end: this.previousToken!.end,
+							range: [parameterStartToken.range[0], this.previousToken!.range[1]],
 							scope: this.currentScope,
 						})
 
-						this.currentScope.definitions.push(assign)
+						this.currentScope!.definitions.push(assign)
 						parameters.push(assign)
 					} else {
 						this.raise(
 							`parameter default value must be a literal value`,
-							new Range(parameterStartToken.start, this.token.end),
+							new Range(parameterStartToken.start!, this.token!.end),
 						)
 
 						parameters.push(
 							this.astProvider.invalidCodeExpression({
 								start: parameterStartToken.start,
-								end: this.previousToken.end,
-								range: [parameterStartToken.range[0], this.previousToken.range[1]],
+								end: this.previousToken!.end,
+								range: [parameterStartToken.range[0], this.previousToken!.range[1]],
 							}),
 						)
 					}
@@ -978,26 +982,26 @@ export default class Parser {
 						variable: parameter,
 						init: this.astProvider.unknown({
 							start: parameterStartToken.start,
-							end: this.previousToken.end,
-							range: [parameterStartToken.range[0], this.previousToken.range[1]],
+							end: this.previousToken!.end,
+							range: [parameterStartToken.range[0], this.previousToken!.range[1]],
 							scope: this.currentScope,
 						}),
 						start: parameterStartToken.start,
-						end: this.previousToken.end,
-						range: [parameterStartToken.range[0], this.previousToken.range[1]],
+						end: this.previousToken!.end,
+						range: [parameterStartToken.range[0], this.previousToken!.range[1]],
 						scope: this.currentScope,
 					})
 
-					this.currentScope.definitions.push(assign)
+					this.currentScope!.definitions.push(assign)
 					parameters.push(parameter)
 				}
 
-				if (Selectors.RParenthesis(this.token)) break
+				if (Selectors.RParenthesis(this.token!)) break
 				this.requireToken(Selectors.ArgumentSeparator, functionStartToken.start)
-				if (Selectors.RParenthesis(this.token)) {
+				if (Selectors.RParenthesis(this.token!)) {
 					this.raise(
 						'expected argument instead received right parenthesis',
-						new Range(this.previousToken.end, this.previousToken.end),
+						new Range(this.previousToken!.end, this.previousToken!.end),
 					)
 					break
 				}
@@ -1008,8 +1012,25 @@ export default class Parser {
 
 		functionStatement.parameters = parameters
 
-		const pendingBlock = new PendingFunction(functionStatement, base, this.lineRegistry)
+		const pendingBlock = new PendingFunction(functionStatement, base || null, this.lineRegistry)
 		this.backPatches.push(pendingBlock)
+
+		// If this is a named function, create an assignment statement
+		if (functionName) {
+			const assignmentStatement = this.astProvider.assignmentStatement({
+				variable: functionName,
+				init: functionStatement,
+				start: functionStartToken.start,
+ // Will be set when function is finalized
+				range: [functionStartToken.range[0]],
+				scope: this.currentScope,
+			})
+			
+			// Store the assignment in the pending block so we can finalize it later
+			pendingBlock.namedFunctionAssignment = assignmentStatement
+			
+			return assignmentStatement
+		}
 
 		return functionStatement
 	}
@@ -1018,20 +1039,20 @@ export default class Parser {
 		const pendingBlock = this.backPatches.peek()
 
 		if (!isPendingFunction(pendingBlock)) {
-			this.raise('no matching open function block', new Range(this.token.start, this.token.end))
+			this.raise('no matching open function block', new Range(this.token!.start, this.token!.end))
 
 			return
 		}
 
 		this.popScope()
 
-		pendingBlock.complete(this.previousToken)
+		pendingBlock.complete(this.previousToken!)
 		this.backPatches.pop()
 	}
 
-	parseOr(asLval: boolean = false, statementStart: boolean = false): ASTBase {
-		const startToken = this.token
-		const val = this.parseAnd(asLval, statementStart)
+	parseOr(asLVal: boolean = false, statementStart: boolean = false): ASTBase {
+		const startToken = this.token!
+		const val = this.parseAnd(asLVal, statementStart)
 		let base = val
 
 		while (Selectors.Or(this.token)) {
@@ -1045,8 +1066,8 @@ export default class Parser {
 				left: base,
 				right: opB,
 				start: startToken.start,
-				end: this.previousToken.end,
-				range: [startToken.range[0], this.previousToken.range[1]],
+				end: this.previousToken!.end,
+				range: [startToken.range[0], this.previousToken!.range[1]],
 				scope: this.currentScope,
 			})
 		}
@@ -1054,9 +1075,9 @@ export default class Parser {
 		return base
 	}
 
-	parseAnd(asLval: boolean = false, statementStart: boolean = false): ASTBase {
-		const startToken = this.token
-		const val = this.parseNot(asLval, statementStart)
+	parseAnd(asLVal: boolean = false, statementStart: boolean = false): ASTBase {
+		const startToken = this.token!
+		const val = this.parseNot(asLVal, statementStart)
 		let base = val
 
 		while (Selectors.And(this.token)) {
@@ -1070,8 +1091,8 @@ export default class Parser {
 				left: base,
 				right: opB,
 				start: startToken.start,
-				end: this.previousToken.end,
-				range: [startToken.range[0], this.previousToken.range[1]],
+				end: this.previousToken!.end,
+				range: [startToken.range[0], this.previousToken!.range[1]],
 				scope: this.currentScope,
 			})
 		}
@@ -1079,8 +1100,8 @@ export default class Parser {
 		return base
 	}
 
-	parseNot(asLval: boolean = false, statementStart: boolean = false): ASTBase {
-		const startToken = this.token
+	parseNot(asLVal: boolean = false, statementStart: boolean = false): ASTBase {
+		const startToken = this.token!
 
 		if (Selectors.Not(this.token)) {
 			this.next()
@@ -1093,18 +1114,18 @@ export default class Parser {
 				operator: Operator.Not,
 				argument: val,
 				start: startToken.start,
-				end: this.previousToken.end,
-				range: [startToken.range[0], this.previousToken.range[1]],
+				end: this.previousToken!.end,
+				range: [startToken.range[0], this.previousToken!.range[1]],
 				scope: this.currentScope,
 			})
 		}
 
-		return this.parseIsa(asLval, statementStart)
+		return this.parseIsa(asLVal, statementStart)
 	}
 
-	parseIsa(asLval: boolean = false, statementStart: boolean = false): ASTBase {
-		const startToken = this.token
-		const val = this.parseComparisons(asLval, statementStart)
+	parseIsa(asLVal: boolean = false, statementStart: boolean = false): ASTBase {
+		const startToken = this.token!
+		const val = this.parseComparisons(asLVal, statementStart)
 
 		if (Selectors.Isa(this.token)) {
 			this.next()
@@ -1118,8 +1139,8 @@ export default class Parser {
 				left: val,
 				right: opB,
 				start: startToken.start,
-				end: this.previousToken.end,
-				range: [startToken.range[0], this.previousToken.range[1]],
+				end: this.previousToken!.end,
+				range: [startToken.range[0], this.previousToken!.range[1]],
 				scope: this.currentScope,
 			})
 		}
@@ -1127,11 +1148,11 @@ export default class Parser {
 		return val
 	}
 
-	parseComparisons(asLval: boolean = false, statementStart: boolean = false): ASTBase {
-		const startToken = this.token
-		const val = this.parseAddSub(asLval, statementStart)
+	parseComparisons(asLVal: boolean = false, statementStart: boolean = false): ASTBase {
+		const startToken = this.token!
+		const val = this.parseAddSub(asLVal, statementStart)
 
-		if (!SelectorGroups.ComparisonOperators(this.token)) return val
+		if (!SelectorGroups.ComparisonOperators(this.token!)) return val
 
 		const expressions: ASTBase[] = [val]
 		const operators: string[] = []
@@ -1144,9 +1165,9 @@ export default class Parser {
 
 			const right = this.parseAddSub()
 
-			operators.push(token.value)
+			operators.push(token!.value!)
 			expressions.push(right)
-		} while (SelectorGroups.ComparisonOperators(this.token))
+		} while (SelectorGroups.ComparisonOperators(this.token!))
 
 		if (operators.length === 1) {
 			return this.astProvider.binaryExpression({
@@ -1154,8 +1175,8 @@ export default class Parser {
 				left: expressions[0],
 				right: expressions[1],
 				start: startToken.start,
-				end: this.previousToken.end,
-				range: [startToken.range[0], this.previousToken.range[1]],
+				end: this.previousToken!.end,
+				range: [startToken.range[0], this.previousToken!.range[1]],
 				scope: this.currentScope,
 			})
 		}
@@ -1164,36 +1185,36 @@ export default class Parser {
 			operators,
 			expressions,
 			start: startToken.start,
-			end: this.previousToken.end,
-			range: [startToken.range[0], this.previousToken.range[1]],
+			end: this.previousToken!.end,
+			range: [startToken.range[0], this.previousToken!.range[1]],
 			scope: this.currentScope,
 		})
 	}
 
-	parseAddSub(asLval: boolean = false, statementStart: boolean = false): ASTBase {
-		const startToken = this.token
-		const val = this.parseMultDiv(asLval, statementStart)
+	parseAddSub(asLVal: boolean = false, statementStart: boolean = false): ASTBase {
+		const startToken = this.token!
+		const val = this.parseMulDiv(asLVal, statementStart)
 		let base = val
 
 		while (
 			Selectors.Plus(this.token) ||
 			(Selectors.Minus(this.token) &&
-				(!statementStart || !this.token.afterSpace || this.lexer.isAtWhitespace()))
+				(!statementStart || !this.token!.afterSpace || this.lexer.isAtWhitespace()))
 		) {
 			const token = this.token
 
 			this.next()
 			this.skipNewlines()
 
-			const opB = this.parseMultDiv()
+			const opB = this.parseMulDiv()
 
 			base = this.astProvider.binaryExpression({
-				operator: <Operator>token.value,
+				operator: <Operator>token!.value,
 				left: base,
 				right: opB,
 				start: startToken.start,
-				end: this.previousToken.end,
-				range: [startToken.range[0], this.previousToken.range[1]],
+				end: this.previousToken!.end,
+				range: [startToken.range[0], this.previousToken!.range[1]],
 				scope: this.currentScope,
 			})
 		}
@@ -1201,12 +1222,12 @@ export default class Parser {
 		return base
 	}
 
-	parseMultDiv(asLval: boolean = false, statementStart: boolean = false): ASTBase {
-		const startToken = this.token
-		const val = this.parseUnaryMinus(asLval, statementStart)
+	parseMulDiv(asLVal: boolean = false, statementStart: boolean = false): ASTBase {
+		const startToken = this.token!
+		const val = this.parseUnaryMinus(asLVal, statementStart)
 		let base = val
 
-		while (SelectorGroups.MultiDivOperators(this.token)) {
+		while (SelectorGroups.MultiDivOperators(this.token!)) {
 			const token = this.token
 
 			this.next()
@@ -1215,12 +1236,12 @@ export default class Parser {
 			const opB = this.parseUnaryMinus()
 
 			base = this.astProvider.binaryExpression({
-				operator: <Operator>token.value,
+				operator: <Operator>token!.value,
 				left: base,
 				right: opB,
 				start: startToken.start,
-				end: this.previousToken.end,
-				range: [startToken.range[0], this.previousToken.range[1]],
+				end: this.previousToken!.end,
+				range: [startToken.range[0], this.previousToken!.range[1]],
 				scope: this.currentScope,
 			})
 		}
@@ -1228,12 +1249,12 @@ export default class Parser {
 		return base
 	}
 
-	parseUnaryMinus(asLval: boolean = false, statementStart: boolean = false): ASTBase {
+	parseUnaryMinus(asLVal: boolean = false, statementStart: boolean = false): ASTBase {
 		if (!Selectors.Minus(this.token)) {
-			return this.parseNew(asLval, statementStart)
+			return this.parseNew(asLVal, statementStart)
 		}
 
-		const startToken = this.token
+		const startToken = this.token!
 
 		this.next()
 		this.skipNewlines()
@@ -1249,18 +1270,18 @@ export default class Parser {
 			operator: Operator.Minus,
 			argument: val,
 			start: startToken.start,
-			end: this.previousToken.end,
-			range: [startToken.range[0], this.previousToken.range[1]],
+			end: this.previousToken!.end,
+			range: [startToken.range[0], this.previousToken!.range[1]],
 			scope: this.currentScope,
 		})
 	}
 
-	parseNew(asLval: boolean = false, statementStart: boolean = false): ASTBase {
+	parseNew(asLVal: boolean = false, statementStart: boolean = false): ASTBase {
 		if (!Selectors.New(this.token)) {
-			return this.parseAddressOf(asLval, statementStart)
+			return this.parseAddressOf(asLVal, statementStart)
 		}
 
-		const startToken = this.token
+		const startToken = this.token!
 
 		this.next()
 		this.skipNewlines()
@@ -1271,18 +1292,18 @@ export default class Parser {
 			operator: Operator.New,
 			argument: val,
 			start: startToken.start,
-			end: this.previousToken.end,
-			range: [startToken.range[0], this.previousToken.range[1]],
+			end: this.previousToken!.end,
+			range: [startToken.range[0], this.previousToken!.range[1]],
 			scope: this.currentScope,
 		})
 	}
 
-	parseAddressOf(asLval: boolean = false, statementStart: boolean = false): ASTBase {
+	parseAddressOf(asLVal: boolean = false, statementStart: boolean = false): ASTBase {
 		if (!Selectors.Reference(this.token)) {
-			return this.parsePower(asLval, statementStart)
+			return this.parsePower(asLVal, statementStart)
 		}
 
-		const startToken = this.token
+		const startToken = this.token!
 
 		this.next()
 		this.skipNewlines()
@@ -1293,15 +1314,15 @@ export default class Parser {
 			operator: Operator.Reference,
 			argument: val,
 			start: startToken.start,
-			end: this.previousToken.end,
-			range: [startToken.range[0], this.previousToken.range[1]],
+			end: this.previousToken!.end,
+			range: [startToken.range[0], this.previousToken!.range[1]],
 			scope: this.currentScope,
 		})
 	}
 
-	parsePower(asLval: boolean = false, statementStart: boolean = false): ASTBase {
-		const startToken = this.token
-		const val = this.parseCallExpr(asLval, statementStart)
+	parsePower(asLVal: boolean = false, statementStart: boolean = false): ASTBase {
+		const startToken = this.token!
+		const val = this.parseCallExpr(asLVal, statementStart)
 
 		if (Selectors.Power(this.token)) {
 			this.next()
@@ -1314,8 +1335,8 @@ export default class Parser {
 				left: val,
 				right: opB,
 				start: startToken.start,
-				end: this.previousToken.end,
-				range: [startToken.range[0], this.previousToken.range[1]],
+				end: this.previousToken!.end,
+				range: [startToken.range[0], this.previousToken!.range[1]],
 				scope: this.currentScope,
 			})
 		}
@@ -1323,9 +1344,9 @@ export default class Parser {
 		return val
 	}
 
-	parseCallExpr(asLval: boolean = false, statementStart: boolean = false): ASTBase {
-		const startToken = this.token
-		let base = this.parseMap(asLval, statementStart)
+	parseCallExpr(asLVal: boolean = false, statementStart: boolean = false): ASTBase {
+		const startToken = this.token!
+		let base = this.parseMap(asLVal, statementStart)
 
 		while (!Selectors.EndOfFile(this.token)) {
 			if (Selectors.MemberSeparator(this.token)) {
@@ -1338,22 +1359,22 @@ export default class Parser {
 					indexer: Operator.Member,
 					identifier,
 					start: startToken.start,
-					end: this.previousToken.end,
-					range: [startToken.range[0], this.previousToken.range[1]],
+					end: this.previousToken!.end,
+					range: [startToken.range[0], this.previousToken!.range[1]],
 					scope: this.currentScope,
 				})
 
-				this.currentScope.namespaces.push(memberExpr)
+				this.currentScope!.namespaces.push(memberExpr)
 				base = memberExpr
-			} else if (Selectors.SLBracket(this.token) && !this.token.afterSpace) {
+			} else if (Selectors.SLBracket(this.token) && !this.token!.afterSpace) {
 				this.next()
 				this.skipNewlines()
 
 				if (Selectors.SliceSeparator(this.token)) {
 					const left = this.astProvider.emptyExpression({
-						start: this.previousToken.start,
-						end: this.previousToken.end,
-						range: this.previousToken.range,
+						start: this.previousToken!.start,
+						end: this.previousToken!.end,
+						range: this.previousToken!.range,
 						scope: this.currentScope,
 					})
 
@@ -1362,24 +1383,24 @@ export default class Parser {
 
 					const right = Selectors.SRBracket(this.token)
 						? this.astProvider.emptyExpression({
-								start: this.previousToken.start,
-								end: this.previousToken.end,
-								range: this.previousToken.range,
+								start: this.previousToken!.start,
+								end: this.previousToken!.end,
+								range: this.previousToken!.range,
 								scope: this.currentScope,
 							})
-						: this.parseExpr(null)
+						: this.parseExpr()
 
 					base = this.astProvider.sliceExpression({
 						base,
 						left,
 						right,
 						start: startToken.start,
-						end: this.token.end,
-						range: [startToken.range[0], this.token.range[1]],
+						end: this.token!.end,
+						range: [startToken.range[0], this.token!.range[1]],
 						scope: this.currentScope,
 					})
 				} else {
-					const index = this.parseExpr(null)
+					const index = this.parseExpr()
 
 					if (Selectors.SliceSeparator(this.token)) {
 						this.next()
@@ -1387,20 +1408,20 @@ export default class Parser {
 
 						const right = Selectors.SRBracket(this.token)
 							? this.astProvider.emptyExpression({
-									start: this.previousToken.start,
-									end: this.previousToken.end,
-									range: this.previousToken.range,
+									start: this.previousToken!.start,
+									end: this.previousToken!.end,
+									range: this.previousToken!.range,
 									scope: this.currentScope,
 								})
-							: this.parseExpr(null)
+							: this.parseExpr()
 
 						base = this.astProvider.sliceExpression({
 							base,
 							left: index,
 							right,
 							start: startToken.start,
-							end: this.token.end,
-							range: [startToken.range[0], this.token.range[1]],
+							end: this.token!.end,
+							range: [startToken.range[0], this.token!.range[1]],
 							scope: this.currentScope,
 						})
 					} else {
@@ -1409,23 +1430,23 @@ export default class Parser {
 							index,
 							isStatementStart: statementStart,
 							start: startToken.start,
-							end: this.token.end,
-							range: [startToken.range[0], this.token.range[1]],
+							end: this.token!.end,
+							range: [startToken.range[0], this.token!.range[1]],
 							scope: this.currentScope,
 						})
 					}
 				}
 
 				this.requireToken(Selectors.SRBracket, startToken.start)
-			} else if (Selectors.LParenthesis(this.token) && (!asLval || !this.token.afterSpace)) {
+			} else if (Selectors.LParenthesis(this.token) && (!asLVal || !this.token!.afterSpace)) {
 				const expressions = this.parseCallArgs()
 
 				base = this.astProvider.callExpression({
 					base,
 					arguments: expressions,
 					start: startToken.start,
-					end: this.previousToken.end,
-					range: [startToken.range[0], this.previousToken.range[1]],
+					end: this.previousToken!.end,
+					range: [startToken.range[0], this.previousToken!.range[1]],
 					scope: this.currentScope,
 				})
 			} else {
@@ -1437,7 +1458,7 @@ export default class Parser {
 	}
 
 	parseCallArgs(): ASTBase[] {
-		const expressions = []
+		const expressions: ASTBase[] = []
 
 		if (Selectors.LParenthesis(this.token)) {
 			this.next()
@@ -1447,7 +1468,7 @@ export default class Parser {
 			} else {
 				while (!Selectors.EndOfFile(this.token)) {
 					this.skipNewlines()
-					const arg = this.parseExpr(null)
+					const arg = this.parseExpr()
 					expressions.push(arg)
 					this.skipNewlines()
 					if (Selectors.RParenthesis(this.requireTokenOfAny(SelectorGroups.CallArgsEnd, arg.start)))
@@ -1459,19 +1480,18 @@ export default class Parser {
 		return expressions
 	}
 
-	parseMap(asLval: boolean = false, statementStart: boolean = false): ASTBase {
+	parseMap(asLVal: boolean = false, statementStart: boolean = false): ASTBase {
 		if (!Selectors.CLBracket(this.token)) {
-			return this.parseList(asLval, statementStart)
+			return this.parseList(asLVal, statementStart)
 		}
 
 		const scope = this.currentScope
-		const startToken = this.token
+		const startToken = this.token!
 		const fields: ASTMapKeyString[] = []
 		const mapConstructorExpr = this.astProvider.mapConstructorExpression({
 			fields,
 			start: startToken.start,
-			end: null,
-			range: [startToken.range[0], null],
+			range: [startToken.range[0]],
 			scope,
 		})
 
@@ -1489,23 +1509,20 @@ export default class Parser {
 				}
 
 				const keyValueItem = this.astProvider.mapKeyString({
-					key: null,
-					value: null,
-					start: this.token.start,
-					end: null,
-					range: [this.token.range[0], null],
+					start: this.token!.start,
+					range: [this.token!.range[0]],
 					scope,
 				})
-				keyValueItem.key = this.parseExpr(null)
+				keyValueItem.key = this.parseExpr()
 
 				if (this.consume(Selectors.MapKeyValueSeparator)) {
 					this.skipNewlines()
-					keyValueItem.value = this.parseExpr(keyValueItem)
+					keyValueItem.value = this.parseExpr(false, false, keyValueItem)
 				} else {
 					keyValueItem.value = keyValueItem.key
 				}
-				keyValueItem.end = this.previousToken.end
-				keyValueItem.range[1] = this.previousToken.range[1]
+				keyValueItem.end = this.previousToken!.end
+				keyValueItem.range[1] = this.previousToken!.range[1]
 				fields.push(keyValueItem)
 
 				if (Selectors.MapSeparator(this.token)) {
@@ -1520,25 +1537,24 @@ export default class Parser {
 			}
 		}
 
-		mapConstructorExpr.end = this.token.start
-		mapConstructorExpr.range[1] = this.token.range[1]
+		mapConstructorExpr.end = this.token!.start
+		mapConstructorExpr.range[1] = this.token!.range[1]
 
 		return mapConstructorExpr
 	}
 
-	parseList(asLval: boolean = false, statementStart: boolean = false): ASTBase {
+	parseList(asLVal: boolean = false, statementStart: boolean = false): ASTBase {
 		if (!Selectors.SLBracket(this.token)) {
-			return this.parseQuantity(asLval, statementStart)
+			return this.parseQuantity(asLVal, statementStart)
 		}
 
 		const scope = this.currentScope
-		const startToken = this.token
+		const startToken = this.token!
 		const fields: ASTListValue[] = []
 		const listConstructorExpr = this.astProvider.listConstructorExpression({
 			fields,
 			start: startToken.start,
-			end: null,
-			range: [startToken.range[0], null],
+			range: [startToken.range[0]],
 			scope,
 		})
 
@@ -1556,16 +1572,14 @@ export default class Parser {
 				}
 
 				const listValue = this.astProvider.listValue({
-					value: null,
-					start: this.token.start,
-					end: null,
-					range: [this.token.range[0], null],
+					start: this.token!.start,
+					range: [this.token!.range[0]],
 					scope,
 				})
 
-				listValue.value = this.parseExpr(listValue)
-				listValue.end = this.previousToken.end
-				listValue.range[1] = this.previousToken.range[1]
+				listValue.value = this.parseExpr(false, false, listValue)
+				listValue.end = this.previousToken!.end
+				listValue.range[1] = this.previousToken!.range[1]
 				fields.push(listValue)
 
 				if (Selectors.MapSeparator(this.token)) {
@@ -1580,37 +1594,37 @@ export default class Parser {
 			}
 		}
 
-		listConstructorExpr.end = this.token.start
-		listConstructorExpr.range[1] = this.token.range[1]
+		listConstructorExpr.end = this.token!.start
+		listConstructorExpr.range[1] = this.token!.range[1]
 
 		return listConstructorExpr
 	}
 
-	parseQuantity(asLval: boolean = false, statementStart: boolean = false): ASTBase {
+	parseQuantity(asLVal: boolean = false, statementStart: boolean = false): ASTBase {
 		if (!Selectors.LParenthesis(this.token)) {
-			return this.parseAtom(asLval, statementStart)
+			return this.parseAtom(asLVal, statementStart)
 		}
 
-		const startToken = this.token
+		const startToken = this.token!
 
 		this.next()
 		this.skipNewlines()
 
-		const val = this.parseExpr(null)
+		const val = this.parseExpr()
 
 		this.requireToken(Selectors.RParenthesis, startToken.start)
 
 		return this.astProvider.parenthesisExpression({
 			expression: val,
 			start: startToken.start,
-			end: this.previousToken.end,
-			range: [startToken.range[0], this.previousToken.range[1]],
+			end: this.previousToken!.end,
+			range: [startToken.range[0], this.previousToken!.range[1]],
 			scope: this.currentScope,
 		})
 	}
 
-	parseAtom(_asLval: boolean = false, _statementStart: boolean = false): ASTBase {
-		if (this.validator.isLiteral(<TokenType>this.token.type)) {
+	parseAtom(_asLVal: boolean = false, _statementStart: boolean = false): ASTBase {
+		if (this.validator.isLiteral(<TokenType>this.token!.type)) {
 			return this.parseLiteral()
 		} else if (this.isType(TokenType.Identifier)) {
 			return this.parseIdentifier(ASTIdentifierKind.Variable)
@@ -1618,15 +1632,15 @@ export default class Parser {
 
 		this.raise(
 			`got ${this.token} where number, string, or identifier is required`,
-			new Range(this.token.start, this.token.end),
+			new Range(this.token!.start, this.token!.end),
 		)
 
 		return this.parseInvalidCode()
 	}
 
 	parseLiteral(): ASTLiteral {
-		const startToken = this.token
-		const type = <TokenType>this.token.type
+		const startToken = this.token!
+		const type = <TokenType>startToken.type
 		const base: ASTLiteral = this.astProvider.literal(
 			<
 				| TokenType.StringLiteral
@@ -1635,11 +1649,11 @@ export default class Parser {
 				| TokenType.NilLiteral
 			>type,
 			{
-				value: this.token.value,
-				raw: this.token.raw,
+				value: startToken.value,
+				raw: startToken.raw,
 				start: startToken.start,
-				end: this.token.end,
-				range: [startToken.range[0], this.token.range[1]],
+				end: startToken.end,
+				range: [startToken.range[0], startToken.range[1]],
 				scope: this.currentScope,
 			},
 		)
@@ -1652,7 +1666,7 @@ export default class Parser {
 	}
 
 	parseIdentifier(kind: ASTIdentifierKind): ASTIdentifier | ASTBase {
-		const identifierToken = this.requireType(TokenType.Identifier)
+		const identifierToken = this.requireType(TokenType.Identifier)!
 
 		if (identifierToken === null) {
 			return this.parseInvalidCode()
@@ -1668,14 +1682,14 @@ export default class Parser {
 		})
 
 		if (kind !== ASTIdentifierKind.Property) {
-			this.currentScope.namespaces.push(identifier)
+			this.currentScope!.namespaces.push(identifier)
 		}
 
 		return identifier
 	}
 
 	parseInvalidCode() {
-		const invalidToken = this.token
+		const invalidToken = this.token!
 		const base = this.astProvider.invalidCodeExpression({
 			start: invalidToken.start,
 			end: invalidToken.end,

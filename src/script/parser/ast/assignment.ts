@@ -2,12 +2,12 @@ import { ASTBase, type ASTBaseOptions, ASTType } from './base'
 
 export interface ASTAssignmentStatementOptions extends ASTBaseOptions {
 	variable: ASTBase
-	init: ASTBase
+	init?: ASTBase
 }
 
 export class ASTAssignmentStatement extends ASTBase {
 	variable: ASTBase
-	init: ASTBase
+	init?: ASTBase
 
 	constructor(options: ASTAssignmentStatementOptions) {
 		super(ASTType.AssignmentStatement, options)
@@ -22,7 +22,7 @@ export class ASTAssignmentStatement extends ASTBase {
 	clone(): ASTAssignmentStatement {
 		return new ASTAssignmentStatement({
 			variable: this.variable.clone(),
-			init: this.init.clone(),
+			init: this.init?.clone(),
 			start: this.start,
 			end: this.end,
 			range: this.range,

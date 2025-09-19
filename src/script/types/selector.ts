@@ -64,7 +64,7 @@ export interface createSelectorOptions {
 }
 
 export interface Selector {
-	(token: Token): boolean
+	(token?: Token): boolean
 	data: {
 		type: TokenType
 		value?: string
@@ -97,7 +97,7 @@ export function createSelector(options: createSelectorOptions): Selector {
 	return selector
 }
 
-export function getSelectorValue(value: Selector): string {
+export function getSelectorValue(value: Selector): string | undefined {
 	return value.data.value
 }
 
@@ -264,7 +264,7 @@ export const Selectors: Record<SelectorType, Selector> = {
 	}),
 	Times: createSelector({
 		type: TokenType.Punctuator,
-		value: Operator.Asterik,
+		value: Operator.Asterisk,
 	}),
 	Power: createSelector({
 		type: TokenType.Punctuator,
@@ -334,7 +334,7 @@ export function createSelectorGroup(name: string, selectors: Selector[]): Select
 			return `case '${selector.data.type}':`
 		})
 		.join('\n')
-	const groupf = new Function(
+	const group = new Function(
 		'token',
 		`
 	${
@@ -354,12 +354,12 @@ export function createSelectorGroup(name: string, selectors: Selector[]): Select
 	}
 	return false;`,
 	) as SelectorGroup
-	Object.defineProperty(groupf, 'name', {
+	Object.defineProperty(group, 'name', {
 		value: `selector_group_${name}`,
 		writable: false,
 	})
-	groupf.selectors = selectors
-	return groupf
+	group.selectors = selectors
+	return group
 }
 
 export function getSelectorsFromGroup(group: SelectorGroup): Selector[] {

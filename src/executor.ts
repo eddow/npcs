@@ -18,7 +18,7 @@ import {
 } from './helpers'
 import NpcScript from './npcs'
 import {
-	type ASTAssignmentStatement,
+	ASTAssignmentStatement,
 	type ASTBase,
 	ASTBaseBlock,
 	type ASTBinaryExpression,
@@ -314,7 +314,7 @@ export class MiniScriptExecutor {
 				case 'NilLiteral':
 					return null
 				case 'ListValue':
-					return this.evaluateExpression((expr as ASTListValue).value)
+					return this.evaluateExpression((expr as ASTListValue).value!)
 				case 'BinaryExpression':
 					return this.evaluateBinaryExpression(expr as ASTBinaryExpression)
 				case 'BinaryNegatedExpression':
@@ -352,9 +352,9 @@ export class MiniScriptExecutor {
 	private evaluateLValue(expr: ASTBase): LValue | false {
 		if (expr instanceof ASTIdentifier)
 			return {
-				get: () => this.getVariable(expr.name, expr),
+				get: () => this.getVariable(expr.name!, expr),
 				set: (value: MSValue) => {
-					this.setVariable(expr.name, value, expr)
+					this.setVariable(expr.name!, value, expr)
 				},
 			}
 		let base: any
@@ -412,7 +412,7 @@ export class MiniScriptExecutor {
 		// Check if this is a member expression assignment (e.g., person.age = 40)
 		const lValue = this.evaluateLValue(statement.variable)
 		if (!lValue) throw new ExecutionError(this, statement.variable, 'Invalid L-Value target')
-		lValue.set(this.evaluateExpression(statement.init))
+		lValue.set(this.evaluateExpression(statement.init!))
 	}
 
 	private executeIf(statement: ASTIfStatement): ExecutionResult {
@@ -567,6 +567,12 @@ export class MiniScriptExecutor {
 		// Find the instruction pointer for this function definition
 		// Extract parameter names
 		const parameters = expr.parameters.map((param) => {
+			// Handle default parameters (which are AssignmentStatement objects)
+			if (param instanceof ASTAssignmentStatement) {
+				this.assertAST(param.variable, ASTIdentifier)
+				return param.variable.name
+			}
+			// Handle regular parameters (which are ASTIdentifier objects)
 			this.assertAST(param, ASTIdentifier)
 			return param.name
 		})
@@ -574,7 +580,7 @@ export class MiniScriptExecutor {
 		// Return a FunctionDefinition instance
 		return new FunctionDefinition(
 			this.script.functionIndexes.get(expr)!,
-			parameters,
+			parameters as string[],
 			this.stack[0].scope,
 		)
 	}
@@ -583,9 +589,9 @@ export class MiniScriptExecutor {
 		const obj: any = {}
 		if (expr.fields) {
 			for (const field of expr.fields) {
-				this.assertAST(field.key, ASTIdentifier)
-				const key = field.key.name
-				const value = this.evaluateExpression(field.value)
+				this.assertAST(field.key!, ASTIdentifier)
+				const key = field.key.name!
+				const value = this.evaluateExpression(field.value!)
 				obj[key] = value
 			}
 		}
@@ -621,7 +627,7 @@ export class MiniScriptExecutor {
 	private evaluateIsaExpression(expr: ASTIsaExpression): boolean {
 		const left = this.evaluateExpression(expr.left)
 		this.assertAST(expr.right, ASTIdentifier)
-		const right = expr.right.name
+		const right = expr.right.name!
 		const isaType = this.script.isaTypes[right]
 		if (!isaType) throw new ExecutionError(this, expr, `Unknown ISA type: ${right}`)
 		return isaType(left)
