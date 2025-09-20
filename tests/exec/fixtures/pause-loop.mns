@@ -1,6 +1,6 @@
 // Pause inside while loop
 counter = 0
-while counter < 3
+do while counter < 3
 	print "Loop iteration: " + counter
 	counter = counter + 1
 	print "After loop iteration: " + counter
@@ -9,5 +9,5 @@ while counter < 3
 		yield 0
 		print "After"
 	end if
-end while
+loop
 print "Loop completed!"

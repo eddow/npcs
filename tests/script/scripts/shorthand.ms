@@ -17,10 +17,12 @@ for i in [] print(i)
 for b in []
 	print(b)
 end for
-while (i < b) i += 1
-while (b < i)
+do while (i < b)
+	i += 1
+loop
+do while (b < i)
 	b += 1
-end while
+loop
 myFunction = function(v)
   print(v)
 end function
@@ -40,9 +42,9 @@ for c in clist //x
 	print("moo")
 end for
 
-while true //x
+do
 	print("moo")
-end while
+loop
 
 if true then //x
 	print("moo")

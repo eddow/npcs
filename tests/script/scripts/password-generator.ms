@@ -37,12 +37,12 @@ PasswordGenerator.gen = function()
 	password = ""
 	index = 0
 	
-	while index < currentCharBuffer.len
+	do while index < currentCharBuffer.len
 		pointer = currentCharBuffer[index]
 		password = password + generatorCharacters[pointer]
 		if (index == currentCharBuffer.len - 1) then self.increaseBuffer()
 		index = index + 1
-	end while
+	loop
 
 	if (currentCharBuffer.len > me.MAX_PASSWORD_LENGTH) then
 		return null
@@ -57,9 +57,9 @@ index = 0
 max = 10
 result = []
 
-while (index < max)
+do while (index < max)
 	result.push(pgen.gen())
 	index = index + 1
-end while
+loop
 
 print(result)

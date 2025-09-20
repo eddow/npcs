@@ -193,34 +193,101 @@ end if
 if age >= 18 then print "Adult" else print "Minor"
 ```
 
-### While Loops
+### Do-While Loops
+
+The `do while ... loop` syntax provides flexible looping constructs that can have multiple conditions and execute at least once.
+
+#### Basic Syntax
 
 ```miniscript
-// Basic while loop
+// Basic do-while loop
 count = 0
-while count < 5
+do while count < 5
     print "Count: " + count
     count = count + 1
-end while
+loop
+```
 
-// Loop with break
-while true
+#### Do Loop Without Condition
+
+```miniscript
+// Do loop without condition (infinite until break)
+do
     print "Looping..."
     if shouldStop then
         break
     end if
-end while
+loop
+```
 
-// Loop with continue
+#### Multiple While Clauses
+
+The most powerful feature is the ability to have multiple `while` clauses, each with their own condition and body:
+
+```miniscript
+// Multiple while clauses
+result = 0
+do while result < 10
+    result = result + 1
+    print "First phase: " + result
+while result < 20
+    result = result + 2
+    print "Second phase: " + result
+loop
+```
+
+#### Loop Control
+
+```miniscript
+// Do-while loop with continue
 count = 0
-while count < 10
+do while count < 10
     count = count + 1
     if count % 2 == 0 then
         continue
     end if
     print "Odd: " + count
-end while
+loop
 ```
+
+#### One-liner Syntax
+
+```miniscript
+// One-liner do-while
+do while condition then action() loop
+
+// One-liner do without condition
+do then action() loop
+```
+
+#### Complex Example
+
+```miniscript
+// Complex do-while with multiple conditions
+health = 100
+energy = 50
+do while health > 0
+    print "Health: " + health
+    if energy > 20 then
+        print "Attacking!"
+        energy = energy - 10
+    else
+        print "Resting..."
+        energy = energy + 5
+    end if
+while energy > 0
+    print "Low energy, must rest"
+    energy = energy + 15
+loop
+```
+
+#### Key Features
+
+- **Guaranteed execution**: The main block always executes at least once
+- **Multiple conditions**: Each `while` clause can have different conditions and bodies
+- **Flexible structure**: Can have no conditions (infinite loop) or multiple conditions
+- **Break and continue**: Standard loop control statements work as expected
+- **One-liner support**: Can be written as single-line statements
 
 ### For Loops
 
@@ -417,4 +484,5 @@ NPCS extends MiniScript with several features:
 2. **Multi-line comments**: `/* ... */`
 3. **Named functions**: `function name() ... end function`
 4. **Enhanced yielding**: Better integration with JavaScript context
+5. **Do-while loops**: `do while ... loop` syntax with multiple conditions support
 

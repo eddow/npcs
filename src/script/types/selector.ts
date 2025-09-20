@@ -21,8 +21,9 @@ export enum SelectorType {
 	Separator = 'Separator',
 	Function = 'Function',
 	EndFunction = 'EndFunction',
-	EndWhile = 'EndWhile',
 	EndFor = 'EndFor',
+	Do = 'Do',
+	Loop = 'Loop',
 	EndIf = 'EndIf',
 	SliceSeparator = 'SliceSeparator',
 	MapKeyValueSeparator = 'MapKeyValueSeparator',
@@ -174,13 +175,17 @@ export const Selectors: Record<SelectorType, Selector> = {
 		type: TokenType.Keyword,
 		value: Keyword.EndFunction,
 	}),
-	EndWhile: createSelector({
-		type: TokenType.Keyword,
-		value: Keyword.EndWhile,
-	}),
 	EndFor: createSelector({
 		type: TokenType.Keyword,
 		value: Keyword.EndFor,
+	}),
+	Do: createSelector({
+		type: TokenType.Keyword,
+		value: Keyword.Do,
+	}),
+	Loop: createSelector({
+		type: TokenType.Keyword,
+		value: Keyword.Loop,
 	}),
 	EndIf: createSelector({
 		type: TokenType.Keyword,

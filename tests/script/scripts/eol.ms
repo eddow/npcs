@@ -4,9 +4,9 @@ else;
 	print("false")
 end if;
 
-while (false);
+do while (false);
 	print("foo")
-end while;
+loop;
 
 for foo in [];
 	print("foo")

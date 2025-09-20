@@ -45,11 +45,11 @@ Random.seq = function(min, max, seed, amount, keepPool)
 	me = self
 	index = 0
 	result = []
-	while index < amount
+	do while index < amount
 		temp = me.gen(min, max, seed)
 		result.push(temp )
 		index = index + 1
-	end while
+	loop
 	if (keepPool != true) then me.pool.remove(seed)
 	return result
 end function

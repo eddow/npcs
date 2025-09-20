@@ -26,7 +26,7 @@ export interface LoopScope {
 	ipDepth: number
 }
 
-export interface WhileScope extends LoopScope {
+export interface DoWhileScope extends LoopScope {
 	occurrences: number
 }
 
@@ -38,10 +38,9 @@ export interface ForScope extends LoopScope {
 export interface ExecutionStackEntry {
 	scope: MSScope
 	ip: IP
-	loopScopes: (LoopScope | ForScope | WhileScope)[]
+	loopScopes: (LoopScope | ForScope | DoWhileScope)[]
 	evaluatedCache?: Record<number, any>
 	targetReturn?: number
-	loopOccurrences?: number
 }
 
 export type ExecutionState = ExecutionStackEntry[]

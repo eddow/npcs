@@ -327,19 +327,19 @@ function validateDocument(document, diagnosticCollection) {
         // Patterns
         const ifOpen = /^if\b.*\bthen\b/i;
         const forOpen = /^for\b.*\bin\b/i;
-        const whileOpen = /^while\b/i;
+        const doOpen = /^do\b/i;
         const funcOpen = /^(?:[A-Za-z_][A-Za-z0-9_]*\s*=\s*function|function\s+[A-Za-z_][A-Za-z0-9_]*)\b/i;
         const endIf = /^end\s+if\b/i;
         const endFor = /^end\s+for\b/i;
-        const endWhile = /^end\s+while\b/i;
+        const endLoop = /^loop\b/i;
         const endFunc = /^end\s+function\b/i;
         const elseLine = /^else\b/i;
         const pushBlock = (type) => stack.push({ type, line: lineIndex });
         const popBlock = (expected, endLen) => {
             const top = stack.pop();
             if (!top || top.type !== expected) {
-                const message = `Mismatched end ${expected === 'if' ? 'if' : expected}.` +
-                    (top ? ` Found end ${expected === 'if' ? 'if' : expected} while top-of-stack is ${top.type}.` : ' No matching opener.');
+                const message = `Mismatched end ${expected === 'if' ? 'if' : expected === 'do' ? 'loop' : expected}.` +
+                    (top ? ` Found end ${expected === 'if' ? 'if' : expected === 'do' ? 'loop' : expected} while top-of-stack is ${top.type}.` : ' No matching opener.');
                 diagnostics.push({
                     range: new vscode.Range(lineIndex, 0, lineIndex, endLen),
                     message,
@@ -353,6 +353,10 @@ function validateDocument(document, diagnosticCollection) {
             if (afterThen.length === 0) {
                 pushBlock('if');
             }
+            else if (afterThen.startsWith('do')) {
+                // Special case: "if x then do" - this is a one-liner if followed by do
+                pushBlock('do');
+            }
             // else on same line is still part of one-liner, no push/pop needed here
             continue;
         }
@@ -360,8 +364,8 @@ function validateDocument(document, diagnosticCollection) {
             pushBlock('for');
             continue;
         }
-        if (whileOpen.test(line)) {
-            pushBlock('while');
+        if (doOpen.test(line)) {
+            pushBlock('do');
             continue;
         }
         if (funcOpen.test(line)) {
@@ -387,12 +391,24 @@ function validateDocument(document, diagnosticCollection) {
             popBlock('for', 7);
             continue;
         }
-        if (endWhile.test(line)) {
-            popBlock('while', 9);
+        if (endLoop.test(line)) {
+            popBlock('do', 4);
             continue;
         }
         if (endFunc.test(line)) {
             popBlock('function', 12);
+            continue;
+        }
+        // Check for while clauses outside of do blocks
+        if (/^while\b/i.test(line)) {
+            const top = stack[stack.length - 1];
+            if (!top || top.type !== 'do') {
+                diagnostics.push({
+                    range: new vscode.Range(lineIndex, 0, lineIndex, Math.max(5, lines[lineIndex].length)),
+                    message: 'while clauses are only allowed inside do blocks',
+                    severity: vscode.DiagnosticSeverity.Error
+                });
+            }
             continue;
         }
         // Common syntax warnings
@@ -458,8 +474,8 @@ class NpcsFoldingProvider {
                 stack.push({ type: 'for', line: i });
                 continue;
             }
-            if (/^while\b/i.test(line)) {
-                stack.push({ type: 'while', line: i });
+            if (/^do\b/i.test(line)) {
+                stack.push({ type: 'do', line: i });
                 continue;
             }
             if (/^(?:[A-Za-z_][A-Za-z0-9_]*\s*=\s*function|function\s+[A-Za-z_][A-Za-z0-9_]*)\b/i.test(line)) {
@@ -478,9 +494,9 @@ class NpcsFoldingProvider {
                     ranges.push(new vscode.FoldingRange(top.line, i));
                 continue;
             }
-            if (/^end\s+while\b/i.test(line)) {
+            if (/^loop\b/i.test(line)) {
                 const top = stack.pop();
-                if (top && top.type === 'while' && i > top.line)
+                if (top && top.type === 'do' && i > top.line)
                     ranges.push(new vscode.FoldingRange(top.line, i));
                 continue;
             }

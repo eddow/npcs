@@ -55,14 +55,23 @@
     ],
     "description": "If-else statement"
   },
-  "While Loop": {
-    "prefix": "while",
+  "Do-While Loop": {
+    "prefix": "dowhile",
     "body": [
-      "while ${1:condition}",
+      "do while ${1:condition}",
       "\t${2:// code}",
-      "end while"
+      "loop"
     ],
-    "description": "While loop"
+    "description": "Do-while loop"
+  },
+  "Do Loop (no condition)": {
+    "prefix": "do",
+    "body": [
+      "do",
+      "\t${1:// code}",
+      "loop"
+    ],
+    "description": "Do loop without condition"
   },
   "For Loop": {
     "prefix": "for",

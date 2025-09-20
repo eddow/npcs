@@ -1,0 +1,28 @@
+// NPCS Do-While Loop Test
+print "Testing new do-while syntax"
+
+// Simple do-while loop
+counter = 0
+if x then do
+    print "Counter: " + counter
+while counter < 5
+    counter += 1
+loop
+
+// Do loop without condition (infinite until break)
+do
+    print "Infinite loop - press break to exit"
+    if someCondition then
+        break
+    end if
+loop
+
+// Multiple while clauses
+result = 0
+do while result < 10
+    result += 1
+while result < 20
+    result += 2
+loop
+
+print "Final result: " + result

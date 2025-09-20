@@ -19,7 +19,7 @@ import {
 	ASTProvider,
 	type ASTReturnStatement,
 	ASTType,
-	type ASTWhileStatement,
+	type ASTDoWhileLoop,
 } from './parser/ast'
 import { LineRegistry } from './parser/line-registry'
 import {
@@ -27,14 +27,15 @@ import {
 	isPendingFor,
 	isPendingFunction,
 	isPendingIf,
-	isPendingWhile,
+	isPendingDoWhileLoop,
 	type PendingBlock,
 	PendingChunk,
 	type PendingClauseType,
 	PendingFor,
 	PendingFunction,
 	PendingIf,
-	PendingWhile,
+	PendingDoWhileLoop,
+	PendingBlockType,
 } from './parser/pending-block'
 import Validator from './parser/validator'
 import { ParserException } from './types/errors'
@@ -60,7 +61,7 @@ export default class Parser {
 	currentScope?: ASTBaseBlockWithScope
 	outerScopes: ASTBaseBlockWithScope[]
 	currentAssignment?: ASTAssignmentStatement
-	iteratorStack: (ASTForGenericStatement | ASTWhileStatement)[]
+	iteratorStack: (ASTForGenericStatement | ASTDoWhileLoop)[]
 
 	// helpers
 	literals: ASTLiteral[]
@@ -186,13 +187,13 @@ export default class Parser {
 
 				this.comments.push(comment)
 				this.lineRegistry.addItemToLines(comment)
+				this.next()
 			} else if (this.token && Selectors.EndOfLine(this.token)) {
 				lines++
+				this.next()
 			} else {
 				break
 			}
-
-			this.next()
 		}
 
 		return lines
@@ -380,7 +381,18 @@ export default class Parser {
 			}
 			case Keyword.While: {
 				this.next()
-				this.parseWhileStatement()
+				// Check if we're inside a DO-WHILE-LOOP
+				const currentPending = this.backPatches.peek()
+				if (isPendingDoWhileLoop(currentPending)) {
+					this.parseWhileClause()
+				} else {
+					this.raise('while statement not supported, use DO-WHILE-LOOP syntax', new Range(this.previousToken!.start, this.token!.end))
+				}
+				return
+			}
+			case Keyword.Do: {
+				this.next()
+				this.parseDoWhileLoop()
 				return
 			}
 			case Keyword.For: {
@@ -398,9 +410,9 @@ export default class Parser {
 				this.finalizeForStatement()
 				return
 			}
-			case Keyword.EndWhile: {
+			case Keyword.Loop: {
 				this.next()
-				this.finalizeWhileStatement()
+				this.finalizeDoWhileLoop()
 				return
 			}
 			case Keyword.EndIf: {
@@ -485,6 +497,10 @@ export default class Parser {
 				case Keyword.Break: {
 					this.next()
 					return this.parseShortcutBreakStatement()
+				}
+				case Keyword.Do: {
+					this.next()
+					return this.parseShortcutDoWhileLoop()
 				}
 				default: {
 					this.raise(
@@ -773,62 +789,240 @@ export default class Parser {
 		block.body.push(ifStatement)
 	}
 
-	parseWhileStatement(): void {
+
+	parseDoWhileLoop(): void {
 		const startToken = this.previousToken!
-		const condition = this.parseExpr()
-
-		if (!condition) {
-			this.raise(`while requires a condition`, new Range(startToken!.start, this.token!.end))
-
-			return
-		}
-
-		if (!SelectorGroups.BlockEndOfLine(this.token!)) {
-			return this.parseWhileShortcutStatement(condition, startToken!)
-		}
-
-		const whileStatement = this.astProvider.whileStatement({
-			condition,
+		
+		// Create a main block for the DO-WHILE-LOOP
+		const mainBlock = this.astProvider.chunk({
 			start: startToken.start,
 			range: [startToken.range[0]],
 			scope: this.currentScope,
 		})
+		
+		// Create the DO-WHILE-LOOP statement
+		const doWhileLoop = this.astProvider.doWhileLoop({
+			mainBlock: mainBlock,
+			whileClauses: [], // Will be populated when we encounter WHILE clauses
+			start: startToken.start,
+			range: [startToken.range[0], startToken.range[0]],
+			scope: this.currentScope,
+		})
 
-		const pendingBlock = new PendingWhile(whileStatement, this.lineRegistry)
+		const pendingBlock = new PendingDoWhileLoop(doWhileLoop, this.lineRegistry)
 		this.backPatches.push(pendingBlock)
-		this.iteratorStack.push(whileStatement)
+		this.iteratorStack.push(doWhileLoop)
 	}
 
-	finalizeWhileStatement() {
+	finalizeDoWhileLoop(): void {
 		const pendingBlock = this.backPatches.peek()
 
-		if (!isPendingWhile(pendingBlock)) {
-			this.raise('no matching open while block', new Range(this.token!.start, this.token!.end))
-
+		if (!isPendingDoWhileLoop(pendingBlock)) {
+			this.raise('no matching open do block', new Range(this.token!.start, this.token!.end))
 			return
 		}
 
-		pendingBlock.complete(this.previousToken!)
+		pendingBlock.complete(this.token!)
 		this.iteratorStack.pop()
 		this.backPatches.pop()
 		this.backPatches.peek().body.push(pendingBlock.block)
 	}
 
-	parseWhileShortcutStatement(condition: ASTBase, startToken: Token): void {
-		const block = this.backPatches.peek()
-		const item = this.parseShortcutStatement()
+	parseWhileClause(): void {
+		const startToken = this.previousToken!
+		const condition = this.parseExpr()
 
-		const whileStatement = this.astProvider.whileStatement({
-			condition,
-			body: [item],
+		if (!condition) {
+			this.raise(`while clause requires a condition`, new Range(startToken!.start, this.token!.end))
+			return
+		}
+
+		// Check if we're inside a DO-WHILE-LOOP
+		const currentPending = this.backPatches.peek()
+		if (!isPendingDoWhileLoop(currentPending)) {
+			this.raise('while clause must be inside a do-while-loop', new Range(startToken!.start, this.token!.end))
+			return
+		}
+
+		// Skip to the next line to start parsing the while block
+		this.skipNewlines()
+		
+		// Create a while clause block
+		const whileClauseBlock = this.astProvider.chunk({
+			start: this.token?.start || startToken.start,
+			range: [this.token?.range[0] || startToken.range[0]],
+			scope: this.currentScope,
+		})
+		
+		// Create the while clause
+		const whileClause = this.astProvider.whileClause({
+			condition: condition,
 			start: startToken.start,
-			end: this.previousToken!.end,
-			range: [startToken.range[0], this.previousToken!.range[1]],
+			range: [startToken.range[0], startToken.range[0]],
+			scope: this.currentScope,
+		})
+		
+		// Store the original pending block
+		const originalPending = this.backPatches.peek()
+		
+		// Create a temporary pending block to collect while block statements
+		const tempPending = {
+			body: whileClauseBlock.body,
+			type: PendingBlockType.Chunk,
+			block: whileClauseBlock,
+			complete: () => {}
+		}
+		
+		// Temporarily replace the pending block
+		this.backPatches.pop()
+		this.backPatches.push(tempPending as any)
+		
+		// Parse statements until we encounter another WHILE or LOOP
+		while (this.token && !Selectors.EndOfFile(this.token)) {
+			// Check if we've reached another WHILE clause or LOOP
+			if (this.token.type === TokenType.Keyword) {
+				if (this.token.value === Keyword.While || this.token.value === Keyword.Loop) {
+					break
+				}
+			}
+			
+			// Skip end-of-line tokens
+			if (this.token && (this.token.type as any) === TokenType.EOL) {
+				this.next()
+				continue
+			}
+			
+			// Parse the statement - it will be added to our temp pending block
+			this.parseStatement()
+			
+			// Skip any comments or newlines after the statement
+			this.skipNewlines()
+		}
+		
+		// Restore the original pending block
+		this.backPatches.pop()
+		this.backPatches.push(originalPending)
+
+		// Set the body of the while clause
+		whileClause.body = whileClauseBlock.body
+		whileClause.end = this.previousToken?.end
+		whileClause.range = [startToken.range[0], this.previousToken?.range[1] || startToken.range[0]]
+
+		// Add the while clause to the DO-WHILE-LOOP
+		currentPending.block.whileClauses.push(whileClause)
+	}
+
+
+	parseShortcutDoWhileLoop(): ASTDoWhileLoop {
+		const startToken = this.previousToken!
+		
+		// Create a main block for the DO-WHILE-LOOP
+		const mainBlock = this.astProvider.chunk({
+			start: startToken.start,
+			range: [startToken.range[0], startToken.range[0]],
+			scope: this.currentScope,
+		})
+		
+		// Create the DO-WHILE-LOOP statement
+		const doWhileLoop = this.astProvider.doWhileLoop({
+			mainBlock: mainBlock,
+			whileClauses: [], // Will be populated when we encounter WHILE clauses
+			start: startToken.start,
+			range: [startToken.range[0], startToken.range[0]],
 			scope: this.currentScope,
 		})
 
-		this.lineRegistry.addItemToLines(whileStatement)
-		block.body.push(whileStatement)
+		// Parse the body and while clauses until we find LOOP
+		const body: ASTBase[] = []
+		while (this.token && !Selectors.EndOfFile(this.token)) {
+			if (this.token.type === TokenType.Keyword && this.token.value === Keyword.Loop) {
+				this.next() // consume LOOP
+				break
+			} else if (this.token.type === TokenType.Keyword && this.token.value === Keyword.While) {
+				// Parse WHILE clause with its block
+				this.next()
+				const condition = this.parseExpr()
+				if (condition) {
+					// Parse the while block
+					const whileBlock: ASTBase[] = []
+					this.skipNewlines()
+					
+					// Parse statements until we encounter another WHILE or LOOP
+					while (this.token && !Selectors.EndOfFile(this.token)) {
+						// Check if we've reached another WHILE clause or LOOP
+						if (this.token.type === TokenType.Keyword) {
+							if (this.token.value === Keyword.While || this.token.value === Keyword.Loop) {
+								break
+							}
+						}
+						
+					// Skip end-of-line tokens
+					if (this.token && (this.token.type as any) === TokenType.EOL) {
+						this.next()
+						continue
+					}
+						
+						// Parse statement
+						const currentBlock = this.backPatches.peek()
+						const beforeLength = currentBlock.body.length
+						this.parseStatement()
+						const afterLength = currentBlock.body.length
+						
+						if (afterLength > beforeLength) {
+							const statement = currentBlock.body.pop()!
+							whileBlock.push(statement)
+						}
+					}
+					
+					// Create a while clause block
+					const whileClauseBlock = this.astProvider.chunk({
+						start: this.token?.start || startToken.start,
+						range: [this.token?.range[0] || startToken.range[0], this.token?.range[0] || startToken.range[0]],
+						scope: this.currentScope,
+					})
+					whileClauseBlock.body = whileBlock
+					
+					// Create the while clause
+					const whileClause = this.astProvider.whileClause({
+						condition: condition,
+						start: startToken.start,
+						range: [startToken.range[0], startToken.range[0]],
+						scope: this.currentScope,
+					})
+					whileClause.body = whileBlock
+					
+					doWhileLoop.whileClauses.push(whileClause)
+				}
+			} else {
+				// Skip end-of-line tokens
+				if (this.token.type === TokenType.EOL) {
+					this.next()
+					continue
+				}
+				
+				// Parse statement - we need to get the last statement from the current block
+				const currentBlock = this.backPatches.peek()
+				const beforeLength = currentBlock.body.length
+				this.parseStatement()
+				const afterLength = currentBlock.body.length
+				
+				// If a statement was added, move it to our body
+				if (afterLength > beforeLength) {
+					const statement = currentBlock.body.pop()!
+					body.push(statement)
+				}
+			}
+		}
+
+		// Set the main block body and end position
+		doWhileLoop.mainBlock.body = body
+		doWhileLoop.mainBlock.end = this.previousToken?.end
+		doWhileLoop.mainBlock.range = [startToken.range[0], this.previousToken?.range[1] || startToken.range[0]]
+		
+		doWhileLoop.end = this.previousToken?.end
+		doWhileLoop.range = [startToken.range[0], this.previousToken?.range[1] || startToken.range[0]]
+
+		return doWhileLoop
 	}
 
 	parseForStatement(): void {

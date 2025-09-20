@@ -10,10 +10,10 @@ String.parse = function(values)
 	index = 0
 	maxIndex = values.len
 
-	while index < maxIndex
+	do while index < maxIndex
 		result = result.replace("$"+index, values[index])
 		index = index + 1
-	end while
+	loop
 
 	return (new self).constructor(result)
 end function
@@ -124,7 +124,7 @@ Crypto.encrypt = function(str, pw)
 	RSHIFT = function(a, b)
 		return bitwise(">>", a, b)
 	end function
-	while position < max
+	do while position < max
 		m = hash[position % hash.len - 1]
 		a = LSHIFT(str[position].code + m, 16)
 		b = LSHIFT(str[position + 1].code + m, 8)
@@ -135,7 +135,7 @@ Crypto.encrypt = function(str, pw)
 		output.push(get(AND(RSHIFT(buffer, 6), 63)))
 		output.push(get(AND(buffer, 63)))
 		position = position + 3
-	end while
+	loop
 	if (padding == 2) then
 		m = hash[position % hash.len - 1]
 		a = LSHIFT(str[position].code + m, 8)
@@ -173,7 +173,7 @@ Crypto.decrypt = function(str, pw)
 	RSHIFT = function(a, b)
 		return bitwise(">>", a, b)
 	end function
-	while position < max
+	do while position < max
 		buffer = me.table.indexOf(str[position])
 		currentBit = bitCounter
 		bitCounter = bitCounter + 1
@@ -197,7 +197,7 @@ Crypto.decrypt = function(str, pw)
 			hashPointer = hashPointer + 1
 		end if
 		position = position + 1
-	end while
+	loop
 	return output.join("")
 end function
 

@@ -51,7 +51,7 @@ y = new x
 			const result = runScript(snippet)
 			expect(result.success).toBe(false)
 			expect(result.error?.message).toContain(
-				"'new' operator expects an object or function prototype",
+				"'new' operator expects an object prototype, got number",
 			)
 		})
 	})
@@ -278,10 +278,11 @@ print "Greeting completed for: " + result.name
 end if
 
 counter = 0
-while counter < 2
+do
 print "Iteration: " + counter
+while counter < 2
 counter = counter + 1
-end while
+loop
 `
 
 			// Create a temporary test file using CommonJS
@@ -296,6 +297,7 @@ end while
 				'Greeting completed for: Alice',
 				'Iteration: 0',
 				'Iteration: 1',
+				'Iteration: 2',
 			])
 		})
 	})

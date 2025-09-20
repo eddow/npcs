@@ -68,7 +68,7 @@ import { ASTParenthesisExpression, type ASTParenthesisExpressionOptions } from '
 import { ASTReturnStatement, type ASTReturnStatementOptions } from './ast/return'
 import { ASTSliceExpression, type ASTSliceExpressionOptions } from './ast/slice'
 import { ASTUnaryExpression, type ASTUnaryExpressionOptions } from './ast/unary'
-import { ASTWhileStatement, type ASTWhileStatementOptions } from './ast/while'
+import { ASTDoWhileLoop, type ASTDoWhileLoopOptions, ASTWhileClause, type ASTWhileClauseOptions } from './ast/while'
 
 export class ASTProvider {
 	returnStatement(options: ASTReturnStatementOptions): ASTReturnStatement {
@@ -107,8 +107,13 @@ export class ASTProvider {
 		return new ASTElseClause(ASTType.ElseClause, options)
 	}
 
-	whileStatement(options: ASTWhileStatementOptions): ASTWhileStatement {
-		return new ASTWhileStatement(options)
+
+	doWhileLoop(options: ASTDoWhileLoopOptions): ASTDoWhileLoop {
+		return new ASTDoWhileLoop(options)
+	}
+
+	whileClause(options: ASTWhileClauseOptions): ASTWhileClause {
+		return new ASTWhileClause(options)
 	}
 
 	assignmentStatement(options: ASTAssignmentStatementOptions): ASTAssignmentStatement {
@@ -357,4 +362,4 @@ export {
 export { ASTReturnStatement, type ASTReturnStatementOptions } from './ast/return'
 export { ASTSliceExpression, type ASTSliceExpressionOptions } from './ast/slice'
 export { ASTUnaryExpression, type ASTUnaryExpressionOptions } from './ast/unary'
-export { ASTWhileStatement, type ASTWhileStatementOptions } from './ast/while'
+export { ASTDoWhileLoop, type ASTDoWhileLoopOptions, ASTWhileClause, type ASTWhileClauseOptions } from './ast/while'

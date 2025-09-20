@@ -9,7 +9,6 @@ export enum Keyword {
 	New = 'new',
 	End = 'end',
 	EndFor = 'end for',
-	EndWhile = 'end while',
 	EndFunction = 'end function',
 	EndIf = 'end if',
 	Then = 'then',
@@ -21,4 +20,6 @@ export enum Keyword {
 	Function = 'function',
 	Continue = 'continue',
 	Repeat = 'repeat',
+	Do = 'do',
+	Loop = 'loop',
 }

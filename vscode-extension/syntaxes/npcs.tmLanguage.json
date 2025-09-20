@@ -35,6 +35,9 @@
     },
     {
       "include": "#arrays"
+    },
+    {
+      "include": "#do-while-loops"
     }
   ],
   "repository": {
@@ -102,7 +105,7 @@
       "patterns": [
         {
           "name": "keyword.control",
-          "match": "\\b(if|then|else|end if|while|end while|for|in|end for|break|continue|return)\\b"
+          "match": "\\b(if|then|else|end if|do|while|loop|for|in|end for|break|continue|return)\\b"
         },
         {
           "name": "storage.type.function",
@@ -216,7 +219,7 @@
       "patterns": [
         {
           "name": "meta.assignment",
-          "match": "^\\s*(?!(?:if|then|else|end if|while|end while|for|in|end for|function|end function|return|break|continue)\\b)([a-zA-Z_][a-zA-Z0-9_]*(?:\\.[a-zA-Z_][a-zA-Z0-9_]*|\\[[^\\]]+\\])*)\\s*(=)",
+          "match": "^\\s*(?!(?:if|then|else|end if|do|while|loop|for|in|end for|function|end function|return|break|continue)\\b)([a-zA-Z_][a-zA-Z0-9_]*(?:\\.[a-zA-Z_][a-zA-Z0-9_]*|\\[[^\\]]+\\])*)\\s*(=)",
           "captures": {
             "1": { "name": "variable.other" },
             "2": { "name": "keyword.operator.assignment" }
@@ -288,6 +291,84 @@
               "include": "#arrays"
             },
             { "name": "punctuation.separator.array", "match": "," }
+          ]
+        }
+      ]
+    },
+    "do-while-loops": {
+      "patterns": [
+        {
+          "name": "meta.do-while-loop",
+          "begin": "^\\s*(do)\\s+(while)\\s+",
+          "beginCaptures": {
+            "1": { "name": "keyword.control" },
+            "2": { "name": "keyword.control" }
+          },
+          "end": "(?=^\\s*(while|loop)\\b)",
+          "endCaptures": {
+            "1": { "name": "keyword.control" }
+          },
+          "patterns": [
+            {
+              "include": "#while-clauses"
+            },
+            {
+              "include": "#strings"
+            },
+            {
+              "include": "#numbers"
+            },
+            {
+              "include": "#operators"
+            }
+          ]
+        },
+        {
+          "name": "meta.do-loop",
+          "begin": "^\\s*(do)\\s*$",
+          "beginCaptures": {
+            "1": { "name": "keyword.control" }
+          },
+          "end": "(?=^\\s*(while|loop)\\b)",
+          "endCaptures": {
+            "1": { "name": "keyword.control" }
+          },
+          "patterns": [
+            {
+              "include": "#while-clauses"
+            },
+            {
+              "include": "#strings"
+            },
+            {
+              "include": "#numbers"
+            },
+            {
+              "include": "#operators"
+            }
+          ]
+        }
+      ]
+    },
+    "while-clauses": {
+      "patterns": [
+        {
+          "name": "meta.while-clause",
+          "begin": "^\\s*(while)\\s+",
+          "beginCaptures": {
+            "1": { "name": "keyword.control" }
+          },
+          "end": "(?=^\\s*(while|loop)\\b)",
+          "patterns": [
+            {
+              "include": "#strings"
+            },
+            {
+              "include": "#numbers"
+            },
+            {
+              "include": "#operators"
+            }
           ]
         }
       ]

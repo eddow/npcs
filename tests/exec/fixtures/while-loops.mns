@@ -1,16 +1,16 @@
 // Simple while loop
 counter = 0
-while counter < 3
+do while counter < 3
 	print "Simple Counter is: " + counter
 	counter = counter + 1
-end while
+loop
 
 // While loop with break/continue
 counter = 0
-while true
+do while counter < 10
 	counter = counter + 1
 	if counter < 2 then continue
 	print "Break Counter is: " + counter
 	if counter >= 3 then break
-end while
+loop
 print "Loop finished!"

@@ -4,6 +4,74 @@ This document provides practical examples of using NPCS in various scenarios.
 
 ## Basic Examples
 
+### Do-While Loop Examples
+
+```javascript
+// Basic do-while loop
+const basicLoop = new NpcScript(`
+    count = 0
+    do while count < 5
+        print "Count: " + count
+        count = count + 1
+    loop
+    print "Loop finished!"
+`)
+
+// Do loop without condition (infinite until break)
+const infiniteLoop = new NpcScript(`
+    attempts = 0
+    do
+        attempts = attempts + 1
+        print "Attempt " + attempts
+        if attempts >= 3 then
+            break
+        end if
+    loop
+    print "Exited after " + attempts + " attempts"
+`)
+
+// Multiple while clauses
+const multiConditionLoop = new NpcScript(`
+    value = 0
+    do while value < 10
+        value = value + 1
+        print "Phase 1: " + value
+    while value < 20
+        value = value + 2
+        print "Phase 2: " + value
+    loop
+    print "Final value: " + value
+`)
+
+// Complex game loop example
+const gameLoop = new NpcScript(`
+    health = 100
+    energy = 50
+    turn = 0
+    
+    do while health > 0
+        turn = turn + 1
+        print "Turn " + turn + " - Health: " + health + ", Energy: " + energy
+        
+        if energy > 20 then
+            print "Attacking enemy!"
+            energy = energy - 15
+            health = health - 5  // Enemy counter-attack
+        else
+            print "Resting to recover energy..."
+            energy = energy + 25
+        end if
+        
+    while energy <= 0
+        print "Exhausted! Must rest completely..."
+        energy = energy + 50
+        health = health - 10  // Penalty for exhaustion
+    loop
+    
+    print "Game over after " + turn + " turns"
+`)
+```
+
 ### Hello World
 
 ```javascript
@@ -115,11 +183,11 @@ const conversationScript = new NpcScript(`
     end function
     
     // Main conversation loop
-    while conversationStage < 4
+    do while conversationStage < 4
         greetPlayer()
         response = waitForPlayerInput()
         handleResponse(response)
-    end while
+    loop
 `)
 
 const conversationContext = {

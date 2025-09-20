@@ -190,12 +190,31 @@ describe('parse', () => {
 				unsafe: true,
 				lexer,
 			})
-
+			
 			const ast = parser.parseChunk()
 
 			expect(lexer.errors).toMatchSnapshot()
 			expect(parser.errors).toMatchSnapshot()
 			expect(ast.toString()).toMatchSnapshot()
+		})
+		
+		test('weird comment stuff', () => {
+			const content = `
+function doStuff()
+	do while hunger.strikes
+		find()	// TODO: accept this comment
+	loop
+end function
+			`
+			const lexer = new Lexer(content, { unsafe: true, tabWidth: 2 })
+			const parser = new Parser(content, {
+				unsafe: true,
+				lexer,
+			})
+			const ast = parser.parseChunk()
+
+			expect(lexer.errors.length).toBe(0)
+			expect(parser.errors.length).toBe(0)
 		})
 	})
 })

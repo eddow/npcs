@@ -3,11 +3,11 @@ divideString = function(str,limit)
 	maxLen = str.len
 	frags = []
 
-	while offset < maxLen
+	do while offset < maxLen
 		next = offset + limit
 		frags.push(str[offset:next])
 		offset = next
-	end while
+	loop
 
 	return frags
 end function

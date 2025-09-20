@@ -7,6 +7,7 @@ Welcome to the NPCS (NPC Script) library documentation. This is a comprehensive 
 - [Overview](./overview.md) - Introduction and core concepts
 - [Getting Started](./getting-started.md) - Installation and basic usage
 - [Language Reference](./language-reference.md) - Complete MiniScript syntax guide
+- [Do-While Loops](./do-while-loops.md) - Comprehensive guide to the new do-while loop syntax
 - [API Reference](./api-reference.md) - JavaScript API documentation
 - [Execution Model](./execution-model.md) - How scripts execute and yield
 - [State Management](./state-management.md) - Saving and restoring execution state

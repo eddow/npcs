@@ -3,13 +3,13 @@ import type {
 	ASTAssignmentStatement,
 	ASTBase,
 	ASTChunk,
+	ASTDoWhileLoop,
 	ASTElseClause,
 	ASTForGenericStatement,
 	ASTFunctionStatement,
 	ASTIfClause,
 	ASTIfStatement,
 	ASTType,
-	ASTWhileStatement,
 } from './ast'
 import type { LineRegistry } from './line-registry'
 
@@ -20,7 +20,7 @@ export enum PendingBlockType {
 	For,
 	Function,
 	If,
-	While,
+	DoWhileLoop,
 }
 
 export interface PendingBlock {
@@ -174,22 +174,29 @@ export class PendingIf extends PendingBlockBase implements PendingBlock {
 	}
 }
 
-export function isPendingWhile(pendingBlock: PendingBlock): pendingBlock is PendingWhile {
-	return pendingBlock.type === PendingBlockType.While
+
+export function isPendingDoWhileLoop(pendingBlock: PendingBlock): pendingBlock is PendingDoWhileLoop {
+	return pendingBlock.type === PendingBlockType.DoWhileLoop
 }
 
-export class PendingWhile extends PendingBlockBase implements PendingBlock {
-	declare block: ASTWhileStatement
+export class PendingDoWhileLoop extends PendingBlockBase implements PendingBlock {
+	declare block: ASTDoWhileLoop
 
-	constructor(block: ASTWhileStatement, lineRegistry: LineRegistry) {
-		super(block, PendingBlockType.While, lineRegistry)
+	constructor(block: ASTDoWhileLoop, lineRegistry: LineRegistry) {
+		super(block, PendingBlockType.DoWhileLoop, lineRegistry)
 		this.lineRegistry.addItemToLine(this.block.start!.line, this.block)
 	}
 
 	complete(endToken: Token): void {
-		this.block.body = this.body
+		// Set the main block body
+		this.block.mainBlock.body = this.body
+		this.block.mainBlock.end = endToken.end
+		this.block.mainBlock.range = [this.block.mainBlock.range[0], endToken.range[1]]
+		
+		// Set the do-while-loop end
 		this.block.end = endToken.end
 		this.block.range = [this.block.range[0], endToken.range[1]]
+		
 		this.lineRegistry.addItemToLine(endToken.end.line, this.block)
 		super.complete(endToken)
 	}

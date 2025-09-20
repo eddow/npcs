@@ -14,7 +14,7 @@ import {
 	type MSScope,
 	type MSValue,
 	stack,
-	type WhileScope,
+	type DoWhileScope,
 } from './helpers'
 import NpcScript from './npcs'
 import {
@@ -44,7 +44,8 @@ import {
 	type ASTReturnStatement,
 	type ASTSliceExpression,
 	type ASTUnaryExpression,
-	ASTWhileStatement,
+	ASTDoWhileLoop,
+	ASTWhileClause,
 } from './script'
 
 // Meant to be thrown by executeCall to signal a branched execution
@@ -138,7 +139,6 @@ export class MiniScriptExecutor {
 			const result = statement
 				? this.executeStatement(statement)
 				: ({ type: 'return' } as FunctionResult)
-			delete this.stack[0].loopOccurrences
 			if (result)
 				switch (result.type) {
 					case 'return': {
@@ -178,6 +178,16 @@ export class MiniScriptExecutor {
 		}
 	}
 
+	private countLoopOccurrences(statement: ASTBase) {
+		const dwScope = this.stack[0].loopScopes[0] as DoWhileScope
+		if(dwScope.occurrences++ > 1000)
+			throw new ExecutionError(
+				this,
+				statement,
+				'While loop "stack overflow": has more than 1000 occurrences',
+			)
+	}
+
 	// Get statement by instruction pointer
 	private getStatementByIP(ip: IP): any {
 		if (ip.indexes.length === 0) {
@@ -192,6 +202,8 @@ export class MiniScriptExecutor {
 					container = currentBlock.body
 				} else if (currentBlock instanceof ASTIfStatement) {
 					container = currentBlock.clauses
+				} else if (currentBlock instanceof ASTDoWhileLoop) {
+					container = [currentBlock.mainBlock, ...currentBlock.whileClauses]
 				} else
 					throw new ExecutionError(
 						this,
@@ -199,19 +211,32 @@ export class MiniScriptExecutor {
 						`Container not found for ip: ${ip.indexes.join('.')} -> ${currentBlock.type}`,
 					)
 				currentBlock = container![i]
-				statements.push(currentBlock)
+				statements.unshift(currentBlock)
 			}
-			let lastStatement = statements.pop()
+			let lastStatement = statements.shift()
 			if (lastStatement || ip.indexes.length <= 1) return lastStatement
 			ip.indexes.pop()
-			lastStatement = statements.pop()!
+			lastStatement = statements.shift()!
 			if (lastStatement instanceof ASTClause) {
 				ip.indexes.pop()
 				this.incrementIP(ip)
-			} else if (lastStatement instanceof ASTWhileStatement) {
-				const whileLoop = this.stack[0].loopScopes.shift() as WhileScope
-				this.stack[0].loopOccurrences = whileLoop.occurrences
-				return lastStatement
+			} else if (lastStatement instanceof ASTDoWhileLoop) {
+				// Here, we finished the whiles and none succeeded, get out of the loop
+				this.incrementIP(ip)
+			} else if (lastStatement instanceof ASTWhileClause) {
+				ip.indexes.pop()
+				ip.indexes.push(0, 0)
+				this.countLoopOccurrences(statements[0])
+			} else if (statements[0] instanceof ASTDoWhileLoop) {
+				// Here, we finished the main block as it was not a while clause
+				const dwl = statements[0] as ASTDoWhileLoop
+				// Not a while clause, so it's the main block
+				if(dwl.whileClauses.length === 0) {
+					ip.indexes.push(0)
+					this.countLoopOccurrences(statements[0])
+					continue
+				}
+				this.incrementIP(ip)	// Just go on first `whileClause`
 			} else if (lastStatement instanceof ASTForGenericStatement) {
 				const forLoop = this.stack[0].loopScopes[0] as ForScope
 				forLoop.index++
@@ -248,8 +273,10 @@ export class MiniScriptExecutor {
 				case 'IfStatement':
 				case 'IfShortcutStatement':
 					return this.executeIf(statement as ASTIfStatement)
-				case 'WhileStatement':
-					return this.executeWhile(statement as ASTWhileStatement)
+				case 'DoWhileLoop':
+					return this.executeDoWhileLoop(statement as ASTDoWhileLoop)
+				case 'WhileClause':
+					return this.executeWhileClause(statement as ASTWhileClause)
 				case 'ForGenericStatement':
 					return this.executeForGeneric(statement as ASTForGenericStatement)
 				case 'CallStatement':
@@ -429,8 +456,7 @@ export class MiniScriptExecutor {
 				(clause instanceof ASTIfClause && this.evaluateExpression(clause.condition))
 			) {
 				// Enter this clause's block - push clause index and then 0 for first statement
-				this.stack[0].ip.indexes.push(i)
-				this.stack[0].ip.indexes.push(0)
+				this.stack[0].ip.indexes.push(i, 0)
 				return { type: 'branched' }
 			}
 		}
@@ -453,24 +479,21 @@ export class MiniScriptExecutor {
 		return undefined
 	}
 
-	private executeWhile(statement: ASTWhileStatement): ExecutionResult {
-		// Check if we're entering the loop for the first time
-		if (this.evaluateExpression(statement.condition)) {
-			const occurrences = (this.stack[0].loopOccurrences ?? 0) + 1
-			if (occurrences > 1000)
-				throw new ExecutionError(
-					this,
-					statement,
-					'While loop "stack overflow": has more than 1000 occurrences',
-				)
-			// Enter the while loop body - push index 0 for first statement in the block
-			this.stack[0].loopScopes.unshift({ ipDepth: this.stack[0].ip.indexes.length, occurrences })
-			this.stack[0].ip.indexes.push(0)
-			return { type: 'branched' } // Continue execution in the new block
-		}
 
-		// Loop condition is false, continue with next statement
-		return undefined
+	private executeDoWhileLoop(statement: ASTDoWhileLoop): ExecutionResult {
+		this.stack[0].loopScopes.unshift({
+			ipDepth: this.stack[0].ip.indexes.length,
+			occurrences: 1,
+		})
+		this.stack[0].ip.indexes.push(0, 0)
+		return { type: 'branched' }
+	}
+
+	private executeWhileClause(statement: ASTWhileClause): ExecutionResult {
+		if(this.evaluateExpression(statement.condition)) {
+			this.stack[0].ip.indexes.push(0)
+			return { type: 'branched' }
+		}
 	}
 
 	private executeProcedure(
@@ -516,6 +539,10 @@ export class MiniScriptExecutor {
 		const lastLoop = this.stack[0].loopScopes[0]
 		this.stack[0].ip.indexes.splice(lastLoop.ipDepth)
 		const loopStatement = this.getStatementByIP(this.stack[0].ip)
+		if(loopStatement instanceof ASTDoWhileLoop) {
+			this.stack[0].ip.indexes.push(0)
+			return { type: 'branched' }
+		}
 		this.assertAST(loopStatement, ASTBaseBlock)
 		this.stack[0].ip.indexes.push(loopStatement.body.length)
 		return { type: 'branched' }

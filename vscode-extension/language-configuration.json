@@ -30,7 +30,7 @@
   },
   "wordPattern": "(-?\\d*\\.\\d\\w*)|([^\\`\\~\\!\\@\\#\\%\\^\\&\\*\\(\\)\\-\\=\\+\\[\\{\\]\\}\\\\\\|\\;\\:\\'\\\"\\,\\.\\<\\>\\/\\?\\s]+)",
   "indentationRules": {
-    "increaseIndentPattern": "^\\s*(function|if|else|while|for|end\\s+(function|if|while|for)).*$",
-    "decreaseIndentPattern": "^\\s*(end\\s+(function|if|while|for)|else).*$"
+    "increaseIndentPattern": "^\\s*(function|if|else|do|for|end\\s+(function|if|for)).*$",
+    "decreaseIndentPattern": "^\\s*(end\\s+(function|if|for)|else|loop).*$"
   }
 }

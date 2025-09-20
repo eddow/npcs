@@ -14,6 +14,8 @@ function like.this(...)
 
 with `function XXX(...)` being equivalent to `XXX = function(...)`
 
+## do ... while ... loop
+
 # Ideas for later
 
 ## Assignment expression

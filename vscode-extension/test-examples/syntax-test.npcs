@@ -21,4 +21,17 @@ person = {name: "John", age: 30}
 print len(text)
 print str(number)
 
+// Do-while loops
+counter = 0
+do while counter < 3
+    print "Count: " + counter
+    counter += 1
+loop
+
+// Do loop without condition
+do
+    print "Hello from do loop"
+    break
+loop
+
 
