@@ -382,7 +382,7 @@ export class MiniScriptExecutor {
 
 	private callNative(func: Function, args: any[], ast: ASTBase): any {
 		try {
-			return func.apply(this.context, args)
+			return this.script.callNative(func, args, this.context)
 		} catch (e) {
 			//console.error(`At: ${this.script.sourceLocation(ast)}`)
 			throw new ExecutionError(this, ast, e as Error)
@@ -401,7 +401,7 @@ export class MiniScriptExecutor {
 			const returnIndex = this.expressionsCacheStack[eCacheStackLength]
 			this.clearExpressionCache(eCacheStackLength)
 			throw new ExpressionCall(func.enterCall(evaluatedArgs, returnIndex), statement)
-		} else if (typeof func === 'function') {
+		} else if (this.script.isNative(func)) {
 			return this.callNative(func, evaluatedArgs, statement)
 		} else {
 			throw new ExecutionError(this, statement, 'Cannot call non-function value')
@@ -496,7 +496,7 @@ export class MiniScriptExecutor {
 		if (func instanceof FunctionDefinition) {
 			this.stack.unshift(func.enterCall(evaluatedArgs))
 			return { type: 'branched' }
-		} else if (typeof func === 'function') {
+		} else if (this.script.isNative(func)) {
 			const value = this.callNative(func, evaluatedArgs, source)
 			return value !== undefined ? { type: 'yield', value: value } : undefined
 		} else {
@@ -539,11 +539,11 @@ export class MiniScriptExecutor {
 		const argument = this.evaluateExpression(expr.argument)
 		// Special handling for 'new' operator: create an object with given prototype
 		if (expr.operator === 'new') {
-			if (argument === null || (typeof argument !== 'object' && typeof argument !== 'function'))
+			if (argument === null || typeof argument !== 'object')
 				throw new ExecutionError(
 					this,
 					expr,
-					`'new' operator expects an object or function prototype, got ${typeof argument}`,
+					`'new' operator expects an object prototype, got ${typeof argument}`,
 				)
 			return Object.create(argument, {})
 		}
