@@ -171,6 +171,42 @@
       "settings": {
         "foreground": "#d4d4d4"
       }
+    },
+    {
+      "name": "NPCS Ternary Expressions",
+      "scope": [
+        "meta.ternary-expression"
+      ],
+      "settings": {
+        "foreground": "#d4d4d4"
+      }
+    },
+    {
+      "name": "NPCS Ternary True Value",
+      "scope": [
+        "meta.ternary.true-value"
+      ],
+      "settings": {
+        "foreground": "#4ec9b0"
+      }
+    },
+    {
+      "name": "NPCS Ternary Condition",
+      "scope": [
+        "meta.ternary.condition"
+      ],
+      "settings": {
+        "foreground": "#ffd700"
+      }
+    },
+    {
+      "name": "NPCS Ternary False Value",
+      "scope": [
+        "meta.ternary.false-value"
+      ],
+      "settings": {
+        "foreground": "#ff6b6b"
+      }
     }
   ]
 }

@@ -36,9 +36,10 @@ import {
 	type ASTIsaExpression,
 	type ASTListConstructorExpression,
 	type ASTListValue,
-	type ASTLiteral,
+	ASTLiteral,
 	type ASTLogicalExpression,
 	type ASTMapConstructorExpression,
+	type ASTTernaryExpression,
 	ASTMemberExpression,
 	ASTParenthesisExpression,
 	type ASTReturnStatement,
@@ -46,6 +47,7 @@ import {
 	type ASTUnaryExpression,
 	ASTDoWhileLoop,
 	ASTWhileClause,
+	ASTNumericLiteral,
 } from './script'
 
 // Meant to be thrown by executeCall to signal a branched execution
@@ -59,7 +61,7 @@ class ExpressionCall {
 export class MiniScriptExecutor {
 	public assertAST<E extends ASTBase>(
 		expr: ASTBase,
-		ctor: new (...args: any[]) => E,
+		ctor: abstract new (...args: any[]) => E,
 		expectedName?: string,
 	): asserts expr is E {
 		if (!(expr instanceof ctor)) {
@@ -334,10 +336,12 @@ export class MiniScriptExecutor {
 			}
 			const exprType = expr.type
 			switch (exprType) {
-				case 'NumericLiteral':
 				case 'StringLiteral':
 				case 'BooleanLiteral':
 					return (expr as ASTLiteral).value
+				case 'NumericLiteral':
+					this.assertAST(expr, ASTNumericLiteral)
+					return expr.negated ? -expr.value : expr.value
 				case 'NilLiteral':
 					return null
 				case 'ListValue':
@@ -350,6 +354,8 @@ export class MiniScriptExecutor {
 					return this.evaluateUnaryExpression(expr as ASTUnaryExpression)
 				case 'LogicalExpression':
 					return this.evaluateLogicalExpression(expr as ASTLogicalExpression)
+				case 'TernaryExpression':
+					return this.evaluateTernaryExpression(expr as ASTTernaryExpression)
 				case 'CallExpression':
 					return this.executeCall(expr as ASTCallExpression, expressionCacheStackLength)
 				case 'FunctionDeclaration':
@@ -588,6 +594,18 @@ export class MiniScriptExecutor {
 		if (!!this.evaluateExpression(expr.left) === breakOn) return breakOn
 
 		return this.evaluateExpression(expr.right)
+	}
+
+	private evaluateTernaryExpression(expr: ASTTernaryExpression): any {
+		const condition = this.evaluateExpression(expr.condition)
+		// In MiniScript, truthy values are non-null, non-false, non-zero, non-empty string
+		const isTruthy = condition !== null && condition !== false && condition !== 0 && condition !== ""
+		
+		if (isTruthy) {
+			return this.evaluateExpression(expr.trueValue)
+		} else {
+			return this.evaluateExpression(expr.falseValue)
+		}
 	}
 
 	private createFunction(expr: ASTFunctionStatement): FunctionDefinition {

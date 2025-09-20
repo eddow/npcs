@@ -1,0 +1,25 @@
+// Test file for ternary operator syntax highlighting
+
+// Basic ternary expressions
+result = "positive" if x > 0 else "negative"
+grade = "A" if score >= 90 else "B" if score >= 80 else "C"
+message = "Hello " + name if name != "" else "Hello Stranger"
+
+// Ternary with different value types
+number = 100 if condition else 0
+flag = true if x > 0 else false
+value = 42 if test else null
+
+// Ternary in function calls
+print("positive" if x > 0 else "negative")
+
+// Complex ternary expressions
+result = (x + y) if (a > b) else (x - y)
+bonus = score * 2 if score >= 80 else score if score >= 60 else 0
+
+// Nested ternary expressions
+status = "excellent" if score >= 95 else "good" if score >= 80 else "average" if score >= 60 else "poor"
+
+// Ternary with arithmetic expressions
+result = x + y if x > y else x - y
+value = x * 2 if x > 0 else x / 2

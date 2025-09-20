@@ -1246,14 +1246,14 @@ export default class Parser {
 
 	parseOr(asLVal: boolean = false, statementStart: boolean = false): ASTBase {
 		const startToken = this.token!
-		const val = this.parseAnd(asLVal, statementStart)
+		const val = this.parseTernary(asLVal, statementStart)
 		let base = val
 
 		while (Selectors.Or(this.token)) {
 			this.next()
 			this.skipNewlines()
 
-			const opB = this.parseAnd()
+			const opB = this.parseTernary()
 
 			base = this.astProvider.logicalExpression({
 				operator: Operator.Or,
@@ -1267,6 +1267,44 @@ export default class Parser {
 		}
 
 		return base
+	}
+
+	parseTernary(asLVal: boolean = false, statementStart: boolean = false): ASTBase {
+		const startToken = this.token!
+		const trueValue = this.parseAnd(asLVal, statementStart)
+
+		// Check for ternary operator: value if condition else other_value
+		if (this.token && this.token.type === TokenType.Keyword && (this.token.value as any) === Keyword.If) {
+			this.next()
+			this.skipNewlines()
+
+			const condition = this.parseAnd()
+
+			if (this.token && this.token.type === TokenType.Keyword && (this.token.value as any) === Keyword.Else) {
+				this.next()
+				this.skipNewlines()
+
+				// Parse the false value recursively to handle nested ternaries (right-associative)
+				const falseValue = this.parseTernary()
+
+				return this.astProvider.ternaryExpression({
+					condition: condition,
+					trueValue: trueValue,
+					falseValue: falseValue,
+					start: startToken.start,
+					end: this.previousToken!.end,
+					range: [startToken.range[0], this.previousToken!.range[1]],
+					scope: this.currentScope,
+				})
+			} else {
+				// This is not a ternary, it's an if statement
+				// We need to backtrack and return the original condition
+				// This is a bit tricky - we'll handle this in the if statement parser
+				this.raise('Expected "else" after "if" in ternary expression', new Range(this.previousToken!.start, this.token!.end))
+			}
+		}
+
+		return trueValue
 	}
 
 	parseAnd(asLVal: boolean = false, statementStart: boolean = false): ASTBase {

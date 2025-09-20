@@ -28,7 +28,7 @@ export class ASTUnaryExpression extends ASTBase {
 	}
 
 	constructor(options: ASTUnaryExpressionOptions) {
-		super(ASTUnaryExpression.getUnaryType(options.operator), options)
+		super(ASTUnaryExpression.getUnaryType(options.operator!), options)
 		this.argument = options.argument
 		this.operator = options.operator
 	}

@@ -2,7 +2,7 @@
   "name": "npcs-language-support",
   "displayName": "NPCS Language Support",
   "description": "Language support for NPCS (MiniScript-based scripting language)",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "your-publisher-name",
   "engines": {
     "vscode": "^1.75.0"

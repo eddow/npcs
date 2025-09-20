@@ -67,6 +67,7 @@ import {
 import { ASTParenthesisExpression, type ASTParenthesisExpressionOptions } from './ast/parenthesis'
 import { ASTReturnStatement, type ASTReturnStatementOptions } from './ast/return'
 import { ASTSliceExpression, type ASTSliceExpressionOptions } from './ast/slice'
+import { ASTTernaryExpression, type ASTTernaryExpressionOptions } from './ast/ternary'
 import { ASTUnaryExpression, type ASTUnaryExpressionOptions } from './ast/unary'
 import { ASTDoWhileLoop, type ASTDoWhileLoopOptions, ASTWhileClause, type ASTWhileClauseOptions } from './ast/while'
 
@@ -228,6 +229,10 @@ export class ASTProvider {
 		return new ASTSliceExpression(options)
 	}
 
+	ternaryExpression(options: ASTTernaryExpressionOptions): ASTTernaryExpression {
+		return new ASTTernaryExpression(options)
+	}
+
 	parenthesisExpression(options: ASTParenthesisExpressionOptions): ASTParenthesisExpression {
 		return new ASTParenthesisExpression(options)
 	}
@@ -361,5 +366,6 @@ export {
 } from './ast/parenthesis'
 export { ASTReturnStatement, type ASTReturnStatementOptions } from './ast/return'
 export { ASTSliceExpression, type ASTSliceExpressionOptions } from './ast/slice'
+export { ASTTernaryExpression, type ASTTernaryExpressionOptions } from './ast/ternary'
 export { ASTUnaryExpression, type ASTUnaryExpressionOptions } from './ast/unary'
 export { ASTDoWhileLoop, type ASTDoWhileLoopOptions, ASTWhileClause, type ASTWhileClauseOptions } from './ast/while'

@@ -163,5 +163,26 @@
       "end function"
     ],
     "description": "Game function template"
+  },
+  "Ternary Operator": {
+    "prefix": "ternary",
+    "body": [
+      "${1:trueValue} if ${2:condition} else ${3:falseValue}"
+    ],
+    "description": "Ternary operator: value if condition else value"
+  },
+  "Ternary Assignment": {
+    "prefix": "ternaryvar",
+    "body": [
+      "${1:variable} = ${2:trueValue} if ${3:condition} else ${4:falseValue}"
+    ],
+    "description": "Ternary operator assignment"
+  },
+  "Nested Ternary": {
+    "prefix": "nestedternary",
+    "body": [
+      "${1:value1} if ${2:condition1} else ${3:value2} if ${4:condition2} else ${5:value3}"
+    ],
+    "description": "Nested ternary operator"
   }
 }

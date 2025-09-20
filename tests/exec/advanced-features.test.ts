@@ -214,8 +214,8 @@ describe('Advanced MiniScript Features', () => {
 			const result = runFixture('unary-expressions')
 
 			expect(result.success).toBe(true)
-			expect(result.output).toContain('-y: -10')
-			expect(result.output).toContain('-(-y): 10')
+			expect(result.output).toContain('-y: 10')
+			expect(result.output).toContain('-(-y): -10')
 		})
 
 		it('should handle unary with expressions', () => {
@@ -223,7 +223,7 @@ describe('Advanced MiniScript Features', () => {
 
 			expect(result.success).toBe(true)
 			expect(result.output).toContain('-(x + 10): -52')
-			expect(result.output).toContain('not (x > 30 and y < 0): true')
+			expect(result.output).toContain('not (x > 30 and y < 0): false')
 		})
 
 		it('should handle unary in if statements', () => {
@@ -237,8 +237,8 @@ describe('Advanced MiniScript Features', () => {
 			const result = runFixture('unary-expressions')
 
 			expect(result.success).toBe(true)
-			expect(result.output).toContain('\\nnot (x > 50 or y < -20): false')
-			expect(result.output).toContain('-(x + y): -52')
+			expect(result.output).toContain('\\nnot (x > 50 or y < -20): true')
+			expect(result.output).toContain('-(x + y): -32')
 		})
 
 		it('should handle unary with isa', () => {

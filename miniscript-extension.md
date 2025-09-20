@@ -15,14 +15,15 @@ function like.this(...)
 with `function XXX(...)` being equivalent to `XXX = function(...)`
 
 ## do ... while ... loop
+!!!!
+
+## Ternary
+"yes" if condition else "false"
 
 # Ideas for later
 
 ## Assignment expression
 as well as statement?
-
-## Ternary
-"yes" if condition else "false"
 
 ## while loop
 1- brainstorm
