@@ -1,5 +1,6 @@
 import {
 	type Callable,
+	type DoWhileScope,
 	type ExecutionContext,
 	ExecutionError,
 	type ExecutionResult,
@@ -14,7 +15,6 @@ import {
 	type MSScope,
 	type MSValue,
 	stack,
-	type DoWhileScope,
 } from './helpers'
 import NpcScript from './npcs'
 import {
@@ -26,6 +26,7 @@ import {
 	type ASTCallStatement,
 	ASTClause,
 	type ASTComparisonGroupExpression,
+	ASTDoWhileLoop,
 	ASTElseClause,
 	ASTForGenericStatement,
 	type ASTFunctionStatement,
@@ -36,18 +37,17 @@ import {
 	type ASTIsaExpression,
 	type ASTListConstructorExpression,
 	type ASTListValue,
-	ASTLiteral,
+	type ASTLiteral,
 	type ASTLogicalExpression,
 	type ASTMapConstructorExpression,
-	type ASTTernaryExpression,
 	ASTMemberExpression,
+	ASTNumericLiteral,
 	ASTParenthesisExpression,
 	type ASTReturnStatement,
 	type ASTSliceExpression,
+	type ASTTernaryExpression,
 	type ASTUnaryExpression,
-	ASTDoWhileLoop,
 	ASTWhileClause,
-	ASTNumericLiteral,
 } from './script'
 
 // Meant to be thrown by executeCall to signal a branched execution
@@ -182,7 +182,7 @@ export class MiniScriptExecutor {
 
 	private countLoopOccurrences(statement: ASTBase) {
 		const dwScope = this.stack[0].loopScopes[0] as DoWhileScope
-		if(dwScope.occurrences++ > 1000)
+		if (dwScope.occurrences++ > 1000)
 			throw new ExecutionError(
 				this,
 				statement,
@@ -233,12 +233,12 @@ export class MiniScriptExecutor {
 				// Here, we finished the main block as it was not a while clause
 				const dwl = statements[0] as ASTDoWhileLoop
 				// Not a while clause, so it's the main block
-				if(dwl.whileClauses.length === 0) {
+				if (dwl.whileClauses.length === 0) {
 					ip.indexes.push(0)
 					this.countLoopOccurrences(statements[0])
 					continue
 				}
-				this.incrementIP(ip)	// Just go on first `whileClause`
+				this.incrementIP(ip) // Just go on first `whileClause`
 			} else if (lastStatement instanceof ASTForGenericStatement) {
 				const forLoop = this.stack[0].loopScopes[0] as ForScope
 				forLoop.index++
@@ -373,8 +373,7 @@ export class MiniScriptExecutor {
 				case 'SliceExpression':
 					return this.evaluateSliceExpression(expr as ASTSliceExpression)
 				default:
-					console.log(`Unknown expression type: ${exprType}`)
-					return undefined
+					throw new ExecutionError(this, expr, `Unknown expression type: ${exprType}`)
 			}
 		})()
 		this.clearExpressionCache(expressionCacheStackLength)
@@ -485,7 +484,6 @@ export class MiniScriptExecutor {
 		return undefined
 	}
 
-
 	private executeDoWhileLoop(statement: ASTDoWhileLoop): ExecutionResult {
 		this.stack[0].loopScopes.unshift({
 			ipDepth: this.stack[0].ip.indexes.length,
@@ -496,7 +494,7 @@ export class MiniScriptExecutor {
 	}
 
 	private executeWhileClause(statement: ASTWhileClause): ExecutionResult {
-		if(this.evaluateExpression(statement.condition)) {
+		if (this.evaluateExpression(statement.condition)) {
 			this.stack[0].ip.indexes.push(0)
 			return { type: 'branched' }
 		}
@@ -545,8 +543,8 @@ export class MiniScriptExecutor {
 		const lastLoop = this.stack[0].loopScopes[0]
 		this.stack[0].ip.indexes.splice(lastLoop.ipDepth)
 		const loopStatement = this.getStatementByIP(this.stack[0].ip)
-		if(loopStatement instanceof ASTDoWhileLoop) {
-			this.stack[0].ip.indexes.push(0)
+		if (loopStatement instanceof ASTDoWhileLoop) {
+			this.stack[0].ip.indexes.push(0, 0)
 			return { type: 'branched' }
 		}
 		this.assertAST(loopStatement, ASTBaseBlock)
@@ -599,8 +597,9 @@ export class MiniScriptExecutor {
 	private evaluateTernaryExpression(expr: ASTTernaryExpression): any {
 		const condition = this.evaluateExpression(expr.condition)
 		// In MiniScript, truthy values are non-null, non-false, non-zero, non-empty string
-		const isTruthy = condition !== null && condition !== false && condition !== 0 && condition !== ""
-		
+		const isTruthy =
+			condition !== null && condition !== false && condition !== 0 && condition !== ''
+
 		if (isTruthy) {
 			return this.evaluateExpression(expr.trueValue)
 		} else {
@@ -733,7 +732,6 @@ export class MiniScriptExecutor {
 	private evaluateSliceExpression(expr: ASTSliceExpression): any {
 		const base = this.evaluateExpression(expr.base)
 		const left = this.evaluateExpression(expr.left)
-		const right = this.evaluateExpression(expr.right)
 
 		// Validate that base is sliceable (string or array)
 		if (typeof base !== 'string' && !Array.isArray(base)) {
@@ -759,6 +757,7 @@ export class MiniScriptExecutor {
 			return base.slice(startIndex)
 		}
 
+		const right = this.evaluateExpression(expr.right)
 		// Validate indices are numbers
 		if (typeof left !== 'number') {
 			throw new ExecutionError(this, expr, 'Slice start index must be a number')

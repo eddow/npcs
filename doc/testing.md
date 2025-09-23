@@ -11,7 +11,7 @@ NPCS includes comprehensive testing to ensure reliability and correctness. The t
 ```
 tests/
 ├── exec/                    # Execution tests
-│   ├── fixtures/           # Test script files (.mns)
+│   ├── fixtures/           # Test script files (.npcs)
 │   ├── advanced-features.test.ts
 │   ├── miniscript.test.ts
 │   ├── npcs-usage.test.ts
@@ -375,9 +375,9 @@ describe('State Management', () => {
 
 ### Script Fixtures (`tests/exec/fixtures/`)
 
-The test fixtures contain MiniScript files (.mns) that are loaded and executed during tests.
+The test fixtures contain MiniScript files (.npcs) that are loaded and executed during tests.
 
-#### Example Fixture (`basic.mns`)
+#### Example Fixture (`basic.npcs`)
 
 ```miniscript
 // Basic functionality test
@@ -393,7 +393,7 @@ result = x + 10
 print result
 ```
 
-#### Example Fixture (`functions.mns`)
+#### Example Fixture (`functions.npcs`)
 
 ```miniscript
 // Function definition and calling

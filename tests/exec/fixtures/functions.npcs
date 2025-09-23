@@ -8,7 +8,7 @@ shake = function(what)
 	print "*Shake " + what + "*"
 end function
 
-calculate = function(a, b)
+ function calculate(a, b)
 	result = a * b + 10
 	print "Calculation result: " + result
 	return result

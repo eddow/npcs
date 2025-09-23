@@ -6,14 +6,14 @@ function showUsage() {
 	console.log('Usage: npx tsx cli.ts <script-file>')
 	console.log('')
 	console.log('Examples:')
-	console.log('  npx tsx cli.ts tests/fixtures/basic.mns')
-	console.log('  npx tsx cli.ts tests/fixtures/functions.mns')
-	console.log('  npx tsx cli.ts my-script.mns')
+	console.log('  npx tsx cli.ts tests/fixtures/basic.npcs')
+	console.log('  npx tsx cli.ts tests/fixtures/functions.npcs')
+	console.log('  npx tsx cli.ts my-script.npcs')
 	console.log('')
 	console.log('The script file can be:')
 	console.log('  - A relative path from current directory')
 	console.log('  - An absolute path')
-	console.log('  - A file in tests/fixtures/ (just the name without .mns)')
+	console.log('  - A file in tests/fixtures/ (just the name without .npcs)')
 }
 
 async function runScript(scriptPath: string) {

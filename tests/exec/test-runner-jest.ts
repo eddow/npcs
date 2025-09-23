@@ -24,7 +24,7 @@ export interface TestResult {
 }
 
 export function runFixture(fixtureName: string, state?: string): TestResult {
-	const fixturePath = join(process.cwd(), 'tests/exec', 'fixtures', `${fixtureName}.mns`)
+	const fixturePath = join(process.cwd(), 'tests/exec', 'fixtures', `${fixtureName}.npcs`)
 	return runFile(fixturePath, state)
 }
 
