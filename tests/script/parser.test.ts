@@ -190,14 +190,14 @@ describe('parse', () => {
 				unsafe: true,
 				lexer,
 			})
-			
+
 			const ast = parser.parseChunk()
 
 			expect(lexer.errors).toMatchSnapshot()
 			expect(parser.errors).toMatchSnapshot()
 			expect(ast.toString()).toMatchSnapshot()
 		})
-		
+
 		test('weird comment stuff', () => {
 			const content = `
 function doStuff()

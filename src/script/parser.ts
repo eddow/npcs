@@ -8,6 +8,7 @@ import {
 	type ASTChunk,
 	type ASTClause,
 	type ASTComment,
+	type ASTDoWhileLoop,
 	type ASTForGenericStatement,
 	type ASTFunctionStatement,
 	ASTIdentifier,
@@ -19,23 +20,21 @@ import {
 	ASTProvider,
 	type ASTReturnStatement,
 	ASTType,
-	type ASTDoWhileLoop,
 } from './parser/ast'
 import { LineRegistry } from './parser/line-registry'
 import {
 	isPendingChunk,
+	isPendingDoWhileLoop,
 	isPendingFor,
 	isPendingFunction,
 	isPendingIf,
-	isPendingDoWhileLoop,
 	type PendingBlock,
 	PendingChunk,
 	type PendingClauseType,
+	PendingDoWhileLoop,
 	PendingFor,
 	PendingFunction,
 	PendingIf,
-	PendingDoWhileLoop,
-	PendingBlockType,
 } from './parser/pending-block'
 import Validator from './parser/validator'
 import { ParserException } from './types/errors'
@@ -52,7 +51,6 @@ import {
 	Selectors,
 } from './types/selector'
 import { Stack } from './utils/stack'
-
 
 export default class Parser {
 	// runtime
@@ -79,7 +77,22 @@ export default class Parser {
 	unsafe: boolean
 	errors: Error[]
 
-	constructor(content: string, { validator = new Validator(), astProvider = new ASTProvider(), lexer, unsafe = false, tabWidth = 1 }: { validator?: Validator; astProvider?: ASTProvider; lexer?: Lexer; unsafe?: boolean; tabWidth?: number } = {}) {
+	constructor(
+		content: string,
+		{
+			validator = new Validator(),
+			astProvider = new ASTProvider(),
+			lexer,
+			unsafe = false,
+			tabWidth = 1,
+		}: {
+			validator?: Validator
+			astProvider?: ASTProvider
+			lexer?: Lexer
+			unsafe?: boolean
+			tabWidth?: number
+		} = {},
+	) {
 		this.content = content
 		this.backPatches = new Stack()
 		this.statementErrors = []
@@ -386,7 +399,10 @@ export default class Parser {
 				if (isPendingDoWhileLoop(currentPending)) {
 					this.parseWhileClause()
 				} else {
-					this.raise('while statement not supported, use DO-WHILE-LOOP syntax', new Range(this.previousToken!.start, this.token!.end))
+					this.raise(
+						'while statement not allowed outside of do-while loop',
+						new Range(this.previousToken!.start, this.token!.end),
+					)
 				}
 				return
 			}
@@ -538,9 +554,9 @@ export default class Parser {
 
 			this.currentAssignment = assignmentStatement
 
-		assignmentStatement.init = this.parseExpr(false, false, assignmentStatement)
-		assignmentStatement.end = this.previousToken!.end
-		assignmentStatement.range[1] = this.previousToken!.range[1]
+			assignmentStatement.init = this.parseExpr(false, false, assignmentStatement)
+			assignmentStatement.end = this.previousToken!.end
+			assignmentStatement.range[1] = this.previousToken!.range[1]
 
 			this.currentAssignment = previousAssignment
 
@@ -577,12 +593,12 @@ export default class Parser {
 				left: expr.clone(),
 				right,
 				start: binaryExpressionTokenStart.start,
-			end: this.previousToken!.end,
-			range: [binaryExpressionTokenStart.range[0], this.previousToken!.range[1]],
-			scope,
-		})
-		assignmentStatement.end = this.previousToken!.end
-		assignmentStatement.range[1] = this.previousToken!.range[1]
+				end: this.previousToken!.end,
+				range: [binaryExpressionTokenStart.range[0], this.previousToken!.range[1]],
+				scope,
+			})
+			assignmentStatement.end = this.previousToken!.end
+			assignmentStatement.range[1] = this.previousToken!.range[1]
 
 			this.currentAssignment = previousAssignment
 
@@ -789,17 +805,16 @@ export default class Parser {
 		block.body.push(ifStatement)
 	}
 
-
 	parseDoWhileLoop(): void {
 		const startToken = this.previousToken!
-		
+
 		// Create a main block for the DO-WHILE-LOOP
 		const mainBlock = this.astProvider.chunk({
 			start: startToken.start,
 			range: [startToken.range[0]],
 			scope: this.currentScope,
 		})
-		
+
 		// Create the DO-WHILE-LOOP statement
 		const doWhileLoop = this.astProvider.doWhileLoop({
 			mainBlock: mainBlock,
@@ -840,20 +855,23 @@ export default class Parser {
 		// Check if we're inside a DO-WHILE-LOOP
 		const currentPending = this.backPatches.peek()
 		if (!isPendingDoWhileLoop(currentPending)) {
-			this.raise('while clause must be inside a do-while-loop', new Range(startToken!.start, this.token!.end))
+			this.raise(
+				'while clause must be inside a do-while-loop',
+				new Range(startToken!.start, this.token!.end),
+			)
 			return
 		}
 
 		// Skip to the next line to start parsing the while block
 		this.skipNewlines()
-		
+
 		// Create a while clause block
 		const whileClauseBlock = this.astProvider.chunk({
 			start: this.token?.start || startToken.start,
 			range: [this.token?.range[0] || startToken.range[0]],
 			scope: this.currentScope,
 		})
-		
+
 		// Create the while clause
 		const whileClause = this.astProvider.whileClause({
 			condition: condition,
@@ -861,47 +879,38 @@ export default class Parser {
 			range: [startToken.range[0], startToken.range[0]],
 			scope: this.currentScope,
 		})
-		
-		// Store the original pending block
-		const originalPending = this.backPatches.peek()
-		
-		// Create a temporary pending block to collect while block statements
-		const tempPending = {
-			body: whileClauseBlock.body,
-			type: PendingBlockType.Chunk,
-			block: whileClauseBlock,
-			complete: () => {}
-		}
-		
-		// Temporarily replace the pending block
-		this.backPatches.pop()
-		this.backPatches.push(tempPending as any)
-		
-		// Parse statements until we encounter another WHILE or LOOP
+
+		// Push a dedicated pending chunk to collect this while clause's block
+		const whilePending = new PendingChunk(whileClauseBlock, this.lineRegistry)
+		// Important: make the pending body's array be the same as the whileClauseBlock.body
+		// so that parsed statements end up inside the clause's block
+		whilePending.body = whileClauseBlock.body
+		this.backPatches.push(whilePending)
+
+		// Parse statements until we encounter another WHILE or LOOP at the same nesting level
 		while (this.token && !Selectors.EndOfFile(this.token)) {
-			// Check if we've reached another WHILE clause or LOOP
-			if (this.token.type === TokenType.Keyword) {
+			// If we're at our while-block level (top is whilePending) and see WHILE or LOOP, stop
+			if (this.token.type === TokenType.Keyword && this.backPatches.peek() === whilePending) {
 				if (this.token.value === Keyword.While || this.token.value === Keyword.Loop) {
 					break
 				}
 			}
-			
+
 			// Skip end-of-line tokens
 			if (this.token && (this.token.type as any) === TokenType.EOL) {
 				this.next()
 				continue
 			}
-			
-			// Parse the statement - it will be added to our temp pending block
+
+			// Parse the statement at current nesting level
 			this.parseStatement()
-			
+
 			// Skip any comments or newlines after the statement
 			this.skipNewlines()
 		}
-		
-		// Restore the original pending block
+
+		// Finalize the while-block pending and retrieve its body without adding to line registry
 		this.backPatches.pop()
-		this.backPatches.push(originalPending)
 
 		// Set the body of the while clause
 		whileClause.body = whileClauseBlock.body
@@ -912,17 +921,16 @@ export default class Parser {
 		currentPending.block.whileClauses.push(whileClause)
 	}
 
-
 	parseShortcutDoWhileLoop(): ASTDoWhileLoop {
 		const startToken = this.previousToken!
-		
+
 		// Create a main block for the DO-WHILE-LOOP
 		const mainBlock = this.astProvider.chunk({
 			start: startToken.start,
 			range: [startToken.range[0], startToken.range[0]],
 			scope: this.currentScope,
 		})
-		
+
 		// Create the DO-WHILE-LOOP statement
 		const doWhileLoop = this.astProvider.doWhileLoop({
 			mainBlock: mainBlock,
@@ -946,7 +954,7 @@ export default class Parser {
 					// Parse the while block
 					const whileBlock: ASTBase[] = []
 					this.skipNewlines()
-					
+
 					// Parse statements until we encounter another WHILE or LOOP
 					while (this.token && !Selectors.EndOfFile(this.token)) {
 						// Check if we've reached another WHILE clause or LOOP
@@ -955,33 +963,36 @@ export default class Parser {
 								break
 							}
 						}
-						
-					// Skip end-of-line tokens
-					if (this.token && (this.token.type as any) === TokenType.EOL) {
-						this.next()
-						continue
-					}
-						
+
+						// Skip end-of-line tokens
+						if (this.token && (this.token.type as any) === TokenType.EOL) {
+							this.next()
+							continue
+						}
+
 						// Parse statement
 						const currentBlock = this.backPatches.peek()
 						const beforeLength = currentBlock.body.length
 						this.parseStatement()
 						const afterLength = currentBlock.body.length
-						
+
 						if (afterLength > beforeLength) {
 							const statement = currentBlock.body.pop()!
 							whileBlock.push(statement)
 						}
 					}
-					
+
 					// Create a while clause block
 					const whileClauseBlock = this.astProvider.chunk({
 						start: this.token?.start || startToken.start,
-						range: [this.token?.range[0] || startToken.range[0], this.token?.range[0] || startToken.range[0]],
+						range: [
+							this.token?.range[0] || startToken.range[0],
+							this.token?.range[0] || startToken.range[0],
+						],
 						scope: this.currentScope,
 					})
 					whileClauseBlock.body = whileBlock
-					
+
 					// Create the while clause
 					const whileClause = this.astProvider.whileClause({
 						condition: condition,
@@ -990,7 +1001,7 @@ export default class Parser {
 						scope: this.currentScope,
 					})
 					whileClause.body = whileBlock
-					
+
 					doWhileLoop.whileClauses.push(whileClause)
 				}
 			} else {
@@ -999,13 +1010,13 @@ export default class Parser {
 					this.next()
 					continue
 				}
-				
+
 				// Parse statement - we need to get the last statement from the current block
 				const currentBlock = this.backPatches.peek()
 				const beforeLength = currentBlock.body.length
 				this.parseStatement()
 				const afterLength = currentBlock.body.length
-				
+
 				// If a statement was added, move it to our body
 				if (afterLength > beforeLength) {
 					const statement = currentBlock.body.pop()!
@@ -1017,8 +1028,11 @@ export default class Parser {
 		// Set the main block body and end position
 		doWhileLoop.mainBlock.body = body
 		doWhileLoop.mainBlock.end = this.previousToken?.end
-		doWhileLoop.mainBlock.range = [startToken.range[0], this.previousToken?.range[1] || startToken.range[0]]
-		
+		doWhileLoop.mainBlock.range = [
+			startToken.range[0],
+			this.previousToken?.range[1] || startToken.range[0],
+		]
+
 		doWhileLoop.end = this.previousToken?.end
 		doWhileLoop.range = [startToken.range[0], this.previousToken?.range[1] || startToken.range[0]]
 
@@ -1044,7 +1058,8 @@ export default class Parser {
 		}
 
 		if (!SelectorGroups.BlockEndOfLine(this.token!)) {
-			return this.parseForShortcutStatement(variable, iterator, startToken!)
+			this.parseForShortcutStatement(variable, iterator, startToken!)
+			return
 		}
 
 		const forStatement = this.astProvider.forGenericStatement({
@@ -1112,7 +1127,7 @@ export default class Parser {
 		this.next()
 
 		const functionStartToken = this.previousToken!
-		
+
 		// Check if this is a named function: function X(...)
 		let functionName: ASTIdentifier | null = null
 		if (statementStart && this.isType(TokenType.Identifier)) {
@@ -1125,7 +1140,7 @@ export default class Parser {
 
 		const functionStatement = this.astProvider.functionStatement({
 			start: functionStartToken.start,
- // Will be set when function is finalized
+			// Will be set when function is finalized
 			range: [functionStartToken.range[0]],
 			scope: this.currentScope,
 			parent: this.outerScopes[this.outerScopes.length - 1],
@@ -1215,14 +1230,14 @@ export default class Parser {
 				variable: functionName,
 				init: functionStatement,
 				start: functionStartToken.start,
- // Will be set when function is finalized
+				// Will be set when function is finalized
 				range: [functionStartToken.range[0]],
 				scope: this.currentScope,
 			})
-			
+
 			// Store the assignment in the pending block so we can finalize it later
 			pendingBlock.namedFunctionAssignment = assignmentStatement
-			
+
 			return assignmentStatement
 		}
 
@@ -1274,13 +1289,21 @@ export default class Parser {
 		const trueValue = this.parseAnd(asLVal, statementStart)
 
 		// Check for ternary operator: value if condition else other_value
-		if (this.token && this.token.type === TokenType.Keyword && (this.token.value as any) === Keyword.If) {
+		if (
+			this.token &&
+			this.token.type === TokenType.Keyword &&
+			(this.token.value as any) === Keyword.If
+		) {
 			this.next()
 			this.skipNewlines()
 
 			const condition = this.parseAnd()
 
-			if (this.token && this.token.type === TokenType.Keyword && (this.token.value as any) === Keyword.Else) {
+			if (
+				this.token &&
+				this.token.type === TokenType.Keyword &&
+				(this.token.value as any) === Keyword.Else
+			) {
 				this.next()
 				this.skipNewlines()
 
@@ -1300,7 +1323,10 @@ export default class Parser {
 				// This is not a ternary, it's an if statement
 				// We need to backtrack and return the original condition
 				// This is a bit tricky - we'll handle this in the if statement parser
-				this.raise('Expected "else" after "if" in ternary expression', new Range(this.previousToken!.start, this.token!.end))
+				this.raise(
+					'Expected "else" after "if" in ternary expression',
+					new Range(this.previousToken!.start, this.token!.end),
+				)
 			}
 		}
 

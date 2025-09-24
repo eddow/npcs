@@ -1383,11 +1383,11 @@ exports[`parse default scripts open block 1`] = `[]`;
 
 exports[`parse default scripts open block 2`] = `
 [
-  [Error: while statement not supported, use DO-WHILE-LOOP syntax],
+  [Error: while statement not allowed outside of do-while loop],
   [Error: 'break' without open loop block],
   [Error: 'break' without open loop block],
   [Error: unexpected keyword Keyword[31:9 - 31:18: value = 'end while'] at start of line],
-  [Error: while statement not supported, use DO-WHILE-LOOP syntax],
+  [Error: while statement not allowed outside of do-while loop],
   [Error: unexpected keyword Keyword[40:9 - 40:17: value = 'end whil'] at start of line],
 ]
 `;
@@ -2658,70 +2658,4 @@ exports[`parse default scripts using repeat keyword 2`] = `
   [Error: unexpected keyword Keyword[2:9 - 2:15: value = 'repeat'] at start of line],
   [Error: no matching open function block],
 ]
-`;
-
-exports[`parse default scripts weird comment stuff 1`] = `[]`;
-
-exports[`parse default scripts weird comment stuff 2`] = `
-[
-  [Error: got Comment[10:26 - 10:41: value = ' TODO: goGrab'] where number, string, or identifier is required],
-]
-`;
-
-exports[`parse default scripts weird comment stuff 3`] = `
-"Chunk[1:1-24:7][
-	AssignmentStatement[2:1-14:13][Identifier[2:10-2:15][goEat] = Function[2:1-14:13][ =>
-		DoWhileLoop[3:3-13:7][
-		Chunk[3:3-13:7][
-			AssignmentStatement[4:5-4:23][Identifier[4:5-4:9][food] = Identifier[4:12-4:23][carriedFood]]
-			IfStatement[5:5-8:11][
-				IfClause[5:5-8:11][Identifier[5:8-5:12][food]
-					CallStatement[6:7-6:24][CallExpression[6:7-6:24][MemberExpression[6:7-6:19][Identifier[6:7-6:15][selfCare].Identifier[6:16-6:19][eat]](Identifier[6:20-6:24][food])]]
-					ContinueStatement[7:7-7:15]
-				]
-			]
-			MemberExpression[9:5-9:23][Identifier[9:5-9:14][inventory].Identifier[9:15-9:23][makeRoom]]
-			AssignmentStatement[10:5-10:24][Identifier[10:5-10:10][found] = CallExpression[10:13-10:24][MemberExpression[10:13-10:22][Identifier[10:13-10:17][find].Identifier[10:18-10:22][food]]()]]
-			IfStatement[11:5-11:35][
-				IfShortcutClause[11:5-11:35][NegationExpression[11:8-11:17][not Identifier[11:12-11:17][found]]
-					ReturnStatement[11:23-11:35][Literal[11:30-11:35][false]]
-				]
-			]
-			CallStatement[12:5-12:59][CallExpression[12:5-12:59][MemberExpression[12:5-12:21][Identifier[12:5-12:14][inventory].Identifier[12:15-12:21][goGrab]](MemberExpression[12:22-12:32][Identifier[12:22-12:27][found].Identifier[12:28-12:32][good]], Literal[12:34-12:35][1], MemberExpression[12:37-12:47][Identifier[12:37-12:42][found].Identifier[12:43-12:47][tile]], MemberExpression[12:49-12:59][Identifier[12:49-12:54][found].Identifier[12:55-12:59][path]])]]
-		]
-		
-		WhileClause[3:6-12:59][BinaryExpression[3:12-3:51][Identifier[3:12-3:18][hunger] > MemberExpression[3:21-3:51][MemberExpression[3:21-3:41][Identifier[3:21-3:34][triggerLevels].Identifier[3:35-3:41][hunger]].Identifier[3:42-3:51][satisfied]]]
-			AssignmentStatement[4:5-4:23][Identifier[4:5-4:9][food] = Identifier[4:12-4:23][carriedFood]]
-			IfStatement[5:5-8:11][
-				IfClause[5:5-8:11][Identifier[5:8-5:12][food]
-					CallStatement[6:7-6:24][CallExpression[6:7-6:24][MemberExpression[6:7-6:19][Identifier[6:7-6:15][selfCare].Identifier[6:16-6:19][eat]](Identifier[6:20-6:24][food])]]
-					ContinueStatement[7:7-7:15]
-				]
-			]
-			MemberExpression[9:5-9:23][Identifier[9:5-9:14][inventory].Identifier[9:15-9:23][makeRoom]]
-			AssignmentStatement[10:5-10:24][Identifier[10:5-10:10][found] = CallExpression[10:13-10:24][MemberExpression[10:13-10:22][Identifier[10:13-10:17][find].Identifier[10:18-10:22][food]]()]]
-			InvalidCodeExpression[10:26-10:41][]
-			IfStatement[11:5-11:35][
-				IfShortcutClause[11:5-11:35][NegationExpression[11:8-11:17][not Identifier[11:12-11:17][found]]
-					ReturnStatement[11:23-11:35][Literal[11:30-11:35][false]]
-				]
-			]
-			CallStatement[12:5-12:59][CallExpression[12:5-12:59][MemberExpression[12:5-12:21][Identifier[12:5-12:14][inventory].Identifier[12:15-12:21][goGrab]](MemberExpression[12:22-12:32][Identifier[12:22-12:27][found].Identifier[12:28-12:32][good]], Literal[12:34-12:35][1], MemberExpression[12:37-12:47][Identifier[12:37-12:42][found].Identifier[12:43-12:47][tile]], MemberExpression[12:49-12:59][Identifier[12:49-12:54][found].Identifier[12:55-12:59][path]])]]
-		]]
-	]]
-	AssignmentStatement[16:1-21:13][Identifier[16:10-16:16][wander] = Function[16:1-21:13][ =>
-		AssignmentStatement[17:3-17:37][Identifier[17:3-17:14][destination] = CallExpression[17:17-17:37][MemberExpression[17:17-17:35][Identifier[17:17-17:21][find].Identifier[17:22-17:35][wanderingTile]]()]]
-		IfStatement[18:3-18:44][
-			IfShortcutClause[18:3-18:44][NegationExpression[18:6-18:26][not MemberExpression[18:10-18:26][Identifier[18:10-18:21][destination].Identifier[18:22-18:26][path]]]
-				ReturnStatement[18:32-18:44][Literal[18:39-18:44][false]]
-			]
-		]
-		CallStatement[19:3-19:29][CallExpression[19:3-19:29][MemberExpression[19:3-19:12][Identifier[19:3-19:7][walk].Identifier[19:8-19:12][into]](MemberExpression[19:13-19:29][Identifier[19:13-19:24][destination].Identifier[19:25-19:29][path]])]]
-		MemberExpression[20:3-20:21][Identifier[20:3-20:11][selfCare].Identifier[20:12-20:21][pondering]]
-	]]
-	ReturnStatement[23:1-23:25][MapConstructor[23:8-23:25][
-		MapKeyString[23:10-23:15][Identifier[23:10-23:15][goEat]: Identifier[23:10-23:15][goEat]]
-		MapKeyString[23:17-23:23][Identifier[23:17-23:23][wander]: Identifier[23:17-23:23][wander]]
-	]]
-]"
 `;

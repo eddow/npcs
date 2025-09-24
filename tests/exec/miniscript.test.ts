@@ -207,6 +207,13 @@ print tmp
 				'Simple Counter is: 2',
 				'Break Counter is: 2',
 				'Break Counter is: 3',
+				'Break Counter is: 4',
+				'Break Counter is: 5',
+				'Break Counter is: 6',
+				'Break Counter is: 7',
+				'Break Counter is: 8',
+				'Break Counter is: 9',
+				'Break Counter is: 10',
 				'Loop finished!',
 			])
 		})

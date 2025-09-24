@@ -8,6 +8,9 @@ loop
 // While loop with break/continue
 counter = 0
 do while counter < 10
+	do while counter < 1
+		counter = counter + 1
+	loop
 	counter = counter + 1
 	if counter < 2 then continue
 	print "Break Counter is: " + counter
