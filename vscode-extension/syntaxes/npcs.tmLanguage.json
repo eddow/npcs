@@ -288,6 +288,7 @@
           },
           "end": "$",
           "patterns": [
+            { "include": "#comments" },
             { "include": "#keywords" },
             { "include": "#operators" },
             { "include": "#strings" },
@@ -362,6 +363,7 @@
             "1": { "name": "keyword.control" }
           },
           "patterns": [
+            { "include": "#comments" },
             { "include": "#assignment-statements" },
             { "include": "#if-one-liners" },
             { "include": "#yielding-statements" },
@@ -394,6 +396,7 @@
             "1": { "name": "keyword.control" }
           },
           "patterns": [
+            { "include": "#comments" },
             { "include": "#assignment-statements" },
             { "include": "#if-one-liners" },
             { "include": "#yielding-statements" },

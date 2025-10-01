@@ -889,6 +889,12 @@ export default class Parser {
 
 		// Parse statements until we encounter another WHILE or LOOP at the same nesting level
 		while (this.token && !Selectors.EndOfFile(this.token)) {
+			// Skip comments and newlines before parsing
+			this.skipNewlines()
+
+			// Check if we've reached end after skipping
+			if (!this.token || Selectors.EndOfFile(this.token)) break
+
 			// If we're at our while-block level (top is whilePending) and see WHILE or LOOP, stop
 			if (this.token.type === TokenType.Keyword && this.backPatches.peek() === whilePending) {
 				if (this.token.value === Keyword.While || this.token.value === Keyword.Loop) {
@@ -896,17 +902,8 @@ export default class Parser {
 				}
 			}
 
-			// Skip end-of-line tokens
-			if (this.token && (this.token.type as any) === TokenType.EOL) {
-				this.next()
-				continue
-			}
-
 			// Parse the statement at current nesting level
 			this.parseStatement()
-
-			// Skip any comments or newlines after the statement
-			this.skipNewlines()
 		}
 
 		// Finalize the while-block pending and retrieve its body without adding to line registry
@@ -943,6 +940,12 @@ export default class Parser {
 		// Parse the body and while clauses until we find LOOP
 		const body: ASTBase[] = []
 		while (this.token && !Selectors.EndOfFile(this.token)) {
+			// Skip comments and newlines before parsing
+			this.skipNewlines()
+
+			// Check if we've reached end after skipping
+			if (!this.token || Selectors.EndOfFile(this.token)) break
+
 			if (this.token.type === TokenType.Keyword && this.token.value === Keyword.Loop) {
 				this.next() // consume LOOP
 				break
@@ -957,17 +960,17 @@ export default class Parser {
 
 					// Parse statements until we encounter another WHILE or LOOP
 					while (this.token && !Selectors.EndOfFile(this.token)) {
+						// Skip comments and newlines before parsing
+						this.skipNewlines()
+
+						// Check if we've reached end after skipping
+						if (!this.token || Selectors.EndOfFile(this.token)) break
+
 						// Check if we've reached another WHILE clause or LOOP
 						if (this.token.type === TokenType.Keyword) {
 							if (this.token.value === Keyword.While || this.token.value === Keyword.Loop) {
 								break
 							}
-						}
-
-						// Skip end-of-line tokens
-						if (this.token && (this.token.type as any) === TokenType.EOL) {
-							this.next()
-							continue
 						}
 
 						// Parse statement
@@ -1005,12 +1008,6 @@ export default class Parser {
 					doWhileLoop.whileClauses.push(whileClause)
 				}
 			} else {
-				// Skip end-of-line tokens
-				if (this.token.type === TokenType.EOL) {
-					this.next()
-					continue
-				}
-
 				// Parse statement - we need to get the last statement from the current block
 				const currentBlock = this.backPatches.peek()
 				const beforeLength = currentBlock.body.length
