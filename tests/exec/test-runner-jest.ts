@@ -11,11 +11,11 @@ import type {
 import { reviveState, serializeState } from '../../src/helpers.js'
 
 // Helper functions to handle circular references in ExecutionState
-function stringifyStack(stack: ExecutionStackEntry[]): any {
+function stringifyStack(stack: ExecutionState): any {
 	return JSON.parse(stringify(stack, serializeState))
 }
 
-function parseStack(serialized: any): ExecutionStackEntry[] {
+function parseStack(serialized: any): ExecutionState {
 	return parse(JSON.stringify(serialized), reviveState)
 }
 
@@ -45,7 +45,7 @@ export interface TestResult {
 	error?: Error
 	executionTime: number
 	result?: FunctionResult
-	state?: ExecutionState
+	state?: string
 }
 
 export interface CancelResult {
@@ -53,19 +53,19 @@ export interface CancelResult {
 	output: string[]
 	error?: Error
 	executionTime: number
-	state?: ExecutionState
+	state?: string
 }
 
-export function runFixture(fixtureName: string, state?: ExecutionState): TestResult {
+export function runFixture(fixtureName: string, state?: string): TestResult {
 	const fixturePath = join(process.cwd(), 'tests/exec', 'fixtures', `${fixtureName}.npcs`)
 	return runFile(fixturePath, state)
 }
 
-export function runFile(filePath: string, state?: ExecutionState): TestResult {
+export function runFile(filePath: string, state?: string): TestResult {
 	return runScript(readFileSync(filePath, 'utf-8'), state)
 }
 
-export function runScript(source: string, state?: ExecutionState): TestResult {
+export function runScript(source: string, state?: string): TestResult {
 	const startTime = Date.now()
 	const output: string[] = []
 
@@ -73,7 +73,7 @@ export function runScript(source: string, state?: ExecutionState): TestResult {
 		const context = createContext(output)
 
 		//TODO: re-serialize (plans -> serialize native functions)
-		const parsedState: ExecutionState | undefined = state // ? parseStack(parse(state)) : undefined
+		const parsedState: ExecutionState | undefined = state ? parseStack(parse(state)) : undefined
 		const executor = new MiniScriptExecutor(source, context, parsedState)
 		const result = executor.execute()
 		const executionTime = Date.now() - startTime
@@ -83,7 +83,7 @@ export function runScript(source: string, state?: ExecutionState): TestResult {
 			output,
 			executionTime,
 			result,
-			state: executor.state, // stringify(stringifyStack(executor.state)),
+			state: stringify(stringifyStack(executor.state)),
 		}
 	} catch (error: any) {
 		const executionTime = Date.now() - startTime
@@ -92,26 +92,22 @@ export function runScript(source: string, state?: ExecutionState): TestResult {
 	}
 }
 
-export function cancelFixture(
-	fixtureName: string,
-	state?: ExecutionState,
-	plan?: any,
-): CancelResult {
+export function cancelFixture(fixtureName: string, state?: string, plan?: any): CancelResult {
 	const fixturePath = join(process.cwd(), 'tests/exec', 'fixtures', `${fixtureName}.npcs`)
 	return cancelFile(fixturePath, state, plan)
 }
 
-export function cancelFile(filePath: string, state?: ExecutionState, plan?: any): CancelResult {
+export function cancelFile(filePath: string, state?: string, plan?: any): CancelResult {
 	return cancelScript(readFileSync(filePath, 'utf-8'), state, plan)
 }
 
-export function cancelScript(source: string, state?: ExecutionState, plan?: any): CancelResult {
+export function cancelScript(source: string, state?: string, plan?: any): CancelResult {
 	const startTime = Date.now()
 	const output: string[] = []
 
 	try {
 		const context = createContext(output)
-		const parsedState: ExecutionState | undefined = state
+		const parsedState: ExecutionState | undefined = state ? parseStack(parse(state)) : undefined
 		const executor = new MiniScriptExecutor(source, context, parsedState)
 		const newState = executor.cancel(plan)
 		const executionTime = Date.now() - startTime
@@ -120,7 +116,7 @@ export function cancelScript(source: string, state?: ExecutionState, plan?: any)
 			success: true,
 			output,
 			executionTime,
-			state: newState,
+			state: newState && stringify(stringifyStack(newState)),
 		}
 	} catch (error: any) {
 		const executionTime = Date.now() - startTime
