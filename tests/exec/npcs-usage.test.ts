@@ -117,12 +117,7 @@ return "done"
 		const result = npc.execute(context)
 
 		expect(result).toEqual({ type: 'return', value: 'done' })
-		expect(output).toEqual([
-			'Hello from named function',
-			'8',
-			'Hello World',
-			'Hello Alice'
-		])
+		expect(output).toEqual(['Hello from named function', '8', 'Hello World', 'Hello Alice'])
 	})
 
 	it('executes both named and anonymous function syntax', () => {
@@ -153,9 +148,6 @@ return "done"
 		const result = npc.execute(context)
 
 		expect(result).toEqual({ type: 'return', value: 'done' })
-		expect(output).toEqual([
-			'Named function',
-			'Anonymous function'
-		])
+		expect(output).toEqual(['Named function', 'Anonymous function'])
 	})
 })

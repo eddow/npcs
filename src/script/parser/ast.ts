@@ -65,11 +65,17 @@ import {
 	type ASTMapKeyStringOptions,
 } from './ast/map'
 import { ASTParenthesisExpression, type ASTParenthesisExpressionOptions } from './ast/parenthesis'
+import { ASTPlanStatement, type ASTPlanStatementOptions } from './ast/plan'
 import { ASTReturnStatement, type ASTReturnStatementOptions } from './ast/return'
 import { ASTSliceExpression, type ASTSliceExpressionOptions } from './ast/slice'
 import { ASTTernaryExpression, type ASTTernaryExpressionOptions } from './ast/ternary'
 import { ASTUnaryExpression, type ASTUnaryExpressionOptions } from './ast/unary'
-import { ASTDoWhileLoop, type ASTDoWhileLoopOptions, ASTWhileClause, type ASTWhileClauseOptions } from './ast/while'
+import {
+	ASTDoWhileLoop,
+	type ASTDoWhileLoopOptions,
+	ASTWhileClause,
+	type ASTWhileClauseOptions,
+} from './ast/while'
 
 export class ASTProvider {
 	returnStatement(options: ASTReturnStatementOptions): ASTReturnStatement {
@@ -108,13 +114,16 @@ export class ASTProvider {
 		return new ASTElseClause(ASTType.ElseClause, options)
 	}
 
-
 	doWhileLoop(options: ASTDoWhileLoopOptions): ASTDoWhileLoop {
 		return new ASTDoWhileLoop(options)
 	}
 
 	whileClause(options: ASTWhileClauseOptions): ASTWhileClause {
 		return new ASTWhileClause(options)
+	}
+
+	planStatement(options: ASTPlanStatementOptions): ASTPlanStatement {
+		return new ASTPlanStatement(options)
 	}
 
 	assignmentStatement(options: ASTAssignmentStatementOptions): ASTAssignmentStatement {
@@ -284,8 +293,8 @@ export {
 	ASTBase,
 	ASTBaseBlock,
 	type ASTBaseBlockOptions,
-	ASTBaseBlockWithScope,
-	type ASTBaseBlockWithScopeOptions,
+	ASTBaseBlockPlanScope as ASTBaseBlockWithScope,
+	type ASTBaseBlockPlanScopeOptions as ASTBaseBlockWithScopeOptions,
 	type ASTBaseOptions,
 	ASTComment,
 	type ASTCommentOptions,
@@ -364,8 +373,14 @@ export {
 	ASTParenthesisExpression,
 	type ASTParenthesisExpressionOptions,
 } from './ast/parenthesis'
+export { ASTPlanStatement, type ASTPlanStatementOptions } from './ast/plan'
 export { ASTReturnStatement, type ASTReturnStatementOptions } from './ast/return'
 export { ASTSliceExpression, type ASTSliceExpressionOptions } from './ast/slice'
 export { ASTTernaryExpression, type ASTTernaryExpressionOptions } from './ast/ternary'
 export { ASTUnaryExpression, type ASTUnaryExpressionOptions } from './ast/unary'
-export { ASTDoWhileLoop, type ASTDoWhileLoopOptions, ASTWhileClause, type ASTWhileClauseOptions } from './ast/while'
+export {
+	ASTDoWhileLoop,
+	type ASTDoWhileLoopOptions,
+	ASTWhileClause,
+	type ASTWhileClauseOptions,
+} from './ast/while'

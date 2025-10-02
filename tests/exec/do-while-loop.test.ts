@@ -8,15 +8,15 @@ do
     counter = counter + 1
 while counter < 3 loop
 print("Done!")`
-		
+
 		const output: string[] = []
 		const context = {
-			print: (...args: any[]) => output.push(args.join(' '))
+			print: (...args: any[]) => output.push(args.join(' ')),
 		}
-		
+
 		const script = new NpcScript(source)
 		script.execute(context)
-		
+
 		expect(output).toEqual(['Counter: 0', 'Counter: 1', 'Counter: 2', 'Done!'])
 	})
 
@@ -27,15 +27,15 @@ do
     counter = counter + 1
 while counter < 3 while false loop
 print("Done!")`
-		
+
 		const output: string[] = []
 		const context = {
-			print: (...args: any[]) => output.push(args.join(' '))
+			print: (...args: any[]) => output.push(args.join(' ')),
 		}
-		
+
 		const script = new NpcScript(source)
 		script.execute(context)
-		
+
 		expect(output).toEqual(['Counter: 0', 'Counter: 1', 'Counter: 2', 'Done!'])
 	})
 
@@ -47,15 +47,15 @@ do
     if counter >= 3 then break
 loop
 print("Done!")`
-		
+
 		const output: string[] = []
 		const context = {
-			print: (...args: any[]) => output.push(args.join(' '))
+			print: (...args: any[]) => output.push(args.join(' ')),
 		}
-		
+
 		const script = new NpcScript(source)
 		script.execute(context)
-		
+
 		expect(output).toEqual(['Counter: 0', 'Counter: 1', 'Counter: 2', 'Done!'])
 	})
 
@@ -66,15 +66,15 @@ if counter < 2 then do
     counter = counter + 1
 while counter < 3 loop
 print("Done!")`
-		
+
 		const output: string[] = []
 		const context = {
-			print: (...args: any[]) => output.push(args.join(' '))
+			print: (...args: any[]) => output.push(args.join(' ')),
 		}
-		
+
 		const script = new NpcScript(source)
 		script.execute(context)
-		
+
 		expect(output).toEqual(['Counter: 0', 'Counter: 1', 'Counter: 2', 'Done!'])
 	})
 
@@ -85,15 +85,15 @@ if counter < 2 then do
     counter = counter + 1
 while counter < 3 loop
 print("Done!")`
-		
+
 		const output: string[] = []
 		const context = {
-			print: (...args: any[]) => output.push(args.join(' '))
+			print: (...args: any[]) => output.push(args.join(' ')),
 		}
-		
+
 		const script = new NpcScript(source)
 		script.execute(context)
-		
+
 		expect(output).toEqual(['Done!'])
 	})
 
@@ -107,17 +107,15 @@ while result.length < 1
 	result = result + "c"
 loop
 print("Final result: " + result)`
-		
+
 		const output: string[] = []
 		const context = {
-			print: (...args: any[]) => output.push(args.join(' '))
+			print: (...args: any[]) => output.push(args.join(' ')),
 		}
-		
+
 		const script = new NpcScript(source)
 		script.execute(context)
-		
-		expect(output).toEqual([
-			'Final result: aba'
-		])
+
+		expect(output).toEqual(['Final result: aba'])
 	})
 })

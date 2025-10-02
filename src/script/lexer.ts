@@ -9,7 +9,6 @@ import { Position } from './types/position'
 import { Range } from './types/range'
 import Queue from './utils/queue'
 
-
 function defaultScanHandler(this: Lexer, afterSpace: boolean) {
 	const value = this.content[this.index]
 	this.index += value.length
@@ -367,8 +366,8 @@ export default class Lexer {
 
 	scanNumericLiteral(afterSpace: boolean): Token {
 		const validator = this.validator
-		let previous
-		let current
+		let previous: number | undefined
+		let current: number | undefined
 
 		while (this.index < this.length) {
 			previous = current
@@ -391,7 +390,7 @@ export default class Lexer {
 		const raw = this.content.slice(this.tokenStart, this.index)
 		const value = Number(raw)
 
-		if (isNaN(value)) {
+		if (Number.isNaN(value)) {
 			return this.raise(
 				`Invalid numeric literal: ${raw}`,
 				new Range(

@@ -1,23 +1,23 @@
 import {
 	type ASTBase,
-	ASTBaseBlockWithScope,
-	type ASTBaseBlockWithScopeOptions,
+	ASTBaseBlockPlanScope,
+	type ASTBaseBlockPlanScopeOptions,
 	type ASTComment,
 	ASTType,
 } from './base'
 import type { ASTLiteral } from './literal'
 
-export interface ASTChunkOptions extends ASTBaseBlockWithScopeOptions {
+export interface ASTChunkOptions extends ASTBaseBlockPlanScopeOptions {
 	literals?: ASTLiteral[]
 	comments?: ASTComment[]
-	scopes?: ASTBaseBlockWithScope[]
+	scopes?: ASTBaseBlockPlanScope[]
 	lines?: Record<number, ASTBase[]>
 }
 
-export class ASTChunk extends ASTBaseBlockWithScope {
+export class ASTChunk extends ASTBaseBlockPlanScope {
 	literals: ASTLiteral[]
 	comments: ASTComment[]
-	scopes: ASTBaseBlockWithScope[]
+	scopes: ASTBaseBlockPlanScope[]
 	lines: Record<number, ASTBase[]>
 
 	constructor(options: ASTChunkOptions) {

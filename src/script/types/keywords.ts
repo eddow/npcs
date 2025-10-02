@@ -11,6 +11,7 @@ export enum Keyword {
 	EndFor = 'end for',
 	EndFunction = 'end function',
 	EndIf = 'end if',
+	EndPlan = 'end plan',
 	Then = 'then',
 	Else = 'else',
 	Break = 'break',
@@ -22,4 +23,5 @@ export enum Keyword {
 	Repeat = 'repeat',
 	Do = 'do',
 	Loop = 'loop',
+	Plan = 'plan',
 }

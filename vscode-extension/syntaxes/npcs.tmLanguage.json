@@ -43,6 +43,9 @@
       "include": "#do-while-loops"
     },
     {
+      "include": "#plan-blocks"
+    },
+    {
       "include": "#ternary-expressions"
     }
   ],
@@ -91,7 +94,7 @@
       "patterns": [
         {
           "name": "meta.statement.npcs",
-          "match": "^\\s*(?!(?:if|then|else|end if|do|while|loop|for|in|end for|function|end function|return|break|continue)\\b)([a-zA-Z_][a-zA-Z0-9_]*(?:\\.[a-zA-Z_][a-zA-Z0-9_]*|\\[[^\\]]+\\])*)\\s+(?!\\=)(.+)$",
+          "match": "^\\s*(?!(?:if|then|else|end if|do|while|loop|for|in|end for|plan|end plan|function|end function|return|break|continue)\\b)([a-zA-Z_][a-zA-Z0-9_]*(?:\\.[a-zA-Z_][a-zA-Z0-9_]*|\\[[^\\]]+\\])*)\\s+(?!\\=)(.+)$",
           "captures": {
             "1": { "name": "entity.name.function.statement.npcs" },
             "2": { "name": "meta.statement.arguments.npcs" }
@@ -156,7 +159,7 @@
       "patterns": [
         {
           "name": "keyword.control",
-          "match": "\\b(if|then|else|end if|do|while|loop|for|in|end for|break|continue|return)\\b"
+          "match": "\\b(if|then|else|end if|do|while|loop|for|in|end for|plan|end plan|break|continue|return)\\b"
         },
         {
           "name": "storage.type.function",
@@ -270,7 +273,7 @@
       "patterns": [
         {
           "name": "meta.assignment",
-          "match": "^\\s*(?!(?:if|then|else|end if|do|while|loop|for|in|end for|function|end function|return|break|continue)\\b)([a-zA-Z_][a-zA-Z0-9_]*(?:\\.[a-zA-Z_][a-zA-Z0-9_]*|\\[[^\\]]+\\])*)\\s*(=)",
+          "match": "^\\s*(?!(?:if|then|else|end if|do|while|loop|for|in|end for|plan|end plan|function|end function|return|break|continue)\\b)([a-zA-Z_][a-zA-Z0-9_]*(?:\\.[a-zA-Z_][a-zA-Z0-9_]*|\\[[^\\]]+\\])*)\\s*(=)",
           "captures": {
             "1": { "name": "variable.other" },
             "2": { "name": "keyword.operator.assignment" }
@@ -282,7 +285,7 @@
       "patterns": [
         {
           "name": "meta.statement",
-          "begin": "^\\s*(?!(?:if|then|else|end if|do|while|loop|for|in|end for|function|end function|return|break|continue)\\b)([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*|\\[[^\\]]+\\])*)\\s+(?!\\=)",
+          "begin": "^\\s*(?!(?:if|then|else|end if|do|while|loop|for|in|end for|with|end with|function|end function|return|break|continue)\\b)([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*|\\[[^\\]]+\\])*)\\s+(?!\\=)",
           "beginCaptures": {
             "1": { "name": "variable.function" }
           },
@@ -413,6 +416,36 @@
             {
               "include": "#numbers"
             },
+            { "include": "#objects" },
+            { "include": "#arrays" },
+            { "include": "#ternary-expressions" }
+          ]
+        }
+      ]
+    },
+    "plan-blocks": {
+      "patterns": [
+        {
+          "name": "meta.plan-block",
+          "begin": "^\\s*(plan)\\s+",
+          "beginCaptures": {
+            "1": { "name": "keyword.control" }
+          },
+          "end": "^\\s*(end plan)\\b",
+          "endCaptures": {
+            "1": { "name": "keyword.control" }
+          },
+          "patterns": [
+            { "include": "#comments" },
+            { "include": "#assignment-statements" },
+            { "include": "#if-one-liners" },
+            { "include": "#yielding-statements" },
+            { "include": "#statements" },
+            { "include": "#keywords" },
+            { "include": "#operators" },
+            { "include": "#function-calls" },
+            { "include": "#strings" },
+            { "include": "#numbers" },
             { "include": "#objects" },
             { "include": "#arrays" },
             { "include": "#ternary-expressions" }

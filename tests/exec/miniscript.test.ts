@@ -1,4 +1,4 @@
-import { runFixture, runScript } from './test-runner-jest.js'
+import { cancelFixture, runFixture, runScript } from './test-runner-jest.js'
 
 describe('MiniScript Executor', () => {
 	describe('Basic Operations', () => {
@@ -24,6 +24,147 @@ return tf(2)
 			const result = runScript(snippet)
 			expect(result.success).toBe(true)
 			expect(result.result).toEqual({ type: 'return', value: 4 })
+		})
+	})
+	/*
+it('plan: continue after yield', () => {
+	// Run to first yield using runFixture, then resume with saved state
+	const first = runFixture('plan')
+	expect(first.success).toBe(true)
+	expect(first.result?.type).toBe('yield')
+	expect(first.output).toEqual(['before', 'in1'])
+
+	const second = runFixture('plan', first.state)
+	expect(second.success).toBe(true)
+	expect(second.result?.type).toBe('return')
+	expect(second.output).toEqual(['in2', 'plan concluded', 'plan finalized', 'after'])
+})*/
+	describe('plan', () => {
+		const yields = [
+			{
+				yield: 'yielding - plan',
+				output: ['before', 'in1'],
+			},
+			{
+				yield: 'yielding - inFunction',
+				output: ['in2', 'inFunction1'],
+			},
+			{
+				yield: 'yielding - for a',
+				output: ['inFunction2', 'in3', 'for1:a'],
+			},
+			{
+				yield: 'yielding - for b',
+				output: ['for2:a', 'for1:b'],
+			},
+			{
+				yield: 'yielding - for c',
+				output: ['for2:b', 'for1:c'],
+			},
+		]
+
+		function executeXYields(nbr: number) {
+			let state = runFixture('plan')
+			expect(state.success).toBe(true)
+			let i = 0
+			for (; i < nbr; i++) {
+				expect(state.result?.type).toBe('yield')
+				expect(state.output).toEqual(yields[i].output)
+				expect(state.result?.value).toBe(yields[i].yield)
+				state = runFixture('plan', state.state)
+				expect(state.success).toBe(true)
+			}
+			expect(state.result?.type).toBe('yield')
+			expect(state.output).toEqual(yields[i].output)
+			expect(state.result?.value).toBe(yields[i].yield)
+			return state
+		}
+		for (let yieldsB4Cancel = 0; yieldsB4Cancel < yields.length; yieldsB4Cancel++)
+			it(`plan: cancel after "${yields[yieldsB4Cancel].yield}" then continue`, () => {
+				// Test cancellation using the new cancel functions
+				const state = executeXYields(yieldsB4Cancel)
+
+				// Cancel the plan using the new cancel function
+				const cancelResult = cancelFixture('plan', state.state, 'plan')
+				expect(cancelResult.success).toBe(true)
+				expect(cancelResult.output).toEqual(['plan cancelled', 'plan finalized'])
+				expect(cancelResult.state).toBeDefined()
+
+				// Continue execution from the cancelled state
+				const second = runFixture('plan', cancelResult.state)
+				expect(second.success).toBe(true)
+				expect(second.result?.type).toBe('return')
+				expect(second.output).toEqual(['after'])
+			})
+		it('plan: cancel parent', () => {
+			const state = executeXYields(0)
+			const cancelResult = cancelFixture('plan', state.state, 'parent-plan')
+			expect(cancelResult.success).toBe(true)
+			expect(cancelResult.output).toEqual(['plan cancelled', 'plan finalized'])
+			expect(cancelResult.state).toBeUndefined()
+		})
+
+		it('plan: runs smoothly', () => {
+			const state = executeXYields(yields.length - 1)
+			// Continue execution from the last state
+			const second = runFixture('plan', state.state)
+			expect(second.success).toBe(true)
+			expect(second.result?.type).toBe('return')
+			expect(second.output).toEqual(['for2:c', 'in4', 'plan concluded', 'plan finalized', 'after'])
+		})
+
+		it('plan: cancel on return', () => {
+			const script = `
+function aborting()
+	plan "plan"
+		print "in1"
+		return "returning - plan"
+		print "in2"
+	end plan
+end function
+plan "parent-plan"
+	print aborting()
+end plan
+`
+			const result = runScript(script)
+			expect(result.success).toBe(true)
+			expect(result.output).toEqual([
+				'in1',
+				'plan cancelled',
+				'plan finalized',
+				'returning - plan',
+				'parent-plan concluded',
+				'parent-plan finalized',
+			])
+		})
+		it('plan: cancel on continue/break', () => {
+			const script = `
+for i in [1, 2]
+	plan "plan"
+		print "in1:" + i
+		if i == 1 then continue
+		if i == 2 then break
+		print "in2:" + i
+	end plan
+	print "out1:" + i
+end for
+plan "parent-plan"
+	print "out2"
+end plan
+`
+			const result = runScript(script)
+			expect(result.success).toBe(true)
+			expect(result.output).toEqual([
+				'in1:1',
+				'plan cancelled',
+				'plan finalized',
+				'in1:2',
+				'plan cancelled',
+				'plan finalized',
+				'out2',
+				'parent-plan concluded',
+				'parent-plan finalized',
+			])
 		})
 	})
 

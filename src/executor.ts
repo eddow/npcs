@@ -14,6 +14,7 @@ import {
 	type LValue,
 	type MSScope,
 	type MSValue,
+	type PlanScope,
 	stack,
 } from './helpers'
 import NpcScript from './npcs'
@@ -43,6 +44,7 @@ import {
 	ASTMemberExpression,
 	ASTNumericLiteral,
 	ASTParenthesisExpression,
+	ASTPlanStatement,
 	type ASTReturnStatement,
 	type ASTSliceExpression,
 	type ASTTernaryExpression,
@@ -71,13 +73,15 @@ export class MiniScriptExecutor {
 	}
 	readonly script: NpcScript
 	private stack: ExecutionStackEntry[]
+	private planScopes: Array<{ planValue: any; savedState: PlanScope }>
 	expressionsCacheIndex: number = 0
 	expressionsCacheStack: number[] = []
 	get state(): ExecutionState {
-		return this.stack
+		return { stack: this.stack, plans: this.planScopes }
 	}
 	set state(state: ExecutionState) {
-		this.stack = state
+		this.stack = state.stack
+		this.planScopes = state.plans
 	}
 	/**
 	 * @param specs - the script or source code
@@ -90,7 +94,13 @@ export class MiniScriptExecutor {
 		state?: ExecutionState,
 	) {
 		this.script = typeof specs === 'string' ? new NpcScript(specs) : specs
-		this.stack = state || [stack()]
+		if (state) {
+			this.stack = state.stack
+			this.planScopes = state.plans
+		} else {
+			this.stack = [stack()]
+			this.planScopes = []
+		}
 	}
 
 	// Variable access methods
@@ -145,6 +155,18 @@ export class MiniScriptExecutor {
 				switch (result.type) {
 					case 'return': {
 						const leavingScope = this.stack.shift()!
+
+						// Check if we're exiting a function that contained a plan
+						// If the stack depth is now less than when any plan started, cancel those plans
+						for (let i = this.planScopes.length - 1; i >= 0; i--) {
+							const { savedState } = this.planScopes[i]
+							if (this.stack.length < savedState.stackDepth) {
+								// We're exiting a function that contained this plan, cancel it
+								const cancelledPlan = this.planScopes.splice(i, 1)[0]
+								this.finishPlan('cancel', cancelledPlan.planValue)
+							}
+						}
+
 						if (!this.stack.length) return result as FunctionResult
 
 						if (leavingScope.targetReturn === undefined) {
@@ -222,6 +244,14 @@ export class MiniScriptExecutor {
 			if (lastStatement instanceof ASTClause) {
 				ip.indexes.pop()
 				this.incrementIP(ip)
+			} else if (lastStatement instanceof ASTPlanStatement) {
+				// Exit from a plan-block: call global plan functions if available
+				const { planValue } = this.planScopes.shift()!
+
+				// Call standardized plan conclude method
+				this.finishPlan('conclude', planValue)
+
+				this.incrementIP(ip)
 			} else if (lastStatement instanceof ASTDoWhileLoop) {
 				// Here, we finished the whiles and none succeeded, get out of the loop
 				this.incrementIP(ip)
@@ -281,6 +311,8 @@ export class MiniScriptExecutor {
 					return this.executeWhileClause(statement as ASTWhileClause)
 				case 'ForGenericStatement':
 					return this.executeForGeneric(statement as ASTForGenericStatement)
+				case 'PlanStatement':
+					return this.executePlan(statement as ASTPlanStatement)
 				case 'CallStatement':
 					return this.executeProcedure(statement as ASTCallStatement)
 				case 'ReturnStatement':
@@ -310,6 +342,24 @@ export class MiniScriptExecutor {
 				delete this.stack[0].evaluatedCache
 			}
 		}
+	}
+
+	private executePlan(statement: ASTPlanStatement): ExecutionResult {
+		// Evaluate the plan expression (can be anything)
+		const planValue = this.evaluateExpression(statement.expression)
+
+		// Add the plan value and saved state to the stack (unshift for LIFO order)
+		this.planScopes.unshift({
+			planValue,
+			savedState: {
+				ipDepth: this.stack[0].ip.indexes.length,
+				stackDepth: this.stack.length,
+			},
+		})
+
+		// Enter the plan block body
+		this.stack[0].ip.indexes.push(0)
+		return { type: 'branched' }
 	}
 
 	clearExpressionCache(expressionCacheStackLength: number) {
@@ -484,7 +534,7 @@ export class MiniScriptExecutor {
 		return undefined
 	}
 
-	private executeDoWhileLoop(statement: ASTDoWhileLoop): ExecutionResult {
+	private executeDoWhileLoop(_statement: ASTDoWhileLoop): ExecutionResult {
 		this.stack[0].loopScopes.unshift({
 			ipDepth: this.stack[0].ip.indexes.length,
 			occurrences: 1,
@@ -540,6 +590,14 @@ export class MiniScriptExecutor {
 	private executeContinue(statement: ASTBase): ExecutionResult {
 		if (!this.stack[0].loopScopes.length)
 			throw new ExecutionError(this, statement, 'Break/Continue statement outside of loop')
+
+		// Check if we're continuing a loop that contained a plan
+		// Cancel any plans that are active (they will be interrupted by the continue)
+		for (let i = this.planScopes.length - 1; i >= 0; i--) {
+			const cancelledPlan = this.planScopes.splice(i, 1)[0]
+			this.finishPlan('cancel', cancelledPlan.planValue)
+		}
+
 		const lastLoop = this.stack[0].loopScopes[0]
 		this.stack[0].ip.indexes.splice(lastLoop.ipDepth)
 		const loopStatement = this.getStatementByIP(this.stack[0].ip)
@@ -554,6 +612,14 @@ export class MiniScriptExecutor {
 	private executeBreak(statement: ASTBase): ExecutionResult {
 		if (!this.stack[0].loopScopes.length)
 			throw new ExecutionError(this, statement, 'Break/Continue statement outside of loop')
+
+		// Check if we're breaking out of a loop that contained a plan
+		// Cancel any plans that are active (they will be interrupted by the break)
+		for (let i = this.planScopes.length - 1; i >= 0; i--) {
+			const cancelledPlan = this.planScopes.splice(i, 1)[0]
+			this.finishPlan('cancel', cancelledPlan.planValue)
+		}
+
 		this.stack[0].ip.indexes.splice(this.stack[0].loopScopes.shift()!.ipDepth)
 		this.incrementIP(this.stack[0].ip)
 		return { type: 'branched' }
@@ -773,5 +839,58 @@ export class MiniScriptExecutor {
 
 		// Perform the slice
 		return base.slice(startIndex, endIndex)
+	}
+
+	/**
+	 * Cancel a specific plan or all plans
+	 * @param plan - The plan to cancel, or undefined to cancel all plans
+	 * @returns the new execution state if plans were cancelled, or undefined if script is completely cancelled
+	 */
+	cancel(plan?: any): ExecutionState | undefined {
+		// Find the specific plan in the stack
+		const planIndex = this.planScopes.findIndex((p) => p.planValue === plan)
+		if (planIndex === -1) {
+			// Plan not found, cancel all plans using standardized method
+			for (const { planValue } of this.planScopes) this.finishPlan('cancel', planValue)
+			this.planScopes = []
+			// If no stack remains, script is completely cancelled
+			return undefined
+		}
+
+		// Cancel the specific plan and all its sub-plans (plans that were started after this one)
+		const plansToCancel = this.planScopes.splice(0, planIndex + 1)
+		for (const { planValue } of plansToCancel) this.finishPlan('cancel', planValue)
+
+		// Restore the execution state to what it was when the plan started
+		if (plansToCancel.length > 0) {
+			const { savedState } = plansToCancel.pop()! // Use the most recent plan's state
+
+			// Restore the stack to the original depth
+			this.stack = this.stack.slice(-savedState.stackDepth)
+
+			// Restore the IP depth by truncating indexes to the original depth
+			if (this.stack[0] && savedState.ipDepth !== undefined) {
+				this.stack[0].ip.indexes.splice(savedState.ipDepth)
+				this.expressionsCacheIndex = 0
+				this.expressionsCacheStack = []
+				this.incrementIP(this.stack[0].ip)
+			}
+
+			// Clear expression cache since we're restoring state
+			this.expressionsCacheIndex = 0
+			this.expressionsCacheStack = []
+			if (this.stack[0]) delete this.stack[0].evaluatedCache
+		}
+
+		// Return the new execution state after cancellation
+		return this.state
+	}
+	private finishPlan(endType: 'conclude' | 'cancel', planValue: any): void {
+		const endCall = (endType: 'conclude' | 'cancel' | 'finally', planValue: any): void => {
+			if (typeof this.context.plan?.[endType] === 'function')
+				this.context.plan[endType].call(this.context, planValue)
+		}
+		endCall(endType, planValue)
+		endCall('finally', planValue)
 	}
 }

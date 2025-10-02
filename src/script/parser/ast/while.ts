@@ -15,7 +15,7 @@ export class ASTWhileClause extends ASTBaseBlock {
 
 	toString(): string {
 		const conditionStr = this.condition.toString()
-		
+
 		if (this.body.length === 0) {
 			return `WhileClause[${this.start}-${this.end}][${conditionStr}]`
 		}
@@ -71,17 +71,17 @@ export class ASTDoWhileLoop {
 
 	toString(): string {
 		let result = `DoWhileLoop[${this.start}-${this.end}]`
-		
+
 		// Add main block
 		result += `[\n${this.mainBlock.toString()}\n`
-		
+
 		// Add while clauses
 		if (this.whileClauses.length > 0) {
 			for (const clause of this.whileClauses) {
 				result += `\n${clause.toString()}`
 			}
 		}
-		
+
 		result += ']'
 		return result
 	}
@@ -89,7 +89,7 @@ export class ASTDoWhileLoop {
 	clone(): ASTDoWhileLoop {
 		return new ASTDoWhileLoop({
 			mainBlock: this.mainBlock.clone(),
-			whileClauses: this.whileClauses.map(clause => clause.clone()),
+			whileClauses: this.whileClauses.map((clause) => clause.clone()),
 			start: this.start,
 			end: this.end,
 			range: this.range,

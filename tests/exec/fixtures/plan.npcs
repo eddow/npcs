@@ -1,0 +1,22 @@
+function inFunction()
+	print "inFunction1"
+	yield "yielding - inFunction"
+	print "inFunction2"
+end function
+
+// Use a PlanScope from the context (provided by test runner)
+print "before"
+plan "plan"
+	print "in1"
+	yield "yielding - plan"
+	print "in2"
+	inFunction()
+	print "in3"
+	for letter in ["a", "b", "c"]
+		print "for1:" + letter
+		yield "yielding - for "+letter
+		print "for2:" + letter
+	end for
+	print "in4"
+end plan
+print "after"

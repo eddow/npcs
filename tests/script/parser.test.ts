@@ -211,10 +211,37 @@ end function
 				unsafe: true,
 				lexer,
 			})
-			const ast = parser.parseChunk()
+			const _ast = parser.parseChunk()
 
 			expect(lexer.errors.length).toBe(0)
 			expect(parser.errors.length).toBe(0)
 		})
+	})
+})
+
+describe('Plan block - Parsing', () => {
+	it('parses multiline plan/end plan block with comments and newlines', () => {
+		const source = [
+			'plan player',
+			'\t// comment between header and body',
+			'\tprint "ok"',
+			'end plan',
+		].join('\n')
+		const parser = new Parser(source)
+		const ast = parser.parseChunk()
+		expect(ast.type).toBe('Chunk')
+		// Find WithStatement in body
+		// @ts-expect-error
+		const body = ast.body
+		const withStmt = body.find((n) => n.type === 'PlanStatement')
+		expect(withStmt).toBeTruthy()
+		expect(withStmt.expression.type).toBe('Identifier')
+		expect(withStmt.body.length).toBe(1)
+	})
+
+	it('rejects one-line plan block', () => {
+		const source = 'plan some.object print "hi"\n'
+		const parser = new Parser(source)
+		expect(() => parser.parseChunk()).toThrow()
 	})
 })

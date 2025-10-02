@@ -9,6 +9,7 @@ import type {
 	ASTFunctionStatement,
 	ASTIfClause,
 	ASTIfStatement,
+	ASTPlanStatement,
 	ASTType,
 } from './ast'
 import type { LineRegistry } from './line-registry'
@@ -21,6 +22,7 @@ export enum PendingBlockType {
 	Function,
 	If,
 	DoWhileLoop,
+	Plan,
 }
 
 export interface PendingBlock {
@@ -117,7 +119,10 @@ export class PendingFunction extends PendingBlockBase implements PendingBlock {
 		if (this.namedFunctionAssignment) {
 			this.namedFunctionAssignment.end = endToken.end
 			this.namedFunctionAssignment.range[1] = endToken.range[1]
-			this.lineRegistry.addItemToLine(this.namedFunctionAssignment.end!.line, this.namedFunctionAssignment)
+			this.lineRegistry.addItemToLine(
+				this.namedFunctionAssignment.end!.line,
+				this.namedFunctionAssignment,
+			)
 		} else if (this.base !== null) {
 			this.base.end = this.block.end
 			this.base.range[1] = this.block.range[1]
@@ -174,8 +179,9 @@ export class PendingIf extends PendingBlockBase implements PendingBlock {
 	}
 }
 
-
-export function isPendingDoWhileLoop(pendingBlock: PendingBlock): pendingBlock is PendingDoWhileLoop {
+export function isPendingDoWhileLoop(
+	pendingBlock: PendingBlock,
+): pendingBlock is PendingDoWhileLoop {
 	return pendingBlock.type === PendingBlockType.DoWhileLoop
 }
 
@@ -192,11 +198,32 @@ export class PendingDoWhileLoop extends PendingBlockBase implements PendingBlock
 		this.block.mainBlock.body = this.body
 		this.block.mainBlock.end = endToken.end
 		this.block.mainBlock.range = [this.block.mainBlock.range[0], endToken.range[1]]
-		
+
 		// Set the do-while-loop end
 		this.block.end = endToken.end
 		this.block.range = [this.block.range[0], endToken.range[1]]
-		
+
+		this.lineRegistry.addItemToLine(endToken.end.line, this.block)
+		super.complete(endToken)
+	}
+}
+
+export function isPendingPlan(pendingBlock: PendingBlock): pendingBlock is PendingPlan {
+	return pendingBlock.type === PendingBlockType.Plan
+}
+
+export class PendingPlan extends PendingBlockBase implements PendingBlock {
+	declare block: ASTPlanStatement
+
+	constructor(block: ASTPlanStatement, lineRegistry: LineRegistry) {
+		super(block, PendingBlockType.Plan, lineRegistry)
+		this.lineRegistry.addItemToLine(this.block.start!.line, this.block)
+	}
+
+	complete(endToken: Token): void {
+		this.block.body = this.body
+		this.block.end = endToken.end
+		this.block.range = [this.block.range[0], endToken.range[1]]
 		this.lineRegistry.addItemToLine(endToken.end.line, this.block)
 		super.complete(endToken)
 	}

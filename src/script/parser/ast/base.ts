@@ -19,6 +19,7 @@ export enum ASTType {
 	CallStatement = 'CallStatement',
 	FunctionDeclaration = 'FunctionDeclaration',
 	ForGenericStatement = 'ForGenericStatement',
+	PlanStatement = 'PlanStatement',
 	Chunk = 'Chunk',
 	Identifier = 'Identifier',
 	StringLiteral = 'StringLiteral',
@@ -55,7 +56,7 @@ export interface ASTBaseOptions {
 	start?: Position
 	end?: Position
 	range: [number, number?]
-	scope?: ASTBaseBlockWithScope
+	scope?: ASTBaseBlockPlanScope
 }
 
 export class ASTBase {
@@ -63,7 +64,7 @@ export class ASTBase {
 	start?: Position
 	end?: Position
 	range: [number, number?]
-	scope?: ASTBaseBlockWithScope
+	scope?: ASTBaseBlockPlanScope
 
 	constructor(type: string, options: ASTBaseOptions) {
 		this.type = type
@@ -130,27 +131,27 @@ export type ASTScopeNamespace = ASTIdentifier | ASTMemberExpression
  */
 export type ASTScopeDefinition = ASTBase
 
-export interface ASTBaseBlockWithScopeOptions extends ASTBaseBlockOptions {
+export interface ASTBaseBlockPlanScopeOptions extends ASTBaseBlockOptions {
 	definitions?: ASTScopeDefinition[]
 	returns?: ASTBase[]
 	namespaces?: ASTScopeNamespace[]
-	parent?: ASTBaseBlockWithScope
+	parent?: ASTBaseBlockPlanScope
 }
 
-export class ASTBaseBlockWithScope extends ASTBaseBlock {
+export class ASTBaseBlockPlanScope extends ASTBaseBlock {
 	definitions: ASTScopeDefinition[]
 	returns: ASTBase[]
 	namespaces: ASTScopeNamespace[]
 
-	constructor(type: string, options: ASTBaseBlockWithScopeOptions) {
+	constructor(type: string, options: ASTBaseBlockPlanScopeOptions) {
 		super(type, options)
 		this.namespaces = options.namespaces || []
 		this.definitions = options.definitions || []
 		this.returns = options.returns || []
 	}
 
-	clone(): ASTBaseBlockWithScope {
-		return new ASTBaseBlockWithScope(this.type, {
+	clone(): ASTBaseBlockPlanScope {
+		return new ASTBaseBlockPlanScope(this.type, {
 			namespaces: this.namespaces,
 			definitions: this.definitions.map((it) => it.clone()),
 			returns: this.returns.map((it) => it.clone()),

@@ -1,5 +1,5 @@
-import { Lexer, Parser } from '../../src/script/index'
 import NpcScript from '../../src/npcs'
+import { Lexer, Parser } from '../../src/script/index'
 
 describe('Ternary Operator', () => {
 	describe('Parsing', () => {

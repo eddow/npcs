@@ -28,6 +28,7 @@ import {
 	isPendingFor,
 	isPendingFunction,
 	isPendingIf,
+	isPendingPlan,
 	type PendingBlock,
 	PendingChunk,
 	type PendingClauseType,
@@ -35,6 +36,7 @@ import {
 	PendingFor,
 	PendingFunction,
 	PendingIf,
+	PendingPlan,
 } from './parser/pending-block'
 import Validator from './parser/validator'
 import { ParserException } from './types/errors'
@@ -416,6 +418,11 @@ export default class Parser {
 				this.parseForStatement()
 				return
 			}
+			case Keyword.Plan: {
+				this.next()
+				this.parsePlanStatement()
+				return
+			}
 			case Keyword.EndFunction: {
 				this.next()
 				this.finalizeFunction()
@@ -424,6 +431,11 @@ export default class Parser {
 			case Keyword.EndFor: {
 				this.next()
 				this.finalizeForStatement()
+				return
+			}
+			case Keyword.EndPlan: {
+				this.next()
+				this.finalizePlanStatement()
 				return
 			}
 			case Keyword.Loop: {
@@ -1086,6 +1098,43 @@ export default class Parser {
 
 		pendingBlock.complete(this.previousToken!)
 		this.iteratorStack.pop()
+		this.backPatches.pop()
+		this.backPatches.peek().body.push(pendingBlock.block)
+	}
+
+	parsePlanStatement(): void {
+		const startToken = this.previousToken!
+		const expression = this.parseExpr()
+
+		// Require end-of-line after expression; no one-line 'with' blocks
+		if (!SelectorGroups.BlockEndOfLine(this.token!)) {
+			this.raise(
+				`with statement requires end of line after expression`,
+				new Range(startToken.start, this.token!.end),
+			)
+			return
+		}
+
+		const planStmt = this.astProvider.planStatement({
+			expression,
+			start: startToken.start,
+			range: [startToken.range[0]],
+			scope: this.currentScope,
+		})
+
+		const pendingBlock = new PendingPlan(planStmt, this.lineRegistry)
+		this.backPatches.push(pendingBlock)
+	}
+
+	finalizePlanStatement() {
+		const pendingBlock = this.backPatches.peek()
+
+		if (!isPendingPlan(pendingBlock)) {
+			this.raise('no matching open plan block', new Range(this.token!.start, this.token!.end))
+			return
+		}
+
+		pendingBlock.complete(this.previousToken!)
 		this.backPatches.pop()
 		this.backPatches.peek().body.push(pendingBlock.block)
 	}

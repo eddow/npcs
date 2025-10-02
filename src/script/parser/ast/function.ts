@@ -1,16 +1,16 @@
 import {
 	type ASTBase,
-	ASTBaseBlockWithScope,
-	type ASTBaseBlockWithScopeOptions,
+	ASTBaseBlockPlanScope,
+	type ASTBaseBlockPlanScopeOptions,
 	ASTType,
 } from './base'
 
-export interface ASTFunctionStatementOptions extends ASTBaseBlockWithScopeOptions {
+export interface ASTFunctionStatementOptions extends ASTBaseBlockPlanScopeOptions {
 	parameters?: ASTBase[]
 	assignment: ASTBase
 }
 
-export class ASTFunctionStatement extends ASTBaseBlockWithScope {
+export class ASTFunctionStatement extends ASTBaseBlockPlanScope {
 	parameters: ASTBase[]
 	assignment: ASTBase
 

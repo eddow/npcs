@@ -1,4 +1,3 @@
-import { ASTProviderWithCallback } from './script'
 import { MiniScriptExecutor } from './executor'
 import {
 	type ExecutionContext,
@@ -13,6 +12,7 @@ import {
 	type ASTBase,
 	type ASTBaseBlock,
 	type ASTFunctionStatement,
+	ASTProviderWithCallback,
 	LexerException,
 	Parser,
 	ParserException,
@@ -116,18 +116,18 @@ export default class NpcScript {
 	}
 	/**
 	 * To be overridden by the user to check if a value is a native function
-	 * @param value 
-	 * @returns 
+	 * @param value
+	 * @returns
 	 */
 	isNative(value: any): boolean {
 		return typeof value === 'function'
 	}
 	/**
 	 * To be overridden by the user to call a native function
-	 * @param func 
-	 * @param args 
-	 * @param context 
-	 * @returns 
+	 * @param func
+	 * @param args
+	 * @param context
+	 * @returns
 	 */
 	callNative(func: any, args: any[], context: ExecutionContext): any {
 		return func.apply(context, args)

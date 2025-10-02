@@ -43,7 +43,19 @@ export interface ExecutionStackEntry {
 	targetReturn?: number
 }
 
-export type ExecutionState = ExecutionStackEntry[]
+// TODO: all optional properties
+export interface PlanScope {
+	ipDepth: number
+	stackDepth: number
+}
+
+export type ExecutionState = {
+	stack: ExecutionStackEntry[]
+	plans: Array<{
+		planValue: any
+		savedState: PlanScope
+	}>
+}
 
 export function stack(partial: Partial<ExecutionStackEntry> = {}): ExecutionStackEntry {
 	return {
@@ -72,8 +84,7 @@ export class FunctionDefinition {
 	enterCall(args: any[], targetReturn?: number): ExecutionStackEntry {
 		const variables = {}
 		for (let i = 0; i < this.parameters.length; i++) {
-			variables[this.parameters[i]] =
-				args[i] !== undefined ? args[i] : this.parameterDefaults[i]
+			variables[this.parameters[i]] = args[i] !== undefined ? args[i] : this.parameterDefaults[i]
 		}
 		return stack({
 			scope: { variables, parent: this.scope },
@@ -82,7 +93,7 @@ export class FunctionDefinition {
 		})
 	}
 	call(args: any[]): ExecutionState {
-		return [this.enterCall(args)]
+		return { stack: [this.enterCall(args)], plans: [] }
 	}
 }
 export type ExecutionContext = Record<string, any>

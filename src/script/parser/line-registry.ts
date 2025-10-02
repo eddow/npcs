@@ -12,7 +12,7 @@ export class LineRegistry {
 	}
 
 	addItemToLines(item: ASTBase) {
-		this.addItemToRange(item.start.line, item.end.line, item)
+		this.addItemToRange(item.start!.line, item.end!.line, item)
 	}
 
 	addItemToLine(line: number, item: ASTBase) {
@@ -24,7 +24,11 @@ export class LineRegistry {
 
 		for (let line = startLine; line <= endLine; line++) {
 			const statements = lines[line]
-			statements ? statements.push(item) : (lines[line] = [item])
+			if (statements) {
+				statements.push(item)
+			} else {
+				lines[line] = [item]
+			}
 		}
 	}
 }

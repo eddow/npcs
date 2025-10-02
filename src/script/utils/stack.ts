@@ -11,10 +11,10 @@ export class Stack<T> {
 	}
 
 	pop(): T {
-		return (this._items.length === 0) ? this._default! : this._items.shift()!
+		return this._items.length === 0 ? this._default! : this._items.shift()!
 	}
 
 	peek(): T {
-		return (this._items.length === 0) ? this._default! : this._items[0]
+		return this._items.length === 0 ? this._default! : this._items[0]
 	}
 }

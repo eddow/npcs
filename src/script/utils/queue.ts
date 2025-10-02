@@ -21,27 +21,27 @@ export default class Queue<T extends Object> {
 
 	enqueue(value: T) {
 		const node: Node<T> = { value }
-		if (this._head) this._tail.next = node
+		if (this._head) this._tail!.next = node
 		else this._head = node
 		this._tail = node
 		this._size++
 	}
 
 	dequeue(): T {
-		const current = this._head.value
+		const current = this._head!.value
 
 		if (!current) {
-			return
+			return null!
 		}
 
-		this._head = this._head.next
+		this._head = this._head!.next!
 		this._size--
 
 		return current
 	}
 
 	peek(): T {
-		return this._head?.value || null
+		return this._head?.value || null!
 	}
 
 	clear() {
@@ -65,7 +65,7 @@ export default class Queue<T extends Object> {
 
 		while (current) {
 			yield current
-			current = current.next
+			current = current.next!
 		}
 	}
 }
