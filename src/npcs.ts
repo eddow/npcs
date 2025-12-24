@@ -13,9 +13,9 @@ import {
 	type ASTBaseBlock,
 	type ASTFunctionStatement,
 	ASTProviderWithCallback,
-	LexerException,
+	type LexerException,
 	Parser,
-	ParserException,
+	type ParserException,
 } from './script'
 export type NpcReturn =
 	| { type: 'return'; value?: any }
@@ -72,8 +72,8 @@ export default class NpcScript {
 				}),
 			}).parseChunk()
 		} catch (error) {
-			if (error instanceof LexerException || error instanceof ParserException)
-				console.error(lexerExceptionLocation(error, source))
+			/*if (error instanceof LexerException || error instanceof ParserException)
+				console.error(lexerExceptionLocation(error, source))*/
 			throw error
 		}
 	}
@@ -95,6 +95,10 @@ export default class NpcScript {
 			default:
 				return { type: 'return' }
 		}
+	}
+
+	cancel(context: ExecutionContext, state: ExecutionState, plan?: any): ExecutionState | undefined {
+		return this.executor(context, state).cancel(plan)
 	}
 
 	evaluator<Args extends any[], Return>(

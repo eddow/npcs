@@ -357,6 +357,10 @@ export class MiniScriptExecutor {
 			},
 		})
 
+		// Notify plan begin if available
+		if (typeof this.context.plan?.begin === 'function')
+			this.context.plan.begin.call(this.context, planValue)
+
 		// Enter the plan block body
 		this.stack[0].ip.indexes.push(0)
 		return { type: 'branched' }
@@ -873,6 +877,7 @@ export class MiniScriptExecutor {
 				this.stack[0].ip.indexes.splice(savedState.ipDepth)
 				this.expressionsCacheIndex = 0
 				this.expressionsCacheStack = []
+				if (this.stack[0]) delete this.stack[0].evaluatedCache
 				this.incrementIP(this.stack[0].ip)
 			}
 
