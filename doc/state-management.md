@@ -471,7 +471,7 @@ function safeStateRestore(state, fallbackState = null) {
         validateState(state)
         
         // Test state by creating executor
-        const testExecutor = new MiniScriptExecutor('', {}, state)
+        const testExecutor = new ScriptExecutor('', {}, state)
         
         return state
     } catch (error) {

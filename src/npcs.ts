@@ -1,4 +1,4 @@
-import { MiniScriptExecutor } from './executor'
+import { ScriptExecutor } from './executor'
 import {
 	type ExecutionContext,
 	type ExecutionState,
@@ -82,7 +82,7 @@ export default class NpcScript {
 	}
 
 	executor(context: ExecutionContext, state?: ExecutionState) {
-		return new MiniScriptExecutor(this, context, state)
+		return new ScriptExecutor(this, context, state)
 	}
 	execute(context: ExecutionContext, state?: ExecutionState): NpcReturn {
 		const executor = this.executor(context, state)

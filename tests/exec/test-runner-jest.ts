@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse, stringify } from 'flatted'
-import { MiniScriptExecutor } from '../../src/executor.js'
+import { ScriptExecutor } from '../../src/executor.js'
 import type {
 	ExecutionContext,
 	ExecutionStackEntry,
@@ -74,7 +74,7 @@ export function runScript(source: string, state?: string): TestResult {
 
 		//TODO: re-serialize (plans -> serialize native functions)
 		const parsedState: ExecutionState | undefined = state ? parseStack(parse(state)) : undefined
-		const executor = new MiniScriptExecutor(source, context, parsedState)
+		const executor = new ScriptExecutor(source, context, parsedState)
 		const result = executor.execute()
 		const executionTime = Date.now() - startTime
 
@@ -108,7 +108,7 @@ export function cancelScript(source: string, state?: string, plan?: any): Cancel
 	try {
 		const context = createContext(output)
 		const parsedState: ExecutionState | undefined = state ? parseStack(parse(state)) : undefined
-		const executor = new MiniScriptExecutor(source, context, parsedState)
+		const executor = new ScriptExecutor(source, context, parsedState)
 		const newState = executor.cancel(plan)
 		const executionTime = Date.now() - startTime
 

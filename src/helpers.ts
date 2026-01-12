@@ -1,10 +1,10 @@
-import type { MiniScriptExecutor } from './executor'
+import type { ScriptExecutor } from './executor'
 import type { ASTBase } from './script'
 
 export class ExecutionError extends Error {
 	public error?: Error
 	constructor(
-		public executor: MiniScriptExecutor,
+		public executor: ScriptExecutor,
 		public statement: ASTBase,
 		message: string | Error,
 	) {
@@ -82,7 +82,7 @@ export class FunctionDefinition {
 		public parameterDefaults: any[] = [],
 	) {}
 	enterCall(args: any[], targetReturn?: number): ExecutionStackEntry {
-		const variables = {}
+		const variables: Record<string, any> = {}
 		for (let i = 0; i < this.parameters.length; i++) {
 			variables[this.parameters[i]] = args[i] !== undefined ? args[i] : this.parameterDefaults[i]
 		}
@@ -107,7 +107,7 @@ export interface LValue {
 	set(value: MSValue): void
 }
 
-export function serializeState(_key, value) {
+export function serializeState(_key: string, value: any) {
 	if (typeof value === 'function') {
 		throw new Error(`Not implemented: Functions cannot be serialized
 In order to have native functions in the serialized state (in variables or used as parameters),
@@ -128,7 +128,7 @@ In order to have native functions in the serialized state (in variables or used 
 	return value
 }
 
-export function reviveState(_key, value) {
+export function reviveState(_key: string, value: any) {
 	if (value && typeof value === 'object') {
 		// Restore function definitions
 		if (value.__type === 'FunctionDefinition') {

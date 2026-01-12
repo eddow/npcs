@@ -22,7 +22,7 @@ class NpcScript {
     
     // Methods
     function(index?: number): ASTBaseBlock
-    executor(context: ExecutionContext, state?: ExecutionState): MiniScriptExecutor
+    executor(context: ExecutionContext, state?: ExecutionState): ScriptExecutor
     execute(context: ExecutionContext, state?: ExecutionState): NpcReturn
     evaluator<Args extends any[], Return>(
         fct: FunctionDefinition,
@@ -83,12 +83,12 @@ const location = script.sourceLocation(astNode)
 // Returns: "filename:line:column\nsource line\n    ^"
 ```
 
-### MiniScriptExecutor
+### ScriptExecutor
 
 Handles the execution of MiniScript code with state management.
 
 ```typescript
-class MiniScriptExecutor {
+class ScriptExecutor {
     constructor(
         specs: NpcScript | string,
         context: ExecutionContext,
@@ -108,7 +108,7 @@ class MiniScriptExecutor {
 #### Constructor
 
 ```javascript
-const executor = new MiniScriptExecutor(script, context, state)
+const executor = new ScriptExecutor(script, context, state)
 ```
 
 **Parameters:**
@@ -348,13 +348,13 @@ if (isCallable(someValue)) {
 ```typescript
 class ExecutionError extends Error {
     constructor(
-        executor: MiniScriptExecutor,
+        executor: ScriptExecutor,
         statement: ASTBase,
         message: string | Error
     )
     
     // Properties
-    executor: MiniScriptExecutor
+    executor: ScriptExecutor
     statement: ASTBase
     error?: Error
 }
@@ -401,7 +401,7 @@ try {
 ```javascript
 import { 
     NpcScript, 
-    MiniScriptExecutor, 
+    ScriptExecutor, 
     serializeState, 
     reviveState,
     ExecutionError 

@@ -472,7 +472,7 @@ patrolRoute()
 The executor automatically caches expression evaluations, but you can optimize further:
 
 ```javascript
-class OptimizedExecutor extends MiniScriptExecutor {
+class OptimizedExecutor extends ScriptExecutor {
     constructor(script, context, state) {
         super(script, context, state)
         this.expressionCache = new Map()
@@ -568,7 +568,7 @@ class DebugContext {
 ### Script Profiling
 
 ```javascript
-class ProfiledExecutor extends MiniScriptExecutor {
+class ProfiledExecutor extends ScriptExecutor {
     constructor(script, context, state) {
         super(script, context, state)
         this.profile = {

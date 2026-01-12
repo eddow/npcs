@@ -174,11 +174,11 @@ describe('Parser', () => {
 #### Basic Execution (`tests/exec/miniscript.test.ts`)
 
 ```javascript
-import { MiniScriptExecutor } from '../src/executor'
+import { ScriptExecutor } from '../src/executor'
 
 describe('MiniScript Execution', () => {
     it('should execute basic expressions', () => {
-        const executor = new MiniScriptExecutor('x = 5 + 3', {})
+        const executor = new ScriptExecutor('x = 5 + 3', {})
         const result = executor.execute()
         
         expect(result.type).toBe('return')
@@ -189,14 +189,14 @@ describe('MiniScript Execution', () => {
             print: (msg) => console.log(msg)
         }
         
-        const executor = new MiniScriptExecutor('print "Hello"', context)
+        const executor = new ScriptExecutor('print "Hello"', context)
         const result = executor.execute()
         
         expect(result.type).toBe('return')
     })
     
     it('should handle control flow', () => {
-        const executor = new MiniScriptExecutor(`
+        const executor = new ScriptExecutor(`
             x = 10
             if x > 5 then
                 result = "big"
@@ -214,11 +214,11 @@ describe('MiniScript Execution', () => {
 #### Yielding Tests (`tests/exec/yield.test.ts`)
 
 ```javascript
-import { MiniScriptExecutor } from '../src/executor'
+import { ScriptExecutor } from '../src/executor'
 
 describe('Yielding', () => {
     it('should yield from function calls', () => {
-        const executor = new MiniScriptExecutor(`
+        const executor = new ScriptExecutor(`
             function askQuestion(text)
                 return text
             end function
@@ -237,7 +237,7 @@ describe('Yielding', () => {
             prompt: (question) => question
         }
         
-        const executor = new MiniScriptExecutor('prompt "Enter your age:"', context)
+        const executor = new ScriptExecutor('prompt "Enter your age:"', context)
         const result = executor.execute()
         
         expect(result.type).toBe('yield')
@@ -245,7 +245,7 @@ describe('Yielding', () => {
     })
     
     it('should preserve state between yields', () => {
-        const executor = new MiniScriptExecutor(`
+        const executor = new ScriptExecutor(`
             step = 0
             step = step + 1
             yield "step_" + step
@@ -267,7 +267,7 @@ describe('Yielding', () => {
 #### Advanced Features Tests (`tests/exec/advanced-features.test.ts`)
 
 ```javascript
-import { MiniScriptExecutor } from '../src/executor'
+import { ScriptExecutor } from '../src/executor'
 
 describe('Advanced Features', () => {
     it('should handle custom operators', () => {
@@ -277,7 +277,7 @@ describe('Advanced Features', () => {
             '+': (left, right) => left + right
         }
         
-        const executor = new MiniScriptExecutor(`
+        const executor = new ScriptExecutor(`
             power = 2 ** 3
             div = 10 // 3
         `, {}, undefined, customOperators)
@@ -292,7 +292,7 @@ describe('Advanced Features', () => {
             number: (value) => typeof value === 'number'
         }
         
-        const executor = new MiniScriptExecutor(`
+        const executor = new ScriptExecutor(`
             pos = {x: 10, y: 20}
             if pos isa vector then
                 result = "is vector"
@@ -308,11 +308,11 @@ describe('Advanced Features', () => {
 ### 4. State Management Tests
 
 ```javascript
-import { MiniScriptExecutor, serializeState, reviveState } from '../src/executor'
+import { ScriptExecutor, serializeState, reviveState } from '../src/executor'
 
 describe('State Management', () => {
     it('should serialize and deserialize state', () => {
-        const executor = new MiniScriptExecutor(`
+        const executor = new ScriptExecutor(`
             x = 42
             y = "hello"
             yield "test"
@@ -330,7 +330,7 @@ describe('State Management', () => {
         expect(Array.isArray(restoredState)).toBe(true)
         
         // Resume execution
-        const executor2 = new MiniScriptExecutor(`
+        const executor2 = new ScriptExecutor(`
             x = 42
             y = "hello"
             yield "test"
@@ -341,7 +341,7 @@ describe('State Management', () => {
     })
     
     it('should handle function definitions in state', () => {
-        const executor = new MiniScriptExecutor(`
+        const executor = new ScriptExecutor(`
             function test()
                 return "hello"
             end function
@@ -357,7 +357,7 @@ describe('State Management', () => {
         const restoredState = JSON.parse(stateJson, reviveState)
         
         // Resume execution
-        const executor2 = new MiniScriptExecutor(`
+        const executor2 = new ScriptExecutor(`
             function test()
                 return "hello"
             end function
@@ -423,7 +423,7 @@ These contain MiniScript files (.ms) used for parsing tests.
 ```javascript
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { MiniScriptExecutor } from '../src/executor'
+import { ScriptExecutor } from '../src/executor'
 
 export function runScriptTest(filename: string) {
     const scriptPath = join(__dirname, 'fixtures', filename)
@@ -433,7 +433,7 @@ export function runScriptTest(filename: string) {
         print: (msg) => console.log(msg)
     }
     
-    const executor = new MiniScriptExecutor(source, context)
+    const executor = new ScriptExecutor(source, context)
     const result = executor.execute()
     
     return result
@@ -448,7 +448,7 @@ export function runScriptWithYielding(filename: string) {
         prompt: (question) => question
     }
     
-    const executor = new MiniScriptExecutor(source, context)
+    const executor = new ScriptExecutor(source, context)
     const results = []
     
     let result
@@ -466,7 +466,7 @@ export function runScriptWithYielding(filename: string) {
 
 ```javascript
 import { performance } from 'perf_hooks'
-import { MiniScriptExecutor } from '../src/executor'
+import { ScriptExecutor } from '../src/executor'
 
 describe('Performance', () => {
     it('should execute large scripts efficiently', () => {
@@ -476,7 +476,7 @@ describe('Performance', () => {
         `
         
         const start = performance.now()
-        const executor = new MiniScriptExecutor(largeScript, {})
+        const executor = new ScriptExecutor(largeScript, {})
         const result = executor.execute()
         const end = performance.now()
         
@@ -498,7 +498,7 @@ describe('Performance', () => {
         `
         
         const start = performance.now()
-        const executor = new MiniScriptExecutor(recursiveScript, {})
+        const executor = new ScriptExecutor(recursiveScript, {})
         const result = executor.execute()
         const end = performance.now()
         
@@ -523,7 +523,7 @@ describe('State Performance', () => {
             yield "large_state"
         `
         
-        const executor = new MiniScriptExecutor(largeStateScript, {})
+        const executor = new ScriptExecutor(largeStateScript, {})
         const result = executor.execute()
         
         expect(result.type).toBe('yield')
@@ -546,12 +546,12 @@ describe('State Performance', () => {
 describe('Error Handling', () => {
     it('should report syntax errors', () => {
         expect(() => {
-            new MiniScriptExecutor('x = ', {})
+            new ScriptExecutor('x = ', {})
         }).toThrow()
     })
     
     it('should report runtime errors', () => {
-        const executor = new MiniScriptExecutor('x = undefinedVariable', {})
+        const executor = new ScriptExecutor('x = undefinedVariable', {})
         
         expect(() => {
             executor.execute()
@@ -560,7 +560,7 @@ describe('Error Handling', () => {
     
     it('should provide error locations', () => {
         try {
-            const executor = new MiniScriptExecutor(`
+            const executor = new ScriptExecutor(`
                 x = 42
                 y = undefinedVariable
             `, {})
@@ -581,7 +581,7 @@ describe('State Error Handling', () => {
         const corruptedState = [{ invalid: 'state' }]
         
         expect(() => {
-            new MiniScriptExecutor('x = 1', {}, corruptedState)
+            new ScriptExecutor('x = 1', {}, corruptedState)
         }).toThrow()
     })
     
@@ -623,7 +623,7 @@ describe('Integration Tests', () => {
         
         // Execute workflow
         while (true) {
-            const executor = new MiniScriptExecutor(workflowScript, context, state)
+            const executor = new ScriptExecutor(workflowScript, context, state)
             const result = executor.execute()
             
             if (result.type === 'yield') {
@@ -655,7 +655,7 @@ describe('Context Mocking', () => {
             prompt: mockPrompt
         }
         
-        const executor = new MiniScriptExecutor(`
+        const executor = new ScriptExecutor(`
             print "Hello"
             input = prompt("Enter something:")
             print input

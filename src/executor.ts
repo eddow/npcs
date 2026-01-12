@@ -60,7 +60,7 @@ class ExpressionCall {
 	) {}
 }
 
-export class MiniScriptExecutor {
+export class ScriptExecutor {
 	public assertAST<E extends ASTBase>(
 		expr: ASTBase,
 		ctor: abstract new (...args: any[]) => E,
@@ -144,8 +144,9 @@ export class MiniScriptExecutor {
 
 	// Main execution entry point
 	execute(): FunctionResult {
-		while (true) {
-			// Get current statement from IP
+        try {
+		    while (true) {
+			    // Get current statement from IP
 			const statement = this.getStatementByIP(this.stack[0].ip)
 			// Execute the current statement
 			const result = statement
@@ -186,7 +187,12 @@ export class MiniScriptExecutor {
 				}
 			else this.incrementIP(this.stack[0].ip)
 		}
-	}
+        } catch (e) {
+            // Ensure all plans are cancelled if execution crashes
+            this.cancel()
+            throw e
+        }
+    }
 	*[Symbol.iterator]() {
 		while (true) {
 			const { type, value } = this.execute()

@@ -1,4 +1,4 @@
-export { MiniScriptExecutor } from './executor'
+export { ScriptExecutor } from './executor'
 export {
 	type ExecutionContext,
 	ExecutionError,

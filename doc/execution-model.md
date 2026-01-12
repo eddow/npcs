@@ -341,7 +341,7 @@ Errors during execution are wrapped in `ExecutionError`:
 ```javascript
 class ExecutionError extends Error {
     constructor(
-        public executor: MiniScriptExecutor,
+        public executor: ScriptExecutor,
         public statement: ASTBase,
         message: string | Error
     )

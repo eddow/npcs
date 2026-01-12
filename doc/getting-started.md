@@ -11,7 +11,7 @@ npm install npc-script
 ### 1. Import the Library
 
 ```javascript
-import { NpcScript, MiniScriptExecutor } from 'npc-script'
+import { NpcScript, ScriptExecutor } from 'npc-script'
 ```
 
 ### 2. Create a Script
@@ -97,12 +97,12 @@ console.log('Execution result:', result)
 
 ## Using the Executor Directly
 
-For more control, you can use the `MiniScriptExecutor` directly:
+For more control, you can use the `ScriptExecutor` directly:
 
 ```javascript
-import { MiniScriptExecutor } from 'npc-script'
+import { ScriptExecutor } from 'npc-script'
 
-const executor = new MiniScriptExecutor(sourceCode, context, savedState)
+const executor = new ScriptExecutor(sourceCode, context, savedState)
 
 // Execute one step at a time
 const result = executor.execute()

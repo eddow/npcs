@@ -31,7 +31,7 @@ const context = {
 ```
 
 ### Cancelling a plan from the host
-Use `script.cancel(planValue)` (on the `MiniScriptExecutor` instance) to cancel:
+Use `script.cancel(planValue)` (on the `ScriptExecutor` instance) to cancel:
 - If `planValue` is found: that plan and any nested sub-plans are cancelled; the executor’s state rewinds to just after the plan block. The call returns the new `ExecutionState`.
 - If `planValue` is not found: all active plans are cancelled; the script is considered fully cancelled and the call returns `undefined`.
 
@@ -92,7 +92,7 @@ const context = { print: console.log, plan: { begin(){}, conclude(){}, cancel(){
 let { type, value, state } = npc.execute(context)
 
 // If yielded, you can cancel a plan using an executor created with that state
-// const executor = new MiniScriptExecutor(npc, context, state)
+// const executor = new ScriptExecutor(npc, context, state)
 // const newStateOrUndefined = executor.cancel('download-file')
 
 // Or resume later with the saved state

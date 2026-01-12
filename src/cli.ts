@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { MiniScriptExecutor } from './executor.js'
+import { ScriptExecutor } from './executor.js'
 
 function showUsage() {
 	console.log('Usage: npx tsx cli.ts <script-file>')
@@ -41,7 +41,7 @@ async function runScript(scriptPath: string) {
 			},
 		}
 
-		const executor = new MiniScriptExecutor(source, context)
+		const executor = new ScriptExecutor(source, context)
 
 		console.log('🚀 Executing MiniScript...')
 		console.log('📤 Output:')

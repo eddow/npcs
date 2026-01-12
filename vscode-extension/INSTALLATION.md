@@ -6,7 +6,7 @@
 
 1. **Open the extension folder in VSCode:**
    ```bash
-   cd /home/fmdm/dev/npcs/vscode-extension
+   cd .../npcs/vscode-extension
    code .
    ```
 
@@ -34,7 +34,7 @@
 
 2. **Package the extension:**
    ```bash
-   cd /home/fmdm/dev/npcs/vscode-extension
+   cd .../npcs/vscode-extension
    vsce package
    ```
 
