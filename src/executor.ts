@@ -476,8 +476,26 @@ export class ScriptExecutor {
 		try {
 			return this.script.callNative(func, args, this.context)
 		} catch (e) {
-			//console.error(`At: ${this.script.sourceLocation(ast)}`)
-			throw new ExecutionError(this, ast, e as Error)
+			// Build enhanced error message with function name and stack trace
+			const functionName = func.name || '<anonymous>'
+			const originalMessage = e instanceof Error ? e.message : String(e)
+			
+			// Build concise stack trace (max 2 additional frames)
+			const stackFrames: string[] = []
+			for (let i = 0; i < Math.min(this.stack.length, 2); i++) {
+				const entry = this.stack[i]
+				if (entry.ip.functionIndex !== undefined) {
+					const funcAst = this.script.function(entry.ip.functionIndex)
+					const location = this.script.sourceLocation(funcAst)
+					const locationFirstLine = location.split('\n')[0]
+					stackFrames.push(`  at ${locationFirstLine}`)
+				}
+			}
+			
+			const stackTrace = stackFrames.length > 0 ? '\n' + stackFrames.join('\n') : ''
+			const enhancedMessage = `${originalMessage} (in native function '${functionName}')${stackTrace}`
+			
+			throw new ExecutionError(this, ast, enhancedMessage)
 		}
 	}
 
