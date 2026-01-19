@@ -14,3 +14,15 @@ NPCS is an executor for **MiniScript**, focusing on linear stateful execution wi
 
 ## Usage
 Useful for Game AI and quest scripting where actions take time and game state must be saved at any point.
+
+## Internals
+
+### Expression Caching & Stack Management
+The executor uses an `evaluatedCache` on the **current stack frame** (`this.stack[0]`) to store intermediate results of expression evaluation (e.g. arguments for a function call).
+
+**Critical Invariant**: This cache MUST be cleared after the statement finishes executing.
+
+**Gotcha**: Calling a function pushes a **NEW** stack frame.
+*   When a statement (like a function call) finishes, `this.stack[0]` might point to a **NEW, DIFFERENT** frame than the one where the statement started.
+*   **Fix**: Always capture the stack frame reference (`const stackEntry = this.stack[0]`) *before* execution, and use that reference to clear the cache in the `finally` block.
+*   **Failure to do this** results in stale cache on the caller's frame, causing variables in subsequent statements to resolve to incorrect values (e.g., the function definition itself instead of the variable value).

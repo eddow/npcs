@@ -217,6 +217,7 @@ export default class Lexer {
 	createNull(afterSpace: boolean) {
 		const literalToken = new LiteralToken({
 			type: TokenType.NilLiteral,
+			value: null,
 			raw: Literal.Null,
 			line: this.line,
 			lineStart: this.lineStart,

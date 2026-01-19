@@ -116,7 +116,7 @@ export class ScriptExecutor {
 		throw new ExecutionError(this, statement, `Variable ${name} not found`)
 	}
 
-	private setVariable(name: string, value: any, statement: ASTBase): void {
+	private setVariable(name: string, value: MSValue, statement: ASTBase): void {
 		for (const scope of this.stack[0].loopScopes)
 			if ('variable' in scope && scope.variable === name) {
 				scope.iterator[scope.index] = value
@@ -181,6 +181,7 @@ export class ScriptExecutor {
 					}
 					case 'yield':
 						this.incrementIP(this.stack[0].ip)
+						delete this.stack[0].evaluatedCache
 						return result
 					case 'branched':
 						break
@@ -264,6 +265,8 @@ export class ScriptExecutor {
 			} else if (lastStatement instanceof ASTWhileClause) {
 				ip.indexes.pop()
 				ip.indexes.push(0, 0)
+				// Clear expression cache to prevent stale values in the next iteration
+				this.stack[0].evaluatedCache = {}
 				this.countLoopOccurrences(statements[0])
 			} else if (statements[0] instanceof ASTDoWhileLoop) {
 				// Here, we finished the main block as it was not a while clause
@@ -271,6 +274,8 @@ export class ScriptExecutor {
 				// Not a while clause, so it's the main block
 				if (dwl.whileClauses.length === 0) {
 					ip.indexes.push(0)
+					// Clear expression cache to prevent stale values in the next iteration
+					this.stack[0].evaluatedCache = {}
 					this.countLoopOccurrences(statements[0])
 					continue
 				}
@@ -278,7 +283,11 @@ export class ScriptExecutor {
 			} else if (lastStatement instanceof ASTForGenericStatement) {
 				const forLoop = this.stack[0].loopScopes[0] as ForScope
 				forLoop.index++
-				if (forLoop.index < forLoop.iterator.length) this.stack[0].ip.indexes.push(0)
+				if (forLoop.index < forLoop.iterator.length) {
+					// Clear expression cache to prevent stale values in the next iteration
+					this.stack[0].evaluatedCache = {}
+					this.stack[0].ip.indexes.push(0)
+				}
 				else {
 					this.stack[0].loopScopes.shift()
 					this.incrementIP(ip)
@@ -302,7 +311,8 @@ export class ScriptExecutor {
 		const statementType = statement.type
 		this.expressionsCacheIndex = 0
 		this.expressionsCacheStack = []
-		this.stack[0].evaluatedCache ??= {}
+		const stackEntry = this.stack[0]
+		stackEntry.evaluatedCache ??= {}
 		let keepExpressionCache = false
 		try {
 			switch (statementType) {
@@ -345,7 +355,7 @@ export class ScriptExecutor {
 			throw e
 		} finally {
 			if (!keepExpressionCache) {
-				delete this.stack[0].evaluatedCache
+				delete stackEntry.evaluatedCache
 			}
 		}
 	}
@@ -380,6 +390,7 @@ export class ScriptExecutor {
 		while (expr instanceof ASTParenthesisExpression) expr = expr.expression
 		if (!expr) return undefined
 
+		const exprType = expr.type
 		const expressionsCacheIndex = this.expressionsCacheIndex++
 
 		const expressionCacheStackLength = this.expressionsCacheStack.length
@@ -387,23 +398,23 @@ export class ScriptExecutor {
 
 		if (expressionsCacheIndex in this.stack[0].evaluatedCache!) {
 			this.clearExpressionCache(expressionCacheStackLength)
-			return this.stack[0].evaluatedCache![expressionsCacheIndex]
+			const cachedValue = this.stack[0].evaluatedCache![expressionsCacheIndex]
+			return cachedValue
 		}
+
 		const calculated = (() => {
-			const lValue = this.evaluateLValue(expr)
-			if (lValue) {
-				return lValue.get()
-			}
-			const exprType = expr.type
 			switch (exprType) {
 				case 'StringLiteral':
 				case 'BooleanLiteral':
+				case 'NilLiteral':
 					return (expr as ASTLiteral).value
+				case 'Identifier': {
+					const val = this.getVariable((expr as ASTIdentifier).name!, expr)
+					return val
+				}
 				case 'NumericLiteral':
 					this.assertAST(expr, ASTNumericLiteral)
 					return expr.negated ? -expr.value : expr.value
-				case 'NilLiteral':
-					return null
 				case 'ListValue':
 					return this.evaluateExpression((expr as ASTListValue).value!)
 				case 'BinaryExpression':
@@ -416,6 +427,12 @@ export class ScriptExecutor {
 					return this.evaluateLogicalExpression(expr as ASTLogicalExpression)
 				case 'TernaryExpression':
 					return this.evaluateTernaryExpression(expr as ASTTernaryExpression)
+				case 'MemberExpression':
+				case 'IndexExpression': {
+					const lValue = this.evaluateLValue(expr)
+					if (lValue) return lValue.get()
+					throw new ExecutionError(this, expr, `Invalid member/index expression: ${expr.type}`)
+				}
 				case 'CallExpression':
 					return this.executeCall(expr as ASTCallExpression, expressionCacheStackLength)
 				case 'FunctionDeclaration':
@@ -625,6 +642,9 @@ export class ScriptExecutor {
 			const cancelledPlan = this.planScopes.splice(i, 1)[0]
 			this.finishPlan('cancel', cancelledPlan.planValue)
 		}
+
+		// Clear expression cache to prevent stale values in the next iteration
+		this.stack[0].evaluatedCache = {}
 
 		const lastLoop = this.stack[0].loopScopes[0]
 		this.stack[0].ip.indexes.splice(lastLoop.ipDepth)

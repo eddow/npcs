@@ -715,7 +715,7 @@ exports[`parse default scripts default-args.ms 1`] = `
 	]]
 	CallExpression[6:1-6:7][Identifier[6:1-6:5][test]()]
 	CallExpression[7:1-7:19][Identifier[7:1-7:5][test](Literal[7:6-7:11][foo], Literal[7:13-7:18][false])]
-	AssignmentStatement[9:1-12:13][Identifier[9:1-9:4][bar] = Function[9:7-12:13][AssignmentStatement[9:16-9:25][Identifier[9:16-9:20][arg1] = Literal[9:24-9:25][-1]], AssignmentStatement[9:27-9:38][Identifier[9:27-9:31][arg2] = Literal[9:34-9:38][undefined]] =>
+	AssignmentStatement[9:1-12:13][Identifier[9:1-9:4][bar] = Function[9:7-12:13][AssignmentStatement[9:16-9:25][Identifier[9:16-9:20][arg1] = Literal[9:24-9:25][-1]], AssignmentStatement[9:27-9:38][Identifier[9:27-9:31][arg2] = Literal[9:34-9:38][null]] =>
 		CallExpression[10:3-10:14][Identifier[10:3-10:8][print](Identifier[10:9-10:13][arg1])]
 		CallExpression[11:3-11:14][Identifier[11:3-11:8][print](Identifier[11:9-11:13][arg2])]
 	]]
@@ -740,7 +740,7 @@ exports[`parse default scripts default-args.ms unsafe 1`] = `
 	]]
 	CallExpression[6:1-6:7][Identifier[6:1-6:5][test]()]
 	CallExpression[7:1-7:19][Identifier[7:1-7:5][test](Literal[7:6-7:11][foo], Literal[7:13-7:18][false])]
-	AssignmentStatement[9:1-12:13][Identifier[9:1-9:4][bar] = Function[9:7-12:13][AssignmentStatement[9:16-9:25][Identifier[9:16-9:20][arg1] = Literal[9:24-9:25][-1]], AssignmentStatement[9:27-9:38][Identifier[9:27-9:31][arg2] = Literal[9:34-9:38][undefined]] =>
+	AssignmentStatement[9:1-12:13][Identifier[9:1-9:4][bar] = Function[9:7-12:13][AssignmentStatement[9:16-9:25][Identifier[9:16-9:20][arg1] = Literal[9:24-9:25][-1]], AssignmentStatement[9:27-9:38][Identifier[9:27-9:31][arg2] = Literal[9:34-9:38][null]] =>
 		CallExpression[10:3-10:14][Identifier[10:3-10:8][print](Identifier[10:9-10:13][arg1])]
 		CallExpression[11:3-11:14][Identifier[11:3-11:8][print](Identifier[11:9-11:13][arg2])]
 	]]
@@ -1143,7 +1143,7 @@ exports[`parse default scripts multiline-binary-expression.ms 1`] = `
 			ListValue[3:3-3:4][Literal[3:3-3:4][2]]
 			ListValue[4:3-4:4][Literal[4:3-4:4][3]]
 			ListValue[5:3-5:4][Literal[5:3-5:4][4]]
-		].Identifier[6:3-6:10][indexOf]](Literal[6:11-6:12][2])] != Literal[6:17-6:21][undefined]]]
+		].Identifier[6:3-6:10][indexOf]](Literal[6:11-6:12][2])] != Literal[6:17-6:21][null]]]
 	]
 ]"
 `;
@@ -1166,7 +1166,7 @@ exports[`parse default scripts multiline-binary-expression.ms unsafe 1`] = `
 			ListValue[3:3-3:4][Literal[3:3-3:4][2]]
 			ListValue[4:3-4:4][Literal[4:3-4:4][3]]
 			ListValue[5:3-5:4][Literal[5:3-5:4][4]]
-		].Identifier[6:3-6:10][indexOf]](Literal[6:11-6:12][2])] != Literal[6:17-6:21][undefined]]]
+		].Identifier[6:3-6:10][indexOf]](Literal[6:11-6:12][2])] != Literal[6:17-6:21][null]]]
 	]
 ]"
 `;
@@ -1445,7 +1445,7 @@ exports[`parse default scripts password-generator.ms 1`] = `
 		AssignmentStatement[17:3-17:32][Identifier[17:3-17:20][currentCharBuffer] = MemberExpression[17:23-17:32][Identifier[17:23-17:25][me].Identifier[17:26-17:32][buffer]]]
 		AssignmentStatement[18:3-18:36][Identifier[18:3-18:16][maxBufferSize] = MemberExpression[18:19-18:36][MemberExpression[18:19-18:32][Identifier[18:19-18:21][me].Identifier[18:22-18:32][characters]].Identifier[18:33-18:36][len]]]
 		IfStatement[19:3-19:52][
-			IfShortcutClause[19:3-19:52][BinaryExpression[19:7-19:16][Identifier[19:7-19:8][i] == Literal[19:12-19:16][undefined]]
+			IfShortcutClause[19:3-19:52][BinaryExpression[19:7-19:16][Identifier[19:7-19:8][i] == Literal[19:12-19:16][null]]
 				AssignmentStatement[19:23-19:52][Identifier[19:23-19:24][i] = BinaryExpression[19:27-19:52][MemberExpression[19:27-19:48][Identifier[19:27-19:44][currentCharBuffer].Identifier[19:45-19:48][len]] - Literal[19:51-19:52][1]]]
 			]
 		]
@@ -1487,7 +1487,7 @@ exports[`parse default scripts password-generator.ms 1`] = `
 		]]
 		IfStatement[47:3-49:9][
 			IfClause[47:3-49:9][BinaryExpression[47:7-47:53][MemberExpression[47:7-47:28][Identifier[47:7-47:24][currentCharBuffer].Identifier[47:25-47:28][len]] > MemberExpression[47:31-47:53][Identifier[47:31-47:33][me].Identifier[47:34-47:53][MAX_PASSWORD_LENGTH]]]
-				ReturnStatement[48:5-48:16][Literal[48:12-48:16][undefined]]
+				ReturnStatement[48:5-48:16][Literal[48:12-48:16][null]]
 			]
 		]
 		ReturnStatement[51:3-51:18][Identifier[51:10-51:18][password]]
@@ -1538,7 +1538,7 @@ exports[`parse default scripts password-generator.ms unsafe 1`] = `
 		AssignmentStatement[17:3-17:32][Identifier[17:3-17:20][currentCharBuffer] = MemberExpression[17:23-17:32][Identifier[17:23-17:25][me].Identifier[17:26-17:32][buffer]]]
 		AssignmentStatement[18:3-18:36][Identifier[18:3-18:16][maxBufferSize] = MemberExpression[18:19-18:36][MemberExpression[18:19-18:32][Identifier[18:19-18:21][me].Identifier[18:22-18:32][characters]].Identifier[18:33-18:36][len]]]
 		IfStatement[19:3-19:52][
-			IfShortcutClause[19:3-19:52][BinaryExpression[19:7-19:16][Identifier[19:7-19:8][i] == Literal[19:12-19:16][undefined]]
+			IfShortcutClause[19:3-19:52][BinaryExpression[19:7-19:16][Identifier[19:7-19:8][i] == Literal[19:12-19:16][null]]
 				AssignmentStatement[19:23-19:52][Identifier[19:23-19:24][i] = BinaryExpression[19:27-19:52][MemberExpression[19:27-19:48][Identifier[19:27-19:44][currentCharBuffer].Identifier[19:45-19:48][len]] - Literal[19:51-19:52][1]]]
 			]
 		]
@@ -1580,7 +1580,7 @@ exports[`parse default scripts password-generator.ms unsafe 1`] = `
 		]]
 		IfStatement[47:3-49:9][
 			IfClause[47:3-49:9][BinaryExpression[47:7-47:53][MemberExpression[47:7-47:28][Identifier[47:7-47:24][currentCharBuffer].Identifier[47:25-47:28][len]] > MemberExpression[47:31-47:53][Identifier[47:31-47:33][me].Identifier[47:34-47:53][MAX_PASSWORD_LENGTH]]]
-				ReturnStatement[48:5-48:16][Literal[48:12-48:16][undefined]]
+				ReturnStatement[48:5-48:16][Literal[48:12-48:16][null]]
 			]
 		]
 		ReturnStatement[51:3-51:18][Identifier[51:10-51:18][password]]
@@ -1653,7 +1653,7 @@ exports[`parse default scripts pseudo-crypto.ms 1`] = `
 		AssignmentStatement[62:3-62:11][Identifier[62:3-62:4][m] = Identifier[62:7-62:11][self]]
 		AssignmentStatement[63:3-63:22][MemberExpression[63:3-63:12][Identifier[63:3-63:4][m].Identifier[63:5-63:12][message]] = Identifier[63:15-63:22][message]]
 		IfStatement[64:3-66:9][
-			IfClause[64:3-66:9][BinaryExpression[64:7-64:21][Identifier[64:7-64:13][values] != Literal[64:17-64:21][undefined]]
+			IfClause[64:3-66:9][BinaryExpression[64:7-64:21][Identifier[64:7-64:13][values] != Literal[64:17-64:21][null]]
 				AssignmentStatement[65:5-65:77][MemberExpression[65:5-65:14][Identifier[65:5-65:6][m].Identifier[65:7-65:14][message]] = CallExpression[65:17-65:77][MemberExpression[65:17-65:75][CallExpression[65:17-65:66][MemberExpression[65:17-65:58][CallExpression[65:17-65:52][MemberExpression[65:17-65:43][UnaryExpression[65:18-65:30][new MemberExpression[65:22-65:30][Identifier[65:22-65:23][m].Identifier[65:24-65:30][String]]].Identifier[65:32-65:43][constructor]](Identifier[65:44-65:51][message])].Identifier[65:53-65:58][parse]](Identifier[65:59-65:65][values])].Identifier[65:67-65:75][toString]]()]]
 			]
 		]
@@ -1673,12 +1673,12 @@ exports[`parse default scripts pseudo-crypto.ms 1`] = `
 		AssignmentStatement[84:3-84:21][MemberExpression[84:3-84:11][Identifier[84:3-84:5][me].Identifier[84:6-84:11][table]] = Identifier[84:14-84:21][charset]]
 		AssignmentStatement[85:3-85:22][MemberExpression[85:3-85:12][Identifier[85:3-85:5][me].Identifier[85:6-85:12][hashFn]] = UnaryExpression[85:15-85:22][@ Identifier[85:16-85:22][hashFn]]]
 		IfStatement[86:3-86:45][
-			IfShortcutClause[86:3-86:45][BinaryExpression[86:7-86:22][UnaryExpression[86:7-86:14][@ Identifier[86:8-86:14][hashFn]] == Literal[86:18-86:22][undefined]]
+			IfShortcutClause[86:3-86:45][BinaryExpression[86:7-86:22][UnaryExpression[86:7-86:14][@ Identifier[86:8-86:14][hashFn]] == Literal[86:18-86:22][null]]
 				AssignmentStatement[86:29-86:45][MemberExpression[86:29-86:38][Identifier[86:29-86:31][me].Identifier[86:32-86:38][hashFn]] = UnaryExpression[86:41-86:45][@ Identifier[86:42-86:45][md5]]]
 			]
 		]
 		IfStatement[87:3-87:55][
-			IfShortcutClause[87:3-87:55][BinaryExpression[87:6-87:21][Identifier[87:6-87:13][charset] == Literal[87:17-87:21][undefined]]
+			IfShortcutClause[87:3-87:55][BinaryExpression[87:6-87:21][Identifier[87:6-87:13][charset] == Literal[87:17-87:21][null]]
 				AssignmentStatement[87:27-87:55][MemberExpression[87:27-87:35][Identifier[87:27-87:29][me].Identifier[87:30-87:35][table]] = MemberExpression[87:38-87:55][Identifier[87:38-87:40][me].Identifier[87:41-87:55][defaultCharset]]]
 			]
 		]
@@ -1704,7 +1704,7 @@ exports[`parse default scripts pseudo-crypto.ms 1`] = `
 	AssignmentStatement[103:1-156:13][MemberExpression[103:1-103:15][Identifier[103:1-103:7][Crypto].Identifier[103:8-103:15][encrypt]] = Function[103:18-156:13][Identifier[103:27-103:30][str], Identifier[103:32-103:34][pw] =>
 		AssignmentStatement[104:3-104:12][Identifier[104:3-104:5][me] = Identifier[104:8-104:12][self]]
 		IfStatement[105:3-105:45][
-			IfShortcutClause[105:3-105:45][BinaryExpression[105:7-105:17][Identifier[105:7-105:9][pw] == Literal[105:13-105:17][undefined]]
+			IfShortcutClause[105:3-105:45][BinaryExpression[105:7-105:17][Identifier[105:7-105:9][pw] == Literal[105:13-105:17][null]]
 				AssignmentStatement[105:24-105:45][Identifier[105:24-105:26][pw] = MemberExpression[105:29-105:45][Identifier[105:29-105:31][me].Identifier[105:32-105:45][defaultSecret]]]
 			]
 		]
@@ -1772,7 +1772,7 @@ exports[`parse default scripts pseudo-crypto.ms 1`] = `
 	AssignmentStatement[158:1-202:13][MemberExpression[158:1-158:15][Identifier[158:1-158:7][Crypto].Identifier[158:8-158:15][decrypt]] = Function[158:18-202:13][Identifier[158:27-158:30][str], Identifier[158:32-158:34][pw] =>
 		AssignmentStatement[159:3-159:12][Identifier[159:3-159:5][me] = Identifier[159:8-159:12][self]]
 		IfStatement[160:3-160:45][
-			IfShortcutClause[160:3-160:45][BinaryExpression[160:7-160:17][Identifier[160:7-160:9][pw] == Literal[160:13-160:17][undefined]]
+			IfShortcutClause[160:3-160:45][BinaryExpression[160:7-160:17][Identifier[160:7-160:9][pw] == Literal[160:13-160:17][null]]
 				AssignmentStatement[160:24-160:45][Identifier[160:24-160:26][pw] = MemberExpression[160:29-160:45][Identifier[160:29-160:31][me].Identifier[160:32-160:45][defaultSecret]]]
 			]
 		]
@@ -1909,7 +1909,7 @@ exports[`parse default scripts pseudo-crypto.ms unsafe 1`] = `
 		AssignmentStatement[62:3-62:11][Identifier[62:3-62:4][m] = Identifier[62:7-62:11][self]]
 		AssignmentStatement[63:3-63:22][MemberExpression[63:3-63:12][Identifier[63:3-63:4][m].Identifier[63:5-63:12][message]] = Identifier[63:15-63:22][message]]
 		IfStatement[64:3-66:9][
-			IfClause[64:3-66:9][BinaryExpression[64:7-64:21][Identifier[64:7-64:13][values] != Literal[64:17-64:21][undefined]]
+			IfClause[64:3-66:9][BinaryExpression[64:7-64:21][Identifier[64:7-64:13][values] != Literal[64:17-64:21][null]]
 				AssignmentStatement[65:5-65:77][MemberExpression[65:5-65:14][Identifier[65:5-65:6][m].Identifier[65:7-65:14][message]] = CallExpression[65:17-65:77][MemberExpression[65:17-65:75][CallExpression[65:17-65:66][MemberExpression[65:17-65:58][CallExpression[65:17-65:52][MemberExpression[65:17-65:43][UnaryExpression[65:18-65:30][new MemberExpression[65:22-65:30][Identifier[65:22-65:23][m].Identifier[65:24-65:30][String]]].Identifier[65:32-65:43][constructor]](Identifier[65:44-65:51][message])].Identifier[65:53-65:58][parse]](Identifier[65:59-65:65][values])].Identifier[65:67-65:75][toString]]()]]
 			]
 		]
@@ -1929,12 +1929,12 @@ exports[`parse default scripts pseudo-crypto.ms unsafe 1`] = `
 		AssignmentStatement[84:3-84:21][MemberExpression[84:3-84:11][Identifier[84:3-84:5][me].Identifier[84:6-84:11][table]] = Identifier[84:14-84:21][charset]]
 		AssignmentStatement[85:3-85:22][MemberExpression[85:3-85:12][Identifier[85:3-85:5][me].Identifier[85:6-85:12][hashFn]] = UnaryExpression[85:15-85:22][@ Identifier[85:16-85:22][hashFn]]]
 		IfStatement[86:3-86:45][
-			IfShortcutClause[86:3-86:45][BinaryExpression[86:7-86:22][UnaryExpression[86:7-86:14][@ Identifier[86:8-86:14][hashFn]] == Literal[86:18-86:22][undefined]]
+			IfShortcutClause[86:3-86:45][BinaryExpression[86:7-86:22][UnaryExpression[86:7-86:14][@ Identifier[86:8-86:14][hashFn]] == Literal[86:18-86:22][null]]
 				AssignmentStatement[86:29-86:45][MemberExpression[86:29-86:38][Identifier[86:29-86:31][me].Identifier[86:32-86:38][hashFn]] = UnaryExpression[86:41-86:45][@ Identifier[86:42-86:45][md5]]]
 			]
 		]
 		IfStatement[87:3-87:55][
-			IfShortcutClause[87:3-87:55][BinaryExpression[87:6-87:21][Identifier[87:6-87:13][charset] == Literal[87:17-87:21][undefined]]
+			IfShortcutClause[87:3-87:55][BinaryExpression[87:6-87:21][Identifier[87:6-87:13][charset] == Literal[87:17-87:21][null]]
 				AssignmentStatement[87:27-87:55][MemberExpression[87:27-87:35][Identifier[87:27-87:29][me].Identifier[87:30-87:35][table]] = MemberExpression[87:38-87:55][Identifier[87:38-87:40][me].Identifier[87:41-87:55][defaultCharset]]]
 			]
 		]
@@ -1960,7 +1960,7 @@ exports[`parse default scripts pseudo-crypto.ms unsafe 1`] = `
 	AssignmentStatement[103:1-156:13][MemberExpression[103:1-103:15][Identifier[103:1-103:7][Crypto].Identifier[103:8-103:15][encrypt]] = Function[103:18-156:13][Identifier[103:27-103:30][str], Identifier[103:32-103:34][pw] =>
 		AssignmentStatement[104:3-104:12][Identifier[104:3-104:5][me] = Identifier[104:8-104:12][self]]
 		IfStatement[105:3-105:45][
-			IfShortcutClause[105:3-105:45][BinaryExpression[105:7-105:17][Identifier[105:7-105:9][pw] == Literal[105:13-105:17][undefined]]
+			IfShortcutClause[105:3-105:45][BinaryExpression[105:7-105:17][Identifier[105:7-105:9][pw] == Literal[105:13-105:17][null]]
 				AssignmentStatement[105:24-105:45][Identifier[105:24-105:26][pw] = MemberExpression[105:29-105:45][Identifier[105:29-105:31][me].Identifier[105:32-105:45][defaultSecret]]]
 			]
 		]
@@ -2028,7 +2028,7 @@ exports[`parse default scripts pseudo-crypto.ms unsafe 1`] = `
 	AssignmentStatement[158:1-202:13][MemberExpression[158:1-158:15][Identifier[158:1-158:7][Crypto].Identifier[158:8-158:15][decrypt]] = Function[158:18-202:13][Identifier[158:27-158:30][str], Identifier[158:32-158:34][pw] =>
 		AssignmentStatement[159:3-159:12][Identifier[159:3-159:5][me] = Identifier[159:8-159:12][self]]
 		IfStatement[160:3-160:45][
-			IfShortcutClause[160:3-160:45][BinaryExpression[160:7-160:17][Identifier[160:7-160:9][pw] == Literal[160:13-160:17][undefined]]
+			IfShortcutClause[160:3-160:45][BinaryExpression[160:7-160:17][Identifier[160:7-160:9][pw] == Literal[160:13-160:17][null]]
 				AssignmentStatement[160:24-160:45][Identifier[160:24-160:26][pw] = MemberExpression[160:29-160:45][Identifier[160:29-160:31][me].Identifier[160:32-160:45][defaultSecret]]]
 			]
 		]
@@ -2126,12 +2126,12 @@ exports[`parse default scripts random.ms 1`] = `
 		AssignmentStatement[23:3-23:12][Identifier[23:3-23:5][me] = Identifier[23:8-23:12][self]]
 		AssignmentStatement[24:3-24:17][Identifier[24:3-24:7][pool] = MemberExpression[24:10-24:17][Identifier[24:10-24:12][me].Identifier[24:13-24:17][pool]]]
 		IfStatement[25:3-25:35][
-			IfShortcutClause[25:3-25:35][BinaryExpression[25:7-25:18][Identifier[25:7-25:10][inc] == Literal[25:14-25:18][undefined]]
+			IfShortcutClause[25:3-25:35][BinaryExpression[25:7-25:18][Identifier[25:7-25:10][inc] == Literal[25:14-25:18][null]]
 				AssignmentStatement[25:25-25:35][Identifier[25:25-25:28][inc] = Literal[25:31-25:35][true]]
 			]
 		]
 		IfStatement[26:3-26:47][
-			IfShortcutClause[26:3-26:47][BinaryExpression[26:7-26:19][Identifier[26:7-26:11][seed] == Literal[26:15-26:19][undefined]]
+			IfShortcutClause[26:3-26:47][BinaryExpression[26:7-26:19][Identifier[26:7-26:11][seed] == Literal[26:15-26:19][null]]
 				AssignmentStatement[26:26-26:47][Identifier[26:26-26:30][seed] = MemberExpression[26:33-26:47][Identifier[26:33-26:35][me].Identifier[26:36-26:47][defaultSeed]]]
 			]
 		]
@@ -2217,12 +2217,12 @@ exports[`parse default scripts random.ms unsafe 1`] = `
 		AssignmentStatement[23:3-23:12][Identifier[23:3-23:5][me] = Identifier[23:8-23:12][self]]
 		AssignmentStatement[24:3-24:17][Identifier[24:3-24:7][pool] = MemberExpression[24:10-24:17][Identifier[24:10-24:12][me].Identifier[24:13-24:17][pool]]]
 		IfStatement[25:3-25:35][
-			IfShortcutClause[25:3-25:35][BinaryExpression[25:7-25:18][Identifier[25:7-25:10][inc] == Literal[25:14-25:18][undefined]]
+			IfShortcutClause[25:3-25:35][BinaryExpression[25:7-25:18][Identifier[25:7-25:10][inc] == Literal[25:14-25:18][null]]
 				AssignmentStatement[25:25-25:35][Identifier[25:25-25:28][inc] = Literal[25:31-25:35][true]]
 			]
 		]
 		IfStatement[26:3-26:47][
-			IfShortcutClause[26:3-26:47][BinaryExpression[26:7-26:19][Identifier[26:7-26:11][seed] == Literal[26:15-26:19][undefined]]
+			IfShortcutClause[26:3-26:47][BinaryExpression[26:7-26:19][Identifier[26:7-26:11][seed] == Literal[26:15-26:19][null]]
 				AssignmentStatement[26:26-26:47][Identifier[26:26-26:30][seed] = MemberExpression[26:33-26:47][Identifier[26:33-26:35][me].Identifier[26:36-26:47][defaultSeed]]]
 			]
 		]
@@ -2615,7 +2615,7 @@ exports[`parse default scripts slice.ms unsafe 1`] = `
 exports[`parse default scripts unary.ms 1`] = `
 "Chunk[1:1-11:1][
 	AssignmentStatement[1:1-3:13][Identifier[1:1-1:5][test] = Function[1:8-3:13][ =>
-		ReturnStatement[2:3-2:14][Literal[2:10-2:14][undefined]]
+		ReturnStatement[2:3-2:14][Literal[2:10-2:14][null]]
 	]]
 	CallExpression[5:1-5:45][Identifier[5:1-5:6][print](LogicalExpression[5:7-5:44][UnaryExpression[5:7-5:19][@ MemberExpression[5:8-5:19][Literal[5:8-5:13][was].Identifier[5:14-5:19][split]]] and LogicalExpression[5:25-5:43][Literal[5:25-5:30][false] or NegationExpression[5:34-5:43][not Literal[5:38-5:43][false]]]])]
 	CallExpression[6:1-6:47][Identifier[6:1-6:6][print](UnaryExpression[6:7-6:46][@ LogicalExpression[6:9-6:45][MemberExpression[6:9-6:20][Literal[6:9-6:14][was].Identifier[6:15-6:20][split]] and LogicalExpression[6:26-6:44][Literal[6:26-6:31][false] or NegationExpression[6:35-6:44][not Literal[6:39-6:44][false]]]]])]
@@ -2640,7 +2640,7 @@ exports[`parse default scripts unary.ms 4`] = `1`;
 exports[`parse default scripts unary.ms unsafe 1`] = `
 "Chunk[1:1-11:1][
 	AssignmentStatement[1:1-3:13][Identifier[1:1-1:5][test] = Function[1:8-3:13][ =>
-		ReturnStatement[2:3-2:14][Literal[2:10-2:14][undefined]]
+		ReturnStatement[2:3-2:14][Literal[2:10-2:14][null]]
 	]]
 	CallExpression[5:1-5:45][Identifier[5:1-5:6][print](LogicalExpression[5:7-5:44][UnaryExpression[5:7-5:19][@ MemberExpression[5:8-5:19][Literal[5:8-5:13][was].Identifier[5:14-5:19][split]]] and LogicalExpression[5:25-5:43][Literal[5:25-5:30][false] or NegationExpression[5:34-5:43][not Literal[5:38-5:43][false]]]])]
 	CallExpression[6:1-6:47][Identifier[6:1-6:6][print](UnaryExpression[6:7-6:46][@ LogicalExpression[6:9-6:45][MemberExpression[6:9-6:20][Literal[6:9-6:14][was].Identifier[6:15-6:20][split]] and LogicalExpression[6:26-6:44][Literal[6:26-6:31][false] or NegationExpression[6:35-6:44][not Literal[6:39-6:44][false]]]]])]

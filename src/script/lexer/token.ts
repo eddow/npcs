@@ -76,11 +76,11 @@ export class BaseToken<T> {
 
 export class Token extends BaseToken<string> {}
 
-export interface TokenLiteralOptions extends BaseTokenOptions<string | number | boolean> {
+export interface TokenLiteralOptions extends BaseTokenOptions<string | number | boolean | null> {
 	raw?: string
 }
 
-export class LiteralToken extends BaseToken<string | number | boolean> {
+export class LiteralToken extends BaseToken<string | number | boolean | null> {
 	declare readonly raw?: string
 
 	constructor(options: TokenLiteralOptions) {
