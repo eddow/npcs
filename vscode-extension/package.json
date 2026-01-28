@@ -18,13 +18,7 @@
     "game",
     "npc"
   ],
-  
   "main": "./out/extension.js",
-  "activationEvents": [
-    "onLanguage:npcs",
-    "onCommand:npcs.runScript",
-    "onCommand:npcs.debugScript"
-  ],
   "contributes": {
     "languages": [
       {
