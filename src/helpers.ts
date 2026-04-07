@@ -47,6 +47,21 @@ export interface ExecutionStackEntry {
 export interface PlanScope {
 	ipDepth: number
 	stackDepth: number
+	planIP: IP
+	checkStates: PlanCheckState[]
+}
+
+export interface PlanCheckState {
+	descriptionOnEnter?: any
+}
+
+export interface PlanInterruptionReason {
+	type: 'checking_failed'
+	phase: 'enter' | 'resume'
+	checkIndex: number
+	condition: string
+	descriptionOnEnter?: any
+	descriptionOnFailure?: any
 }
 
 export type ExecutionState = {

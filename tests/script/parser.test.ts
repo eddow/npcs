@@ -36,7 +36,7 @@ describe('parse', () => {
 		fs.readdirSync(testFolder).forEach((file) => {
 			const filepath = path.resolve(testFolder, file)
 
-			test(path.basename(filepath) + ' unsafe', () => {
+			test(`${path.basename(filepath)} unsafe`, () => {
 				const content = fs.readFileSync(filepath, 'utf-8')
 				const parser = new Parser(content, {
 					tabWidth: 2,
@@ -241,6 +241,38 @@ describe('Plan block - Parsing', () => {
 
 	it('rejects one-line plan block', () => {
 		const source = 'plan some.object print "hi"\n'
+		const parser = new Parser(source)
+		expect(() => parser.parseChunk()).toThrow()
+	})
+
+	it('parses plan-owned checking declarations', () => {
+		const source = [
+			'plan worker',
+			'\tchecking "Not hungry": hunger < 10',
+			'\tchecking has_job',
+			'\tprint "ok"',
+			'end plan',
+		].join('\n')
+		const parser = new Parser(source)
+		const ast = parser.parseChunk()
+		// @ts-expect-error test AST inspection
+		const planStmt = ast.body.find((n) => n.type === 'PlanStatement')
+		expect(planStmt).toBeTruthy()
+		expect(planStmt.checkings).toHaveLength(2)
+		expect(planStmt.checkings[0].description.type).toBe('StringLiteral')
+		expect(planStmt.checkings[0].condition.type).toBe('BinaryExpression')
+		expect(planStmt.checkings[1].description).toBeUndefined()
+		expect(planStmt.checkings[1].condition.type).toBe('Identifier')
+		expect(planStmt.body).toHaveLength(1)
+	})
+
+	it('rejects checking outside of a plan block', () => {
+		const parser = new Parser('checking true\n')
+		expect(() => parser.parseChunk()).toThrow()
+	})
+
+	it('rejects checking after the plan body has started', () => {
+		const source = ['plan worker', '\tprint "ok"', '\tchecking true', 'end plan'].join('\n')
 		const parser = new Parser(source)
 		expect(() => parser.parseChunk()).toThrow()
 	})

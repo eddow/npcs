@@ -6,6 +6,8 @@ A comprehensive MiniScript executor with linear stateful execution.
 
 ## Use case
 
+TL;DR: Programmable Behavioral Trees
+
 Your NPC is executing a complex async script - go to that room, open a chest, kill an apple, ...
 Of course, these are full of async/await as each step takes a certain time.
 
@@ -54,4 +56,33 @@ Of course, a context with "global" values is provided by JS, and the context can
 - ✅ **Pause/Resume Execution**: `yield()` function pauses execution and serializes state
 - ✅ **State Serialization**: Complete execution state can be saved and restored
 - ✅ **Cross-Executor Restoration**: Resume execution in a completely new executor instance
+- ✅ **Plan Guards**: `checking` clauses can guard a `plan` on entry and on resume
 - ✅ **Comprehensive Testing**: 26+ test cases covering all features
+
+## Guarded plans with `checking`
+
+`plan` is the long-lived behavior block. `checking` lets you attach one or more invariants to that plan.
+
+```miniscript
+plan goToWork
+	checking "Not hungry": hunger < 10
+	checking has_job
+	walk_to office
+	work
+end plan
+```
+
+Semantics:
+
+- `checking` clauses belong to the `plan`, not to the executable body
+- all checks must pass to enter the plan body
+- checks are reevaluated when execution resumes after a `yield`
+- v1 does **not** reevaluate checks on ordinary variable writes between yields
+- v1 does **not** reevaluate checks just before outbound `yield` or `return`
+
+Optional debug payload:
+
+- `checking condition`
+- `checking payload: condition`
+
+The optional payload is any MiniScript expression. NPCS stores its value on plan entry and again when a check fails, so cancellation/debug layers can compare both snapshots.

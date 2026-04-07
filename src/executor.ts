@@ -1,5 +1,6 @@
 import {
 	type Callable,
+	type PlanCheckState,
 	type DoWhileScope,
 	type ExecutionContext,
 	ExecutionError,
@@ -14,6 +15,8 @@ import {
 	type LValue,
 	type MSScope,
 	type MSValue,
+	type Operators,
+	type PlanInterruptionReason,
 	type PlanScope,
 	stack,
 } from './helpers'
@@ -44,6 +47,7 @@ import {
 	ASTMemberExpression,
 	ASTNumericLiteral,
 	ASTParenthesisExpression,
+	type ASTPlanChecking,
 	ASTPlanStatement,
 	type ASTReturnStatement,
 	type ASTSliceExpression,
@@ -145,6 +149,7 @@ export class ScriptExecutor {
 	// Main execution entry point
 	execute(): FunctionResult {
         try {
+			this.reevaluateActivePlanChecks()
 		    while (true) {
 			    // Get current statement from IP
 			const statement = this.getStatementByIP(this.stack[0].ip)
@@ -363,6 +368,9 @@ export class ScriptExecutor {
 	private executePlan(statement: ASTPlanStatement): ExecutionResult {
 		// Evaluate the plan expression (can be anything)
 		const planValue = this.evaluateExpression(statement.expression)
+		const checkingResult = this.evaluatePlanChecks(statement, 'enter')
+
+		if (!checkingResult.ok) return undefined
 
 		// Add the plan value and saved state to the stack (unshift for LIFO order)
 		this.planScopes.unshift({
@@ -370,6 +378,11 @@ export class ScriptExecutor {
 			savedState: {
 				ipDepth: this.stack[0].ip.indexes.length,
 				stackDepth: this.stack.length,
+				planIP: {
+					functionIndex: this.stack[0].ip.functionIndex,
+					indexes: [...this.stack[0].ip.indexes],
+				},
+				checkStates: checkingResult.checkStates,
 			},
 		})
 
@@ -380,6 +393,111 @@ export class ScriptExecutor {
 		// Enter the plan block body
 		this.stack[0].ip.indexes.push(0)
 		return { type: 'branched' }
+	}
+
+	private evaluatePlanCheckingDescription(checking: ASTPlanChecking): any {
+		return checking.description ? this.evaluateExpression(checking.description) : undefined
+	}
+
+	private buildPlanCheckingReason(
+		checking: ASTPlanChecking,
+		phase: 'enter' | 'resume',
+		checkIndex: number,
+		checkState?: PlanCheckState,
+	): PlanInterruptionReason {
+		return {
+			type: 'checking_failed',
+			phase,
+			checkIndex,
+			condition: `${checking.condition}`,
+			descriptionOnEnter: checkState?.descriptionOnEnter,
+			descriptionOnFailure: this.evaluatePlanCheckingDescription(checking),
+		}
+	}
+
+	private evaluatePlanChecks(
+		statement: ASTPlanStatement,
+		phase: 'enter' | 'resume',
+		existingCheckStates: PlanCheckState[] = [],
+	):
+		| { ok: true; checkStates: PlanCheckState[] }
+		| { ok: false; checkStates: PlanCheckState[]; reason: PlanInterruptionReason } {
+		const checkStates =
+			phase === 'enter'
+				? statement.checkings.map((checking) => ({
+						descriptionOnEnter: this.evaluatePlanCheckingDescription(checking),
+					}))
+				: existingCheckStates
+
+		for (let i = 0; i < statement.checkings.length; i++) {
+			const checking = statement.checkings[i]
+			if (!this.evaluateExpression(checking.condition)) {
+				return {
+					ok: false,
+					checkStates,
+					reason: this.buildPlanCheckingReason(checking, phase, i, checkStates[i]),
+				}
+			}
+		}
+
+		return { ok: true, checkStates }
+	}
+
+	private lookupStatementByIP(ip: IP): ASTBase | null {
+		if (ip.indexes.length === 0) return null
+		let currentBlock: ASTBase = this.script.function(ip.functionIndex)
+		for (const i of ip.indexes) {
+			let container: ASTBase[] | undefined
+			if (currentBlock instanceof ASTBaseBlock) {
+				container = currentBlock.body
+			} else if (currentBlock instanceof ASTIfStatement) {
+				container = currentBlock.clauses
+			} else if (currentBlock instanceof ASTDoWhileLoop) {
+				container = [currentBlock.mainBlock, ...currentBlock.whileClauses]
+			} else {
+				return null
+			}
+			const next = container[i]
+			if (!next) return null
+			currentBlock = next
+		}
+		return currentBlock
+	}
+
+	private resolvePlanStatement(planScope: { planValue: any; savedState: PlanScope }): ASTPlanStatement {
+		const statement = this.lookupStatementByIP(planScope.savedState.planIP)
+		if (!(statement instanceof ASTPlanStatement)) {
+			throw new Error('Active plan scope could not be resolved back to its ASTPlanStatement')
+		}
+		return statement
+	}
+
+	private reevaluateActivePlanChecks(): void {
+		const stackEntry = this.stack[0]
+		const previousCache = stackEntry.evaluatedCache
+		this.expressionsCacheIndex = 0
+		this.expressionsCacheStack = []
+		stackEntry.evaluatedCache ??= {}
+		try {
+			for (let i = this.planScopes.length - 1; i >= 0; i--) {
+				const planScope = this.planScopes[i]
+				const statement = this.resolvePlanStatement(planScope)
+				const checkingResult = this.evaluatePlanChecks(
+					statement,
+					'resume',
+					planScope.savedState.checkStates,
+				)
+				planScope.savedState.checkStates = checkingResult.checkStates
+				if (!checkingResult.ok) {
+					this.cancel(planScope.planValue, checkingResult.reason)
+					return
+				}
+			}
+		} finally {
+			this.expressionsCacheIndex = 0
+			this.expressionsCacheStack = []
+			if (previousCache === undefined) delete stackEntry.evaluatedCache
+		}
 	}
 
 	clearExpressionCache(expressionCacheStackLength: number) {
@@ -509,7 +627,7 @@ export class ScriptExecutor {
 				}
 			}
 			
-			const stackTrace = stackFrames.length > 0 ? '\n' + stackFrames.join('\n') : ''
+			const stackTrace = stackFrames.length > 0 ? `\n${stackFrames.join('\n')}` : ''
 			const enhancedMessage = `${originalMessage} (in native function '${functionName}')${stackTrace}`
 			
 			throw new ExecutionError(this, ast, enhancedMessage)
@@ -675,7 +793,7 @@ export class ScriptExecutor {
 	private evaluateBinaryExpression(expr: ASTBinaryExpression): any {
 		const left = this.evaluateExpression(expr.left)
 		const right = this.evaluateExpression(expr.right)
-		const operator = this.script.operators[expr.operator]
+		const operator = this.script.operators[expr.operator as keyof typeof this.script.operators]
 		if (!operator) throw new ExecutionError(this, expr, `Unknown binary operator: ${expr.operator}`)
 		return operator(left, right)
 	}
@@ -692,8 +810,15 @@ export class ScriptExecutor {
 				)
 			return Object.create(argument, {})
 		}
-		const operator =
-			this.script.operators[`${expr.operator === 'not' ? '!' : (expr.operator ?? '??!?')}.`]
+		const operatorKey = `${expr.operator === 'not' ? '!' : (expr.operator ?? '??!?')}.` as
+			| '!.'
+			| '-.'
+			| '+.'
+		const operator = this.script.operators[operatorKey] as
+			| Operators['!.']
+			| Operators['-.']
+			| Operators['+.']
+			| undefined
 		if (!operator) throw new ExecutionError(this, expr, `Unknown unary operator: ${expr.operator}`)
 		return operator(argument)
 	}
@@ -894,12 +1019,12 @@ export class ScriptExecutor {
 	 * @param plan - The plan to cancel, or undefined to cancel all plans
 	 * @returns the new execution state if plans were cancelled, or undefined if script is completely cancelled
 	 */
-	cancel(plan?: any): ExecutionState | undefined {
+	cancel(plan?: any, reason?: PlanInterruptionReason): ExecutionState | undefined {
 		// Find the specific plan in the stack
 		const planIndex = this.planScopes.findIndex((p) => p.planValue === plan)
 		if (planIndex === -1) {
 			// Plan not found, cancel all plans using standardized method
-			for (const { planValue } of this.planScopes) this.finishPlan('cancel', planValue)
+			for (const { planValue } of this.planScopes) this.finishPlan('cancel', planValue, reason)
 			this.planScopes = []
 			// If no stack remains, script is completely cancelled
 			return undefined
@@ -907,7 +1032,7 @@ export class ScriptExecutor {
 
 		// Cancel the specific plan and all its sub-plans (plans that were started after this one)
 		const plansToCancel = this.planScopes.splice(0, planIndex + 1)
-		for (const { planValue } of plansToCancel) this.finishPlan('cancel', planValue)
+		for (const { planValue } of plansToCancel) this.finishPlan('cancel', planValue, reason)
 
 		// Restore the execution state to what it was when the plan started
 		if (plansToCancel.length > 0) {
@@ -934,10 +1059,15 @@ export class ScriptExecutor {
 		// Return the new execution state after cancellation
 		return this.state
 	}
-	private finishPlan(endType: 'conclude' | 'cancel', planValue: any): void {
+	private finishPlan(
+		endType: 'conclude' | 'cancel',
+		planValue: any,
+		reason?: PlanInterruptionReason,
+	): void {
+		const metadata = reason ? { reason } : undefined
 		const endCall = (endType: 'conclude' | 'cancel' | 'finally', planValue: any): void => {
 			if (typeof this.context.plan?.[endType] === 'function')
-				this.context.plan[endType].call(this.context, planValue)
+				this.context.plan[endType].call(this.context, planValue, metadata)
 		}
 		endCall(endType, planValue)
 		endCall('finally', planValue)

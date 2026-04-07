@@ -423,6 +423,11 @@ export default class Parser {
 				this.parsePlanStatement()
 				return
 			}
+			case Keyword.Checking: {
+				this.next()
+				this.parsePlanCheckingStatement()
+				return
+			}
 			case Keyword.EndFunction: {
 				this.next()
 				this.finalizeFunction()
@@ -1124,6 +1129,52 @@ export default class Parser {
 
 		const pendingBlock = new PendingPlan(planStmt, this.lineRegistry)
 		this.backPatches.push(pendingBlock)
+	}
+
+	parsePlanCheckingStatement(): void {
+		const pendingBlock = this.backPatches.peek()
+
+		if (!isPendingPlan(pendingBlock)) {
+			this.raise('checking statement only allowed inside a plan block', new Range(this.token!.start, this.token!.end))
+			return
+		}
+		if (pendingBlock.body.length > 0) {
+			this.raise(
+				'checking statements must appear before the plan body starts',
+				new Range(this.previousToken!.start, this.previousToken!.end),
+			)
+			return
+		}
+
+		const startToken = this.previousToken!
+		const payloadOrCondition = this.parseExpr()
+		let description: ASTBase | undefined
+		let condition = payloadOrCondition
+
+		if (Selectors.MapKeyValueSeparator(this.token)) {
+			description = payloadOrCondition
+			this.next()
+			this.skipNewlines()
+			condition = this.parseExpr()
+		}
+
+		if (!SelectorGroups.BlockEndOfLine(this.token!)) {
+			this.raise(
+				'checking statement requires end of line after its condition',
+				new Range(startToken.start, this.token!.end),
+			)
+			return
+		}
+
+		const checking = this.astProvider.planChecking({
+			description,
+			condition,
+			start: startToken.start,
+			end: this.previousToken!.end,
+			range: [startToken.range[0], this.previousToken!.range[1]],
+			scope: this.currentScope,
+		})
+		pendingBlock.block.checkings.push(checking)
 	}
 
 	finalizePlanStatement() {

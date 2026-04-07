@@ -22,6 +22,7 @@ import {
 	type ASTCallStatementOptions,
 } from './ast/call'
 import { ASTChunk, type ASTChunkOptions } from './ast/chunk'
+import { ASTPlanChecking, type ASTPlanCheckingOptions } from './ast/checking'
 import {
 	ASTComparisonGroupExpression,
 	type ASTComparisonGroupExpressionOptions,
@@ -124,6 +125,10 @@ export class ASTProvider {
 
 	planStatement(options: ASTPlanStatementOptions): ASTPlanStatement {
 		return new ASTPlanStatement(options)
+	}
+
+	planChecking(options: ASTPlanCheckingOptions): ASTPlanChecking {
+		return new ASTPlanChecking(options)
 	}
 
 	assignmentStatement(options: ASTAssignmentStatementOptions): ASTAssignmentStatement {
@@ -311,6 +316,7 @@ export {
 	type ASTCallStatementOptions,
 } from './ast/call'
 export { ASTChunk, type ASTChunkOptions } from './ast/chunk'
+export { ASTPlanChecking, type ASTPlanCheckingOptions } from './ast/checking'
 export {
 	ASTComparisonGroupExpression,
 	type ASTComparisonGroupExpressionOptions,

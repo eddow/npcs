@@ -20,6 +20,7 @@ export enum ASTType {
 	FunctionDeclaration = 'FunctionDeclaration',
 	ForGenericStatement = 'ForGenericStatement',
 	PlanStatement = 'PlanStatement',
+	PlanChecking = 'PlanChecking',
 	Chunk = 'Chunk',
 	Identifier = 'Identifier',
 	StringLiteral = 'StringLiteral',

@@ -24,4 +24,5 @@ export enum Keyword {
 	Do = 'do',
 	Loop = 'loop',
 	Plan = 'plan',
+	Checking = 'checking',
 }
