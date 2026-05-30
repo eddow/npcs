@@ -1,8 +1,16 @@
-Source: https://github.com/ayecue/miniscript-core
-
 # MiniScript Executor
 
 A comprehensive MiniScript executor with linear stateful execution.
+
+## Installation
+
+```bash
+npm install npc-script
+```
+
+---
+
+Source: https://github.com/ayecue/miniscript-core
 
 ## Use case
 
@@ -45,6 +53,47 @@ say "Hello"
 ### Hard-coded function
 
 Of course, a context with "global" values is provided by JS, and the context can provide functions - who can return stuff (who will be yielded if these functions are stated)
+
+## Usage
+
+This package is distributed as **TypeScript source** for optimal bundler integration.
+
+### TypeScript Projects
+
+```typescript
+import { ScriptExecutor, NpcScript } from 'npc-script';
+
+const executor = new ScriptExecutor({
+  print: console.log,
+  yield: (value) => console.log('Yielded:', value)
+});
+
+const script = new NpcScript(`
+  x = 5
+  print x
+`);
+
+executor.execute(script);
+```
+
+### Bundler Configuration
+
+Most bundlers (Vite, Rollup, Webpack with TypeScript support) will handle the TypeScript compilation automatically. Ensure your project has TypeScript configured.
+
+For projects without TypeScript, you may need to add a plugin or use a wrapper that handles compilation.
+
+## Package Format
+
+This package publishes TypeScript source files (`.ts`) rather than compiled JavaScript. This approach:
+- Provides optimal TypeScript type inference
+- Allows consumers to use their own build configuration
+- Reduces package size
+- Works seamlessly with modern bundlers
+
+If you need compiled JavaScript, you can build the package locally:
+```bash
+npm run build
+```
 
 ## Features
 
