@@ -6,6 +6,9 @@
 			"type": "shell",
 			"command": "npx",
 			"args": ["tsx", "cli.ts", "${input:scriptFile}"],
+			"options": {
+				"cwd": "${workspaceFolder}/ts"
+			},
 			"group": "build",
 			"presentation": {
 				"echo": true,

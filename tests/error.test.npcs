@@ -1,0 +1,6 @@
+/*
+@npcs-test
+@error
+*/
+undefined_var = someUndefinedVariable
+print "never reached"

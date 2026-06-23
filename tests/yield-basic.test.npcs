@@ -1,0 +1,14 @@
+/*
+@npcs-test
+@output "Before yield: x = 10"
+@yield 42
+---
+@output "After yield: x = 10"
+@output "Execution completed!"
+@return
+*/
+x = 10
+print "Before yield: x = " + x
+yield 42
+print "After yield: x = " + x
+print "Execution completed!"

@@ -1,6 +1,5 @@
 import {
 	type Callable,
-	type PlanCheckState,
 	type DoWhileScope,
 	type ExecutionContext,
 	ExecutionError,
@@ -16,6 +15,7 @@ import {
 	type MSScope,
 	type MSValue,
 	type Operators,
+	type PlanCheckState,
 	type PlanInterruptionReason,
 	type PlanScope,
 	stack,
@@ -148,57 +148,57 @@ export class ScriptExecutor {
 
 	// Main execution entry point
 	execute(): FunctionResult {
-        try {
+		try {
 			this.reevaluateActivePlanChecks()
-		    while (true) {
-			    // Get current statement from IP
-			const statement = this.getStatementByIP(this.stack[0].ip)
-			// Execute the current statement
-			const result = statement
-				? this.executeStatement(statement)
-				: ({ type: 'return' } as FunctionResult)
-			if (result)
-				switch (result.type) {
-					case 'return': {
-						const leavingScope = this.stack.shift()!
+			while (true) {
+				// Get current statement from IP
+				const statement = this.getStatementByIP(this.stack[0].ip)
+				// Execute the current statement
+				const result = statement
+					? this.executeStatement(statement)
+					: ({ type: 'return' } as FunctionResult)
+				if (result)
+					switch (result.type) {
+						case 'return': {
+							const leavingScope = this.stack.shift()!
 
-						// Check if we're exiting a function that contained a plan
-						// If the stack depth is now less than when any plan started, cancel those plans
-						for (let i = this.planScopes.length - 1; i >= 0; i--) {
-							const { savedState } = this.planScopes[i]
-							if (this.stack.length < savedState.stackDepth) {
-								// We're exiting a function that contained this plan, cancel it
-								const cancelledPlan = this.planScopes.splice(i, 1)[0]
-								this.finishPlan('cancel', cancelledPlan.planValue)
+							// Check if we're exiting a function that contained a plan
+							// If the stack depth is now less than when any plan started, cancel those plans
+							for (let i = this.planScopes.length - 1; i >= 0; i--) {
+								const { savedState } = this.planScopes[i]
+								if (this.stack.length < savedState.stackDepth) {
+									// We're exiting a function that contained this plan, cancel it
+									const cancelledPlan = this.planScopes.splice(i, 1)[0]
+									this.finishPlan('cancel', cancelledPlan.planValue)
+								}
 							}
+
+							if (!this.stack.length) return result as FunctionResult
+
+							if (leavingScope.targetReturn === undefined) {
+								this.incrementIP(this.stack[0].ip)
+								delete this.stack[0].evaluatedCache
+								if (result.value !== undefined) return { type: 'yield', value: result.value }
+							} else {
+								this.stack[0].evaluatedCache![leavingScope.targetReturn] = result.value
+							}
+							break
 						}
-
-						if (!this.stack.length) return result as FunctionResult
-
-						if (leavingScope.targetReturn === undefined) {
+						case 'yield':
 							this.incrementIP(this.stack[0].ip)
 							delete this.stack[0].evaluatedCache
-							if (result.value !== undefined) return { type: 'yield', value: result.value }
-						} else {
-							this.stack[0].evaluatedCache![leavingScope.targetReturn] = result.value
-						}
-						break
+							return result
+						case 'branched':
+							break
 					}
-					case 'yield':
-						this.incrementIP(this.stack[0].ip)
-						delete this.stack[0].evaluatedCache
-						return result
-					case 'branched':
-						break
-				}
-			else this.incrementIP(this.stack[0].ip)
+				else this.incrementIP(this.stack[0].ip)
+			}
+		} catch (e) {
+			// Ensure all plans are cancelled if execution crashes
+			this.cancel()
+			throw e
 		}
-        } catch (e) {
-            // Ensure all plans are cancelled if execution crashes
-            this.cancel()
-            throw e
-        }
-    }
+	}
 	*[Symbol.iterator]() {
 		while (true) {
 			const { type, value } = this.execute()
@@ -292,8 +292,7 @@ export class ScriptExecutor {
 					// Clear expression cache to prevent stale values in the next iteration
 					this.stack[0].evaluatedCache = {}
 					this.stack[0].ip.indexes.push(0)
-				}
-				else {
+				} else {
 					this.stack[0].loopScopes.shift()
 					this.incrementIP(ip)
 				}
@@ -464,7 +463,10 @@ export class ScriptExecutor {
 		return currentBlock
 	}
 
-	private resolvePlanStatement(planScope: { planValue: any; savedState: PlanScope }): ASTPlanStatement {
+	private resolvePlanStatement(planScope: {
+		planValue: any
+		savedState: PlanScope
+	}): ASTPlanStatement {
 		const statement = this.lookupStatementByIP(planScope.savedState.planIP)
 		if (!(statement instanceof ASTPlanStatement)) {
 			throw new Error('Active plan scope could not be resolved back to its ASTPlanStatement')
@@ -614,7 +616,7 @@ export class ScriptExecutor {
 			// Build enhanced error message with function name and stack trace
 			const functionName = func.name || '<anonymous>'
 			const originalMessage = e instanceof Error ? e.message : String(e)
-			
+
 			// Build concise stack trace (max 2 additional frames)
 			const stackFrames: string[] = []
 			for (let i = 0; i < Math.min(this.stack.length, 2); i++) {
@@ -626,10 +628,10 @@ export class ScriptExecutor {
 					stackFrames.push(`  at ${locationFirstLine}`)
 				}
 			}
-			
+
 			const stackTrace = stackFrames.length > 0 ? `\n${stackFrames.join('\n')}` : ''
 			const enhancedMessage = `${originalMessage} (in native function '${functionName}')${stackTrace}`
-			
+
 			throw new ExecutionError(this, ast, enhancedMessage)
 		}
 	}

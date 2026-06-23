@@ -1,0 +1,20 @@
+[package]
+name = "npcs"
+version = "0.1.0"
+edition = "2021"
+description = "MiniScript executor in Rust — linear stateful execution with yield/resume"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+insta = { version = "1", features = ["yaml"] }
+
+[lib]
+name = "npcs"
+path = "src/lib.rs"
+
+[[bin]]
+name = "npcs"
+path = "src/main.rs"

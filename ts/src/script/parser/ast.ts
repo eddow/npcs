@@ -21,8 +21,8 @@ import {
 	ASTCallStatement,
 	type ASTCallStatementOptions,
 } from './ast/call'
-import { ASTChunk, type ASTChunkOptions } from './ast/chunk'
 import { ASTPlanChecking, type ASTPlanCheckingOptions } from './ast/checking'
+import { ASTChunk, type ASTChunkOptions } from './ast/chunk'
 import {
 	ASTComparisonGroupExpression,
 	type ASTComparisonGroupExpressionOptions,
@@ -315,8 +315,8 @@ export {
 	ASTCallStatement,
 	type ASTCallStatementOptions,
 } from './ast/call'
-export { ASTChunk, type ASTChunkOptions } from './ast/chunk'
 export { ASTPlanChecking, type ASTPlanCheckingOptions } from './ast/checking'
+export { ASTChunk, type ASTChunkOptions } from './ast/chunk'
 export {
 	ASTComparisonGroupExpression,
 	type ASTComparisonGroupExpressionOptions,

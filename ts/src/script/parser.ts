@@ -1135,7 +1135,10 @@ export default class Parser {
 		const pendingBlock = this.backPatches.peek()
 
 		if (!isPendingPlan(pendingBlock)) {
-			this.raise('checking statement only allowed inside a plan block', new Range(this.token!.start, this.token!.end))
+			this.raise(
+				'checking statement only allowed inside a plan block',
+				new Range(this.token!.start, this.token!.end),
+			)
 			return
 		}
 		if (pendingBlock.body.length > 0) {

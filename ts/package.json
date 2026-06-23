@@ -8,9 +8,7 @@
     ".": "./src/index.ts"
   },
   "files": [
-    "src",
-    "README.md",
-    "doc"
+    "src"
   ],
   "scripts": {
     "build": "tsc",
@@ -21,7 +19,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "biome": "biome check . --fix",
-    "tm:tokenize": "tsx vscode-extension/scripts/tm-tokenize.ts"
+    "tm:tokenize": "tsx ../vscode-extension/scripts/tm-tokenize.ts"
   },
   "dependencies": {},
   "devDependencies": {

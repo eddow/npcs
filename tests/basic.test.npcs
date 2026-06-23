@@ -1,0 +1,12 @@
+/*
+@npcs-test
+@output "Sum: 15"
+@output "Product: 50"
+@return
+*/
+x = 10
+y = 5
+sum = x + y
+product = x * y
+print "Sum: " + sum
+print "Product: " + product

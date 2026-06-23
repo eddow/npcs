@@ -1,0 +1,10 @@
+/*
+@npcs-test
+@global items ["apple","banana","orange"]
+@output "All checks passed"
+@return
+*/
+assert(items.length == 3, "expected 3 items")
+assert(items[0] == "apple")
+assert(items[1] == "banana", "second item should be banana")
+print "All checks passed"

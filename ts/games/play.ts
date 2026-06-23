@@ -1,9 +1,9 @@
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { parse, stringify } from 'flatted'
-import { ExecutionContext, NpcScript, reviveState, serializeState } from '../src'
-import { LexerException } from '../src/script'
-import { lexerExceptionLocation } from '../src/npcs'
+import { ExecutionContext, NpcScript, reviveState, serializeState } from './src'
+import { LexerException } from './src/script'
+import { lexerExceptionLocation } from './src/npcs'
 
 function showUsage() {
 	console.log('Usage: npx tsx games/play.ts <script> <game> [sentence ...]')
