@@ -62,27 +62,17 @@ fn main() {
         }
     };
 
-    match npcs::parse(&source) {
-        Ok(program) => {
-            let mut ctx = CliContext::new();
-            match npcs::execute(&program, &mut ctx) {
-                Ok(ExecResult::Return(val)) => {
-                    if let Some(v) = val {
-                        println!("=> {v}");
-                    }
-                }
-                Ok(ExecResult::Yield(val)) => {
-                    println!("⏸️  yielded: {val}");
-                }
-                Ok(_) => {}
-                Err(e) => {
-                    eprintln!("Runtime error: {e}");
-                    process::exit(1);
-                }
+    match npcs::run(&source, &mut CliContext::new()) {
+        Ok(ExecResult::Return(val)) => {
+            if let Some(v) = val {
+                println!("=> {v}");
             }
         }
+        Ok(ExecResult::Yield(val)) => {
+            println!("⏸️  yielded: {val}");
+        }
         Err(e) => {
-            eprintln!("Parse error: {e}");
+            eprintln!("Runtime error: {e}");
             process::exit(1);
         }
     }

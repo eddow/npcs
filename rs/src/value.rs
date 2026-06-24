@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt;
 use std::rc::Rc;
@@ -5,7 +6,7 @@ use std::rc::Rc;
 use crate::ast::Stmt;
 
 /// Runtime value — the `any` equivalent from TypeScript.
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum Value {
     Nil,
     Bool(bool),
@@ -14,15 +15,17 @@ pub enum Value {
     List(Vec<Value>),
     Map(BTreeMap<String, Value>),
     Function(FunctionDef),
-    NativeFunction(String), // serialized as name — host provides implementation
+    #[serde(skip)]
+    NativeFunction(String), // not serializable — host provides on resume
 }
 
 /// Serializable function definition.
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct FunctionDef {
     pub index: usize,
     pub params: Vec<String>,
     pub param_defaults: Vec<Option<Value>>,
+    #[serde(skip)]
     pub body: Rc<Vec<Stmt>>,
 }
 

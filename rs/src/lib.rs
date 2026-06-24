@@ -1,9 +1,9 @@
-pub mod token;
-pub mod lexer;
 pub mod ast;
-pub mod parser;
-pub mod value;
 pub mod executor;
+pub mod lexer;
+pub mod parser;
+pub mod token;
+pub mod value;
 
 use lexer::Lexer;
 use parser::Parser;
@@ -29,17 +29,29 @@ pub fn parse(source: &str) -> Result<ast::Program, String> {
     Ok(program)
 }
 
-/// Execute a parsed program with the given context.
-pub fn execute(
-    program: &ast::Program,
-    context: &mut dyn executor::Context,
-) -> Result<executor::ExecResult, String> {
-    let mut exec = executor::Executor::new();
-    exec.execute(program, context)
+/// Compile a MiniScript source string into an NpcScript.
+pub fn compile(source: &str) -> Result<executor::NpcScript, String> {
+    executor::NpcScript::parse(source)
 }
 
-/// Parse and execute a MiniScript source string.
-pub fn run(source: &str, context: &mut dyn executor::Context) -> Result<executor::ExecResult, String> {
-    let program = parse(source)?;
-    execute(&program, context)
+/// Execute a compiled script with the given context.
+pub fn execute(script: &executor::NpcScript, ctx: &mut dyn executor::Context) -> Result<executor::ExecResult, String> {
+    let mut exec = executor::Executor::new(script);
+    exec.execute(ctx)
+}
+
+/// Execute a compiled script, resuming from a saved state.
+pub fn execute_with_state(
+    script: &executor::NpcScript,
+    ctx: &mut dyn executor::Context,
+    state: &executor::ExecutionState,
+) -> Result<executor::ExecResult, String> {
+    let mut exec = executor::Executor::from_state(script, state);
+    exec.execute(ctx)
+}
+
+/// Parse, compile, and execute a MiniScript source string (convenience).
+pub fn run(source: &str, ctx: &mut dyn executor::Context) -> Result<executor::ExecResult, String> {
+    let script = compile(source)?;
+    execute(&script, ctx)
 }

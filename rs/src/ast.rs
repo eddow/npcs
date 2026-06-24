@@ -1,5 +1,7 @@
+use serde::{Deserialize, Serialize};
+
 /// Span in source: (line, col) both 1-based.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Span {
     pub line: usize,
     pub col: usize,
@@ -12,7 +14,7 @@ impl Span {
 }
 
 /// All AST node types, mirroring the TypeScript AST.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Expr {
     // Literals
     Number {
@@ -135,7 +137,7 @@ pub enum Expr {
     Paren(Box<Expr>),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Stmt {
     // varname = expr
     Assignment {
@@ -201,27 +203,27 @@ pub enum Stmt {
     Expr(Expr),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct IfClause {
     pub condition: Option<Expr>, // None for else
     pub body: Vec<Stmt>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PlanChecking {
     pub description: Option<Expr>,
     pub condition: Expr,
 }
 
 /// The top-level program.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Program {
     pub body: Vec<Stmt>,
 }
 
 // ---- Operator enums ----
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum UnaryOp {
     Negate, // -expr or not expr
     Not,
@@ -229,7 +231,7 @@ pub enum UnaryOp {
     New,  // new expr
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum BinaryOp {
     Add,
     Subtract,
@@ -245,13 +247,13 @@ pub enum BinaryOp {
     GreaterEqual,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum LogicalOp {
     And,
     Or,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum ComparisonOp {
     Equal,
     NotEqual,
