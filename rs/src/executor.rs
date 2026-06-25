@@ -74,7 +74,7 @@ pub enum Flow {
 // ── Stack frame & state machine ────────────────────────────────────
 
 /// What to do when a stack frame completes (ip >= body.len()).
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 enum FrameComplete {
     #[default]
     Done,
@@ -97,6 +97,10 @@ enum FrameComplete {
         wbodies: Vec<Vec<Stmt>>,
         occurrences: usize,
     },
+    PlanBody {
+        plan_value: Value,
+        checkings: Vec<crate::ast::PlanChecking>,
+    },
 }
 
 /// One stack frame in the execution state machine.
@@ -110,8 +114,7 @@ pub struct StackFrame {
     pub target_return: Option<usize>,
     pub expr_cache_index: usize,
     pub expr_cache_stack: Vec<usize>,
-    #[serde(skip)]
-    on_complete: FrameComplete,
+    pub on_complete: FrameComplete,
 }
 
 impl StackFrame {
@@ -134,10 +137,16 @@ impl StackFrame {
     }
 }
 
-/// Plan scope (stub — fully implemented in Tier 2).
+/// Plan scope — tracks an active plan for cancellation and resume checking.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlanScope {
+    pub plan_value: Value,
+    /// stack.len() at the moment the plan body was entered (not including body frame)
     pub stack_depth: usize,
+    /// parent frame's IP *after* advancing past the plan statement
+    pub saved_parent_ip: usize,
+    /// checking conditions for resume-time re-evaluation
+    pub checkings: Vec<crate::ast::PlanChecking>,
 }
 
 /// Serializable execution state for yield/resume.
@@ -184,13 +193,18 @@ impl NpcScript {
     pub fn function_body(&self, idx: usize) -> Option<&[Stmt]> {
         self.functions.get(idx).map(|v| v.as_slice())
     }
-    pub fn function_params(&self, fi: usize) -> (Vec<String>, Vec<Option<Value>>) {
+    pub fn function_params(&self, fi: usize) -> (Vec<String>, Vec<Option<Expr>>) {
         for stmt in &self.program.body {
             if let Stmt::Assignment { target, value, .. } = stmt {
                 if let Expr::Identifier { name, .. } = target.as_ref() {
-                    if let Expr::Function { params, .. } = value.as_ref() {
+                    if let Expr::Function {
+                        params,
+                        param_defaults,
+                        ..
+                    } = value.as_ref()
+                    {
                         if self.name_to_index.get(name) == Some(&fi) {
-                            return (params.clone(), params.iter().map(|_| None).collect());
+                            return (params.clone(), param_defaults.clone());
                         }
                     }
                 }
@@ -228,10 +242,7 @@ impl<'s> Executor<'s> {
     }
 
     pub fn from_state(script: &'s NpcScript, state: &ExecutionState) -> Self {
-        let mut stack = state.stack.clone();
-        for frame in &mut stack {
-            frame.on_complete = FrameComplete::Done;
-        }
+        let stack = state.stack.clone();
         Self {
             script,
             stack,
@@ -253,9 +264,101 @@ impl<'s> Executor<'s> {
         &mut self.stack.last_mut().unwrap().scope
     }
 
+    /// Cancel all plans whose stack_depth is >= `min_depth`.
+    /// Calls cancel/finally callbacks and removes plan scopes.
+    fn cancel_plans_at_depth(
+        &mut self,
+        ctx: &mut dyn Context,
+        min_depth: usize,
+        reason: Option<&str>,
+    ) {
+        while let Some(ps) = self.plan_scopes.last() {
+            if ps.stack_depth < min_depth {
+                break;
+            }
+            let pv = ps.plan_value.clone();
+            ctx.plan_cancel(&pv, reason);
+            ctx.plan_finally(&pv);
+            self.plan_scopes.pop();
+        }
+    }
+
+    /// Cancel any plan whose stack_depth refers to a frame that has been popped.
+    fn cancel_plans_below_current_stack(&mut self, ctx: &mut dyn Context, reason: Option<&str>) {
+        let cur_depth = self.stack.len();
+        self.cancel_plans_at_depth(ctx, cur_depth, reason);
+    }
+
+    /// Re-evaluate all active plan checking conditions on resume.
+    /// If any fail, cancel that plan (and sub-plans), restoring to after the plan block.
+    fn recheck_plans(&mut self, ctx: &mut dyn Context) -> Result<(), String> {
+        // Check from oldest to newest
+        let mut i = 0;
+        while i < self.plan_scopes.len() {
+            // Clone checkings to avoid borrow conflict with self.evaluate
+            let checkings = self.plan_scopes[i].checkings.clone();
+            let mut fail = false;
+            for checking in &checkings {
+                if !self.evaluate(&checking.condition, ctx)?.is_truthy() {
+                    fail = true;
+                    break;
+                }
+            }
+            if fail {
+                let target_depth = self.plan_scopes[i].stack_depth;
+                let saved_ip = self.plan_scopes[i].saved_parent_ip;
+                self.cancel_plans_at_depth(ctx, target_depth, Some("checking_failed_on_resume"));
+                self.stack.truncate(target_depth);
+                if let Some(parent) = self.stack.last_mut() {
+                    parent.ip = saved_ip;
+                }
+                // Restart: after cancellation, plan list changed, recheck remaining
+                i = 0;
+            } else {
+                i += 1;
+            }
+        }
+        Ok(())
+    }
+
     // ── Public API ────────────────────────────────────────────
 
+    /// Cancel a specific plan (and all sub-plans), restoring execution
+    /// to just after the plan block. Returns new state, or None if script is done.
+    pub fn cancel(
+        &mut self,
+        ctx: &mut dyn Context,
+        plan_value: &Value,
+        reason: Option<&str>,
+    ) -> Option<ExecutionState> {
+        let idx = self
+            .plan_scopes
+            .iter()
+            .rposition(|p| &p.plan_value == plan_value);
+        if let Some(i) = idx {
+            let target_depth = self.plan_scopes[i].stack_depth;
+            let saved_ip = self.plan_scopes[i].saved_parent_ip;
+            // Cancel target plan and all sub-plans above it
+            self.cancel_plans_at_depth(ctx, target_depth, reason);
+            // Restore stack to the parent frame at saved IP
+            self.stack.truncate(target_depth);
+            if let Some(parent) = self.stack.last_mut() {
+                parent.ip = saved_ip;
+            }
+            Some(self.state())
+        } else {
+            // Plan not found — cancel all plans
+            self.cancel_plans_at_depth(ctx, 0, reason);
+            self.stack.clear();
+            None
+        }
+    }
+
     pub fn execute(&mut self, ctx: &mut dyn Context) -> Result<ExecResult, String> {
+        // Resume-time checking: re-evaluate all active plan checking conditions.
+        // If any fail, cancel that plan (and sub-plans), restoring to after the plan block.
+        self.recheck_plans(ctx)?;
+
         loop {
             if self.stack.is_empty() {
                 return Ok(ExecResult::Return(None));
@@ -278,29 +381,32 @@ impl<'s> Executor<'s> {
             match self.execute_step(&stmt, ctx)? {
                 StepResult::Continue => {}
                 StepResult::Yield(v) => {
-                    if let Some(f) = self.stack.last_mut() {
-                        f.ip += 1;
-                    }
+                    // execute_step already advanced IP.
                     return Ok(ExecResult::Yield(v));
                 }
                 StepResult::Return(v) => {
-                    if let Some(result) = self.propagate_return(v) {
+                    if let Some(result) = self.propagate_return(v, ctx) {
                         return Ok(result);
                     }
                 }
                 StepResult::Break => {
-                    self.propagate_break()?;
+                    self.propagate_break(ctx)?;
                 }
                 StepResult::Continue_ => {
-                    self.propagate_continue()?;
+                    self.propagate_continue(ctx)?;
                 }
                 StepResult::PushFrame(mut child, advance) => {
                     if advance {
                         self.stack.last_mut().unwrap().ip += 1;
                     }
                     // Note: loop_scopes stay on the parent frame (the one that initiated the loop).
-                    // Child frames only inherit target_return for function calls.
-                    child.target_return = self.stack.last().unwrap().target_return;
+                    // Only inherit target_return for "transparent" frames (Done).
+                    // Control-structure frames (PlanBody, IfClause, ForLoop, etc.) must NOT
+                    // capture the parent's return target, or the inline Return handler will
+                    // stop at the wrong frame and leak frames onto the main stack.
+                    if matches!(child.on_complete, FrameComplete::Done) {
+                        child.target_return = self.stack.last().unwrap().target_return;
+                    }
                     self.stack.push(child);
                 }
             }
@@ -316,16 +422,30 @@ impl<'s> Executor<'s> {
         let frame = self.stack.pop().unwrap();
         match frame.on_complete {
             FrameComplete::Done => {
+                // On resume, on_complete is reset to Done. Check if a PlanScope
+                // matches the current stack depth — if so, treat as PlanBody completion.
+                if let Some(ps) = self.plan_scopes.last() {
+                    if ps.stack_depth == self.stack.len() {
+                        let plan_value = ps.plan_value.clone();
+                        self.plan_scopes.pop();
+                        ctx.plan_conclude(&plan_value);
+                        ctx.plan_finally(&plan_value);
+                        return Ok(None);
+                    }
+                }
                 if self.stack.is_empty() {
                     return Ok(Some(ExecResult::Return(None)));
                 }
                 Ok(None)
             }
+            FrameComplete::PlanBody { plan_value, .. } => {
+                self.plan_scopes.pop();
+                ctx.plan_conclude(&plan_value);
+                ctx.plan_finally(&plan_value);
+                Ok(None)
+            }
             FrameComplete::IfClause { .. } => {
-                // When any if-clause body completes, we're done with the if statement
-                if let Some(p) = self.stack.last_mut() {
-                    p.ip += 1;
-                }
+                // PushFrame(true) already advanced parent IP past the if statement.
                 Ok(None)
             }
             FrameComplete::ForLoop {
@@ -450,7 +570,7 @@ impl<'s> Executor<'s> {
         match stmt {
             Stmt::Assignment { target, value, .. } => {
                 let val = self.evaluate(value, ctx)?;
-                self.assign_to(target, val)?;
+                self.assign_to(target, val, ctx)?;
                 self.advance_ip();
                 Ok(StepResult::Continue)
             }
@@ -551,22 +671,56 @@ impl<'s> Executor<'s> {
                     Ok(StepResult::Continue)
                 }
             }
-            Stmt::Plan { .. } => {
-                self.advance_ip();
-                Ok(StepResult::Continue)
+            Stmt::Plan {
+                plan_value,
+                checkings,
+                body,
+                ..
+            } => {
+                let pv = self.evaluate(plan_value, ctx)?;
+                // Evaluate all checking conditions (conjunctive)
+                for checking in checkings {
+                    if !self.evaluate(&checking.condition, ctx)?.is_truthy() {
+                        // Checking failed — skip the plan entirely
+                        self.advance_ip();
+                        return Ok(StepResult::Continue);
+                    }
+                }
+                // All checks passed — enter the plan
+                ctx.plan_begin(&pv);
+                let plan_scope = PlanScope {
+                    plan_value: pv,
+                    stack_depth: self.stack.len(),
+                    saved_parent_ip: self.stack.last().unwrap().ip + 1,
+                    checkings: checkings.clone(),
+                };
+                self.plan_scopes.push(plan_scope);
+                let child = StackFrame::new(body.clone(), self.scope().clone()).with_on_complete(
+                    FrameComplete::PlanBody {
+                        plan_value: self.plan_scopes.last().unwrap().plan_value.clone(),
+                        checkings: checkings.clone(),
+                    },
+                );
+                Ok(StepResult::PushFrame(child, true))
             }
         }
     }
 
     // ── Flow control propagation ────────────────────────────
 
-    fn propagate_return(&mut self, value: Option<Value>) -> Option<ExecResult> {
+    fn propagate_return(
+        &mut self,
+        value: Option<Value>,
+        ctx: &mut dyn Context,
+    ) -> Option<ExecResult> {
         loop {
             if self.stack.is_empty() {
                 return Some(ExecResult::Return(value));
             }
             if self.stack.last().unwrap().target_return.is_some() {
                 let frame = self.stack.pop().unwrap();
+                // Cancel plans whose body frames were inside this popped subtree.
+                self.cancel_plans_below_current_stack(ctx, Some("return"));
                 if let Some(ci) = frame.target_return {
                     if let Some(p) = self.stack.last_mut() {
                         p.evaluated_cache
@@ -579,10 +733,11 @@ impl<'s> Executor<'s> {
                 return None;
             }
             self.stack.pop();
+            self.cancel_plans_below_current_stack(ctx, Some("return"));
         }
     }
 
-    fn propagate_break(&mut self) -> Result<(), String> {
+    fn propagate_break(&mut self, ctx: &mut dyn Context) -> Result<(), String> {
         loop {
             if self.stack.is_empty() {
                 return Err("break outside of loop".into());
@@ -597,10 +752,14 @@ impl<'s> Executor<'s> {
                 return Ok(());
             }
             self.stack.pop();
+            self.cancel_plans_below_current_stack(ctx, Some("break"));
         }
     }
 
-    fn propagate_continue(&mut self) -> Result<(), String> {
+    fn propagate_continue(&mut self, ctx: &mut dyn Context) -> Result<(), String> {
+        // When a do-while/while child frame is popped, capture its on_complete
+        // so we can reconstruct the loop body on re-entry.
+        let mut captured_fc: Option<FrameComplete> = None;
         loop {
             let has_loop = self
                 .stack
@@ -618,7 +777,9 @@ impl<'s> Executor<'s> {
                     }) => {
                         let new_idx = index + 1;
                         if new_idx < iterator.len() {
-                            let fc = frame.on_complete.clone();
+                            // The on_complete with ForLoop state lives on the child
+                            // frame that was just popped; use the captured value.
+                            let fc = captured_fc.as_ref().unwrap_or(&frame.on_complete).clone();
                             if let FrameComplete::ForLoop { body, .. } = fc {
                                 frame.loop_scopes[0] = LoopScope::ForIn {
                                     iterator: iterator.clone(),
@@ -635,9 +796,7 @@ impl<'s> Executor<'s> {
                                         body,
                                     },
                                 );
-                                let ls = frame.loop_scopes.clone();
                                 self.stack.push(child);
-                                self.stack.last_mut().unwrap().loop_scopes = ls;
                                 return Ok(());
                             }
                         }
@@ -645,7 +804,9 @@ impl<'s> Executor<'s> {
                         return Ok(());
                     }
                     Some(LoopScope::DoWhile { occurrences }) => {
-                        let fc = frame.on_complete.clone();
+                        // The on_complete with loop state lives on the child frame
+                        // that was just popped; use the captured value.
+                        let fc = captured_fc.as_ref().unwrap_or(&frame.on_complete).clone();
                         let (body, whiles, wbodies) = match fc {
                             FrameComplete::DoWhileBody {
                                 body,
@@ -662,25 +823,34 @@ impl<'s> Executor<'s> {
                             _ => return Err("continue: mismatched do-while state".into()),
                         };
                         let scope = frame.scope.clone();
-                        let child = StackFrame::new(body, scope).with_on_complete(
+                        let child = StackFrame::new(body.clone(), scope).with_on_complete(
                             FrameComplete::DoWhileBody {
-                                body: vec![],
+                                body,
                                 whiles,
                                 wbodies,
                                 occurrences,
                             },
                         );
-                        let ls = vec![LoopScope::DoWhile { occurrences }];
                         self.stack.push(child);
-                        self.stack.last_mut().unwrap().loop_scopes = ls;
                         return Ok(());
                     }
                     None => {
                         self.stack.pop();
+                        self.cancel_plans_below_current_stack(ctx, Some("continue"));
                     }
                 }
             } else {
-                self.stack.pop();
+                let popped = self.stack.pop().unwrap();
+                // Merge scope for do-while body frames so the re-entered
+                // child doesn't start with stale variable values.
+                match &popped.on_complete {
+                    FrameComplete::DoWhileBody { .. } | FrameComplete::WhileClause { .. } => {
+                        merge_scope_up(&popped.scope, self.scope_mut());
+                    }
+                    _ => {}
+                }
+                captured_fc = Some(popped.on_complete);
+                self.cancel_plans_below_current_stack(ctx, Some("continue"));
             }
         }
     }
@@ -711,10 +881,17 @@ impl<'s> Executor<'s> {
             .script
             .function_index(name)
             .ok_or_else(|| format!("function '{name}' not found"))?;
-        let (params, _) = self.script.function_params(fi);
+        let (params, defaults) = self.script.function_params(fi);
         let mut scope = Scope::new();
         for (i, p) in params.iter().enumerate() {
-            scope.define(p, args.get(i).cloned().unwrap_or(Value::Nil));
+            let val = if let Some(arg) = args.get(i) {
+                arg.clone()
+            } else if let Some(Some(ref default_expr)) = defaults.get(i) {
+                self.evaluate(default_expr, ctx)?
+            } else {
+                Value::Nil
+            };
+            scope.define(p, val);
         }
         let body = self.script.function_body(fi).unwrap_or(&[]).to_vec();
         let cache_idx = {
@@ -885,10 +1062,17 @@ impl<'s> Executor<'s> {
                     .script
                     .function_index(&name)
                     .ok_or_else(|| format!("fn '{name}' not found"))?;
-                let (params, _) = self.script.function_params(fi);
+                let (params, defaults) = self.script.function_params(fi);
                 let mut scope = Scope::new();
                 for (i, p) in params.iter().enumerate() {
-                    scope.define(p, ea.get(i).cloned().unwrap_or(Value::Nil));
+                    let val = if let Some(arg) = ea.get(i) {
+                        arg.clone()
+                    } else if let Some(Some(ref default_expr)) = defaults.get(i) {
+                        self.evaluate(default_expr, ctx)?
+                    } else {
+                        Value::Nil
+                    };
+                    scope.define(p, val);
                 }
                 let body = self.script.function_body(fi).unwrap_or(&[]).to_vec();
                 let saved_loops = self.stack.last().unwrap().loop_scopes.clone();
@@ -954,6 +1138,10 @@ impl<'s> Executor<'s> {
                     Expr::Identifier { name, .. } => name,
                     _ => return Err("isa needs name".into()),
                 };
+                // Check host-provided isa registry first, then fall back to built-in
+                if let Some(result) = ctx.isa_check(tn, &v) {
+                    return Ok(Value::Bool(result));
+                }
                 Ok(Value::Bool(match tn.as_str() {
                     "number" => matches!(v, Value::Number(_)),
                     "string" => matches!(v, Value::String(_)),
@@ -1001,6 +1189,9 @@ impl<'s> Executor<'s> {
     }
 
     /// Execute frames inline (for expression-call within evaluate).
+    /// Shares frame completion and flow control with the main execute() loop.
+    /// Differs only in termination: after propagate_return crosses a function
+    /// boundary, we return to the expression evaluator rather than continuing.
     fn execute_inline(&mut self, ctx: &mut dyn Context) -> Result<ExecResult, String> {
         loop {
             if self.stack.is_empty() {
@@ -1009,136 +1200,13 @@ impl<'s> Executor<'s> {
             let ip = self.stack.last().unwrap().ip;
             let body_len = self.stack.last().unwrap().body.len();
             if ip >= body_len {
-                let frame = self.stack.pop().unwrap();
-                if frame.target_return.is_some() || self.stack.is_empty() {
-                    return Ok(ExecResult::Return(None));
+                // Check before handle_frame_complete pops the frame.
+                let is_fn_boundary = self.stack.last().unwrap().target_return.is_some();
+                if let Some(result) = self.handle_frame_complete(ctx)? {
+                    return Ok(result);
                 }
-                match frame.on_complete {
-                    FrameComplete::Done => {
-                        if self.stack.is_empty() {
-                            return Ok(ExecResult::Return(None));
-                        }
-                    }
-                    FrameComplete::IfClause { .. } => {
-                        if let Some(p) = self.stack.last_mut() {
-                            p.ip += 1;
-                        }
-                    }
-                    FrameComplete::ForLoop {
-                        variable,
-                        iterator,
-                        mut index,
-                        body,
-                    } => {
-                        index += 1;
-                        if index < iterator.len() {
-                            let mut scope = self.scope().clone();
-                            scope.define(&variable, iterator[index].clone());
-                            self.stack
-                                .push(StackFrame::new(body.clone(), scope).with_on_complete(
-                                    FrameComplete::ForLoop {
-                                        variable,
-                                        iterator,
-                                        index,
-                                        body,
-                                    },
-                                ));
-                        } else {
-                            if let Some(p) = self.stack.last_mut() {
-                                p.loop_scopes.remove(0);
-                            }
-                        }
-                    }
-                    FrameComplete::DoWhileBody {
-                        body,
-                        whiles,
-                        wbodies,
-                        occurrences,
-                    } => {
-                        merge_scope_up(&frame.scope, self.scope_mut());
-                        let occ = occurrences + 1;
-                        if occ > 1000 {
-                            return Err("do-while exceeded 1000 iterations".into());
-                        }
-                        let mut again = whiles.is_empty();
-                        for (i, cond) in whiles.iter().enumerate() {
-                            if self.evaluate(cond, ctx)?.is_truthy() {
-                                if let Some(wb) = wbodies.get(i) {
-                                    self.stack.push(
-                                        StackFrame::new(wb.clone(), self.scope().clone())
-                                            .with_on_complete(FrameComplete::WhileClause {
-                                                body: body.clone(),
-                                                whiles: whiles.clone(),
-                                                wbodies: wbodies.clone(),
-                                                occurrences: occ,
-                                            }),
-                                    );
-                                    again = false;
-                                    break;
-                                }
-                                again = true;
-                                break;
-                            }
-                        }
-                        if again {
-                            self.stack.push(
-                                StackFrame::new(body.clone(), self.scope().clone())
-                                    .with_on_complete(FrameComplete::DoWhileBody {
-                                        body,
-                                        whiles,
-                                        wbodies,
-                                        occurrences: occ,
-                                    }),
-                            );
-                        } else {
-                            if let Some(p) = self.stack.last_mut() {
-                                p.loop_scopes.remove(0);
-                            }
-                        }
-                    }
-                    FrameComplete::WhileClause {
-                        body,
-                        whiles,
-                        wbodies,
-                        occurrences,
-                    } => {
-                        merge_scope_up(&frame.scope, self.scope_mut());
-                        let mut again = whiles.is_empty();
-                        for (i, cond) in whiles.iter().enumerate() {
-                            if self.evaluate(cond, ctx)?.is_truthy() {
-                                if let Some(wb) = wbodies.get(i) {
-                                    self.stack.push(
-                                        StackFrame::new(wb.clone(), self.scope().clone())
-                                            .with_on_complete(FrameComplete::WhileClause {
-                                                body: body.clone(),
-                                                whiles: whiles.clone(),
-                                                wbodies: wbodies.clone(),
-                                                occurrences,
-                                            }),
-                                    );
-                                    again = false;
-                                    break;
-                                }
-                                again = true;
-                                break;
-                            }
-                        }
-                        if again {
-                            self.stack.push(
-                                StackFrame::new(body.clone(), self.scope().clone())
-                                    .with_on_complete(FrameComplete::DoWhileBody {
-                                        body,
-                                        whiles,
-                                        wbodies,
-                                        occurrences,
-                                    }),
-                            );
-                        } else {
-                            if let Some(p) = self.stack.last_mut() {
-                                p.loop_scopes.remove(0);
-                            }
-                        }
-                    }
+                if is_fn_boundary {
+                    return Ok(ExecResult::Return(None));
                 }
                 continue;
             }
@@ -1152,146 +1220,35 @@ impl<'s> Executor<'s> {
             match self.execute_step(&stmt, ctx)? {
                 StepResult::Continue => {}
                 StepResult::Yield(v) => {
-                    if let Some(f) = self.stack.last_mut() {
-                        f.ip += 1;
-                    }
                     return Ok(ExecResult::Yield(v));
                 }
                 StepResult::Return(v) => {
-                    // Walk up until we find a frame with target_return (function boundary)
-                    let ret_val = v;
-                    loop {
-                        if self.stack.is_empty() {
-                            return Ok(ExecResult::Return(ret_val));
-                        }
-                        if self.stack.last().unwrap().target_return.is_some() {
-                            let frame = self.stack.pop().unwrap();
-                            if let Some(ci) = frame.target_return {
-                                if let Some(p) = self.stack.last_mut() {
-                                    p.evaluated_cache
-                                        .insert(ci, ret_val.clone().unwrap_or(Value::Nil));
-                                }
-                            }
-                            // Restored value to parent cache — return the value to caller
-                            return Ok(ExecResult::Return(ret_val));
-                        }
-                        self.stack.pop();
+                    // propagate_return walks up to the function boundary,
+                    // pops frames, cancels plans, and writes the value
+                    // into the parent frame's cache.
+                    // We capture the value first — the inline caller
+                    // (eval_inner) reads it from the ExecResult payload.
+                    let ret_val = v.clone().unwrap_or(Value::Nil);
+                    if let Some(result) = self.propagate_return(v, ctx) {
+                        return Ok(result);
                     }
+                    return Ok(ExecResult::Return(Some(ret_val)));
                 }
-                StepResult::Break => loop {
-                    if self.stack.is_empty() {
-                        return Err("break outside of loop".into());
-                    }
-                    let has_loop = self
-                        .stack
-                        .last()
-                        .map(|f| !f.loop_scopes.is_empty())
-                        .unwrap_or(false);
-                    if has_loop {
-                        self.stack.last_mut().unwrap().loop_scopes.remove(0);
-                        break;
-                    }
-                    self.stack.pop();
-                },
-                StepResult::Continue_ => loop {
-                    let has_loop = self
-                        .stack
-                        .last()
-                        .map(|f| !f.loop_scopes.is_empty())
-                        .unwrap_or(false);
-                    if has_loop {
-                        let frame = self.stack.last_mut().unwrap();
-                        frame.evaluated_cache.clear();
-                        match frame.loop_scopes.first().cloned() {
-                            Some(LoopScope::ForIn {
-                                iterator,
-                                index,
-                                variable,
-                            }) => {
-                                let new_idx = index + 1;
-                                if new_idx < iterator.len() {
-                                    let fc = frame.on_complete.clone();
-                                    if let FrameComplete::ForLoop { body, .. } = fc {
-                                        frame.loop_scopes[0] = LoopScope::ForIn {
-                                            iterator: iterator.clone(),
-                                            index: new_idx,
-                                            variable: variable.clone(),
-                                        };
-                                        let mut scope = frame.scope.clone();
-                                        scope.define(&variable, iterator[new_idx].clone());
-                                        self.stack.push(
-                                            StackFrame::new(body.clone(), scope).with_on_complete(
-                                                FrameComplete::ForLoop {
-                                                    variable: variable.clone(),
-                                                    iterator: iterator.clone(),
-                                                    index: new_idx,
-                                                    body,
-                                                },
-                                            ),
-                                        );
-                                        break;
-                                    }
-                                }
-                                frame.loop_scopes.remove(0);
-                                break;
-                            }
-                            Some(LoopScope::DoWhile { occurrences }) => {
-                                let fc = frame.on_complete.clone();
-                                let scope = frame.scope.clone();
-                                match fc {
-                                    FrameComplete::DoWhileBody {
-                                        body,
-                                        whiles,
-                                        wbodies,
-                                        ..
-                                    } => {
-                                        self.stack.push(
-                                            StackFrame::new(body, scope).with_on_complete(
-                                                FrameComplete::DoWhileBody {
-                                                    body: vec![],
-                                                    whiles,
-                                                    wbodies,
-                                                    occurrences,
-                                                },
-                                            ),
-                                        );
-                                    }
-                                    FrameComplete::WhileClause {
-                                        body,
-                                        whiles,
-                                        wbodies,
-                                        ..
-                                    } => {
-                                        self.stack.push(
-                                            StackFrame::new(body, scope).with_on_complete(
-                                                FrameComplete::DoWhileBody {
-                                                    body: vec![],
-                                                    whiles,
-                                                    wbodies,
-                                                    occurrences,
-                                                },
-                                            ),
-                                        );
-                                    }
-                                    _ => {
-                                        frame.loop_scopes.remove(0);
-                                    }
-                                }
-                                break;
-                            }
-                            None => {
-                                self.stack.pop();
-                            }
-                        }
-                    } else {
-                        self.stack.pop();
-                    }
-                },
+                StepResult::Break => {
+                    self.propagate_break(ctx)?;
+                }
+                StepResult::Continue_ => {
+                    self.propagate_continue(ctx)?;
+                }
                 StepResult::PushFrame(mut child, advance) => {
                     if advance {
                         self.stack.last_mut().unwrap().ip += 1;
                     }
-                    child.target_return = self.stack.last().unwrap().target_return;
+                    // Only inherit target_return for "transparent" frames (Done).
+                    // Control-structure frames must not capture the parent's return target.
+                    if matches!(child.on_complete, FrameComplete::Done) {
+                        child.target_return = self.stack.last().unwrap().target_return;
+                    }
                     self.stack.push(child);
                 }
             }
@@ -1306,13 +1263,71 @@ impl<'s> Executor<'s> {
         }
     }
 
-    fn assign_to(&mut self, target: &Expr, value: Value) -> Result<(), String> {
+    fn assign_to(
+        &mut self,
+        target: &Expr,
+        value: Value,
+        ctx: &mut dyn Context,
+    ) -> Result<(), String> {
         match target {
             Expr::Identifier { name, .. } => {
                 self.scope_mut().set(name, value);
                 Ok(())
             }
+            Expr::Member {
+                object, property, ..
+            } => {
+                let obj = self.evaluate_mut(object, value.clone(), property, None, ctx)?;
+                let _ = obj;
+                Ok(())
+            }
+            Expr::Index { object, index, .. } => {
+                let idx_val = self.evaluate(index, ctx)?;
+                let obj = self.evaluate_mut(object, value.clone(), "", Some(&idx_val), ctx)?;
+                let _ = obj;
+                Ok(())
+            }
             _ => Err("complex assignment not yet supported".into()),
+        }
+    }
+
+    /// Evaluate the object of a member/index expression and mutate it for LValue assignment.
+    /// Each level of a member chain (a.b.c = val) processes one hop:
+    /// read inner object, mutate its property, then write back via assign_to.
+    fn evaluate_mut(
+        &mut self,
+        object: &Expr,
+        value: Value,
+        property: &str,
+        index: Option<&Value>,
+        ctx: &mut dyn Context,
+    ) -> Result<Value, String> {
+        match object {
+            Expr::Identifier { name, .. } => {
+                // Leaf: read the variable, apply mutation, write back.
+                let obj = self.scope().get(name).cloned().unwrap_or(Value::Nil);
+                let modified = apply_lvalue_mutation(&obj, property, index, value)?;
+                self.scope_mut().set(name, modified);
+                Ok(Value::Nil)
+            }
+            Expr::Member {
+                object: inner,
+                property: inner_prop,
+                ..
+            } => {
+                // Read the inner object (e.g. person for person.address.city)
+                let inner_val = self.evaluate(inner, ctx)?;
+                // Get the sub-object at inner_prop (e.g. person.address)
+                let sub = get_prop(&inner_val, inner_prop)?;
+                // Apply the outer mutation to this sub-object
+                let modified_sub = apply_lvalue_mutation(&sub, property, index, value)?;
+                // Set the modified sub back on a clone of inner_val
+                let modified_inner = set_prop(&inner_val, inner_prop, modified_sub)?;
+                // Write the modified container back to wherever inner points
+                self.assign_to(inner, modified_inner, ctx)?;
+                Ok(Value::Nil)
+            }
+            _ => Err("complex assignment target not yet supported".into()),
         }
     }
 }
@@ -1321,6 +1336,59 @@ impl<'s> Executor<'s> {
 fn merge_scope_up(child: &Scope, parent: &mut Scope) {
     for (k, v) in &child.variables {
         parent.set(k, v.clone());
+    }
+}
+
+/// Apply a property or index mutation to a Value clone.
+fn apply_lvalue_mutation(
+    obj: &Value,
+    property: &str,
+    index: Option<&Value>,
+    value: Value,
+) -> Result<Value, String> {
+    match (obj, index) {
+        (Value::Map(m), None) => {
+            let mut mc = m.clone();
+            mc.insert(property.to_string(), value);
+            Ok(Value::Map(mc))
+        }
+        (Value::Map(m), Some(Value::String(s))) => {
+            let mut mc = m.clone();
+            mc.insert(s.clone(), value);
+            Ok(Value::Map(mc))
+        }
+        (Value::List(l), Some(Value::Number(n))) => {
+            let mut lc = l.clone();
+            let i = *n as usize;
+            if i < lc.len() {
+                lc[i] = value;
+            } else {
+                lc.resize(i + 1, Value::Nil);
+                lc[i] = value;
+            }
+            Ok(Value::List(lc))
+        }
+        _ => Err(format!("cannot assign to {obj:?}[{index:?}]")),
+    }
+}
+
+/// Get a named property from a Value.
+fn get_prop(val: &Value, prop: &str) -> Result<Value, String> {
+    match val {
+        Value::Map(m) => Ok(m.get(prop).cloned().unwrap_or(Value::Nil)),
+        _ => Err(format!("cannot access property '{prop}' on {val:?}")),
+    }
+}
+
+/// Set a named property on a Value clone, returning the modified Value.
+fn set_prop(val: &Value, prop: &str, new_val: Value) -> Result<Value, String> {
+    match val {
+        Value::Map(m) => {
+            let mut mc = m.clone();
+            mc.insert(prop.to_string(), new_val);
+            Ok(Value::Map(mc))
+        }
+        _ => Err(format!("cannot set property '{prop}' on {val:?}")),
     }
 }
 
@@ -1394,4 +1462,12 @@ fn compare_values(l: &Value, r: &Value) -> Option<std::cmp::Ordering> {
 pub trait Context {
     fn get(&self, name: &str) -> Option<Value>;
     fn call_native(&mut self, name: &str, args: &[Value]) -> Option<Value>;
+    fn plan_begin(&mut self, _plan_value: &Value) {}
+    fn plan_conclude(&mut self, _plan_value: &Value) {}
+    fn plan_cancel(&mut self, _plan_value: &Value, _reason: Option<&str>) {}
+    fn plan_finally(&mut self, _plan_value: &Value) {}
+    /// Host-provided isa type check. Return `None` to fall back to built-in types.
+    fn isa_check(&self, _type_name: &str, _value: &Value) -> Option<bool> {
+        None
+    }
 }

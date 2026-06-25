@@ -111,6 +111,10 @@ impl PartialEq for Value {
             (Value::Nil, Value::Number(0.0)) | (Value::Number(0.0), Value::Nil) => true,
             (Value::Nil, Value::String(s)) | (Value::String(s), Value::Nil) => s.is_empty(),
 
+            // Structural equality for containers
+            (Value::List(a), Value::List(b)) => a == b,
+            (Value::Map(a), Value::Map(b)) => a == b,
+
             _ => false,
         }
     }

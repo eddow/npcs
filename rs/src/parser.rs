@@ -46,6 +46,13 @@ impl Parser {
         }
     }
 
+    /// Skip only comment tokens (not newlines) — for use inside expressions.
+    fn skip_comments(&mut self) {
+        while matches!(self.peek_kind(), Some(TokenKind::Comment(_))) {
+            self.advance();
+        }
+    }
+
     fn expect(&mut self, expected: TokenKind) -> Result<&Token, String> {
         if self.peek().map(|t| &t.kind) == Some(&expected) {
             Ok(self.advance())
@@ -623,6 +630,7 @@ impl Parser {
         let mut exprs = vec![first];
         let mut ops: Vec<ComparisonOp> = Vec::new();
 
+        self.skip_comments();
         while self.is_comparison_op() {
             ops.push(self.comparison_op().unwrap());
             self.advance();
@@ -668,6 +676,7 @@ impl Parser {
     fn parse_add_sub(&mut self) -> Result<Expr, String> {
         let mut left = self.parse_mul_div()?;
         loop {
+            self.skip_comments();
             match self.peek_kind() {
                 Some(TokenKind::Plus) => {
                     let span = self.span();
@@ -702,6 +711,7 @@ impl Parser {
     fn parse_mul_div(&mut self) -> Result<Expr, String> {
         let mut left = self.parse_unary()?;
         loop {
+            self.skip_comments();
             match self.peek_kind() {
                 Some(TokenKind::Star) => {
                     let span = self.span();
@@ -804,6 +814,7 @@ impl Parser {
         let mut left = self.parse_atom()?;
 
         loop {
+            self.skip_comments();
             match self.peek_kind() {
                 // Function call: expr(args)
                 Some(TokenKind::LParen) => {

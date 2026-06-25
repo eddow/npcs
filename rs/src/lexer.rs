@@ -185,6 +185,14 @@ impl Lexer {
                                     s.push('\t');
                                     self.advance();
                                 }
+                                Some('r') => {
+                                    s.push('\r');
+                                    self.advance();
+                                }
+                                Some('0') => {
+                                    s.push('\0');
+                                    self.advance();
+                                }
                                 Some('\\') => {
                                     s.push('\\');
                                     self.advance();
@@ -212,13 +220,22 @@ impl Lexer {
                 return self.make_token(TokenKind::String(s), start_offset, start_line, start_col);
             }
 
-            // Numbers
-            '0'..='9' => {
-                self.advance();
+            // Numbers: handles 5, .5, 5., 5.5, 5e10, 5E-3, .5e2
+            '0'..='9' | '.' => {
+                // If it's a dot not followed by a digit, it's not a number (.foo)
+                if ch == '.' && !self.peek(1).map_or(false, |c| c.is_ascii_digit()) {
+                    self.advance();
+                    return self.make_token(TokenKind::Dot, start_offset, start_line, start_col);
+                }
+                // Advance past first char (digit, or skip for leading dot of .5)
+                if ch != '.' {
+                    self.advance();
+                }
                 while self.peek(0).map_or(false, |c| c.is_ascii_digit()) {
                     self.advance();
                 }
-                if self.peek(0) == Some('.') && self.peek(1).map_or(false, |c| c.is_ascii_digit()) {
+                // Fractional part: consume dot even without trailing digits (5.)
+                if self.peek(0) == Some('.') {
                     self.advance(); // dot
                     while self.peek(0).map_or(false, |c| c.is_ascii_digit()) {
                         self.advance();
