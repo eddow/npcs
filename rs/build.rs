@@ -2,7 +2,6 @@
 ///
 /// Scans `tests/` (relative to project root) for `*.test.npcs` files
 /// and generates `tests/generated_tests.rs` with one `#[test] fn` per fixture.
-
 use std::env;
 use std::fs;
 use std::path::Path;
@@ -24,7 +23,7 @@ fn main() {
     if let Ok(entries) = fs::read_dir(&fixtures_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().map_or(false, |ext| {
+            if path.extension().map_or(false, |_ext| {
                 let name = path.file_name().unwrap().to_string_lossy();
                 name.ends_with(".test.npcs")
             }) {

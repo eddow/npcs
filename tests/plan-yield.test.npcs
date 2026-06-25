@@ -1,0 +1,18 @@
+/*
+@npcs-test
+@output "step1"
+@plan "begin(yield-plan)"
+@yield "paused"
+---
+@output "step2"
+@output "done"
+@plan "conclude(yield-plan)"
+@plan "finally(yield-plan)"
+@return
+*/
+plan "yield-plan"
+    print "step1"
+    yield "paused"
+    print "step2"
+end plan
+print "done"

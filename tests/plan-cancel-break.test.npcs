@@ -1,0 +1,19 @@
+/*
+@npcs-test
+@output "1"
+@output "done"
+@plan "begin(iter-1)"
+@plan "conclude(iter-1)"
+@plan "finally(iter-1)"
+@plan "begin(iter-2)"
+@plan "cancel(iter-2, break)"
+@plan "finally(iter-2)"
+@return
+*/
+for i in [1, 2, 3]
+    plan "iter-" + i
+        if i == 2 then break
+        print i
+    end plan
+end for
+print "done"

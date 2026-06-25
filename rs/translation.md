@@ -2,7 +2,7 @@
 
 **Date**: 2026-06-24
 **Baseline (pre-Tier-1)**: 22 integration tests passing, recursive executor, hand-written lexer & parser.  
-**Current (post-Tier-5)**: 50 tests (50 pass, 0 ignored), IP-based state machine with yield/resume, plan lifecycle, serialization, cross-engine test infrastructure, isa registry. All 5 tiers complete.
+**Current (post-Tier-5)**: 56 tests (56 pass, 0 ignored), IP-based state machine with yield/resume, plan lifecycle with cross-engine test coverage, serialization, cross-engine test infrastructure, isa registry. All 5 tiers complete.
 
 ---
 
@@ -255,7 +255,7 @@ fn run_test_file(path: &Path) -> TestFileResult;
 
 Auto-discovers all `.test.npcs` files and generates Rust tests (one `#[test]` per file). Since Rust has no dynamic test generation at runtime like Jest, use a build script or `include!` macro approach:
 
-**Option A**: Build script (`build.rs`) that scans `tests/fixtures/` and generates a `tests/generated_tests.rs` file with one `#[test] fn` per fixture.
+**Option A**: Build script (`build.rs`) that scans `tests/` (repo root) and generates a `tests/generated_tests.rs` file with one `#[test] fn` per fixture.
 
 **Option B**: Single test that iterates all `.test.npcs` files (simpler but less granular failure reporting).
 
@@ -265,28 +265,21 @@ Recommend **Option A** for parity with the TS harness (one `it()` per file).
 
 ### 4.4 Fixture sharing
 
-```bash
-# Symlink the shared fixtures dir
-rs/tests/fixtures/ -> ../../tests/fixtures/
-```
-
-The `tests/fixtures/` directory at the repo root holds `.test.npcs` files shared by TS and Rust.
-
-**Effort**: trivial
+`.test.npcs` files live at the repo root `tests/` directory, shared by both TS and Rust engines via `include_str!` from `build.rs`. No symlink needed.
 
 ### Implementation notes
 
 - **Harness location**: `src/cross_engine.rs` (not `tests/`) — needed as a library module so generated tests can import it
-- **Generated tests**: 5 tests from repo-root `tests/*.test.npcs` (basic, yeld-basic, yield-in-loop, error, assert)
+- **Generated tests**: 11 tests from repo-root `tests/*.test.npcs`: basic, yield-basic, yield-in-loop, error, assert, plus 6 plan tests (plan-basic, plan-checking, plan-checking-fail, plan-yield, plan-cancel-return, plan-cancel-break)
 - **Bug fix**: `FrameComplete` now derives `Serialize/Deserialize` and `on_complete` is no longer `#[serde(skip)]` — loop state was being lost on yield/resume because `from_state` reset `on_complete` to `Done`
 - **Bug fix**: `Value::PartialEq` now includes `List`/`Map` structural comparison arms
-- **Test results**: 50 pass (13 pragma parser + 32 integration + 5 generated), 0 ignored
+- **Test results**: 56 pass (13 pragma parser + 32 integration + 11 generated), 0 ignored
 
 ---
 
 ## Tier 5 — Polish & Gaps ✅ DONE (2026-06-24)
 
-All 50 tests pass (13 pragma parser + 5 cross-engine generated + 32 integration), 0 ignored.
+All 56 tests pass (13 pragma parser + 11 cross-engine generated + 32 integration), 0 ignored.
 
 ### 5.1 Custom `isa` type registry ✅
 
@@ -353,4 +346,4 @@ Tier 4 can be partially done before Tier 3 (pragma parser + harness for non-plan
 
 4. **`serde` integration point**: Add `Serialize`/`Deserialize` derives once Tier 1 begins. Until then, the `Value` type stays clean of serialization concerns.
 
-5. **Test fixture location**: The shared `tests/fixtures/` directory at repo root should hold `.test.npcs` files. The `rs/tests/fixtures/` would be a symlink. The `ts/tests/exec/fixtures/` legacy `.npcs` files can gradually migrate to `.test.npcs` format.
+5. **Test fixture location**: `.test.npcs` fixtures live at repo-root `tests/`. `build.rs` reads them via `include_str!` with absolute paths. No symlink or copy directory needed in `rs/tests/`.

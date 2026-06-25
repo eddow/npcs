@@ -65,10 +65,6 @@ impl Parser {
         }
     }
 
-    fn error(&mut self, msg: String) {
-        self.errors.push(msg);
-    }
-
     fn span(&self) -> Span {
         self.peek()
             .map(|t| Span::new(t.line, t.col))

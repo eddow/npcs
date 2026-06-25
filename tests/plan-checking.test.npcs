@@ -1,0 +1,16 @@
+/*
+@npcs-test
+@global x 10
+@output "inside"
+@output "after"
+@plan "begin(check-pass)"
+@plan "conclude(check-pass)"
+@plan "finally(check-pass)"
+@return
+*/
+x = 10
+plan "check-pass"
+checking "x is 10": x == 10
+    print "inside"
+end plan
+print "after"

@@ -75,7 +75,7 @@ pub enum Flow {
 
 /// What to do when a stack frame completes (ip >= body.len()).
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-enum FrameComplete {
+pub enum FrameComplete {
     #[default]
     Done,
     IfClause,

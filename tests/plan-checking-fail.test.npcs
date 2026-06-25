@@ -1,0 +1,12 @@
+/*
+@npcs-test
+@global x 5
+@output "skipped"
+@return
+*/
+x = 5
+plan "check-fail"
+checking "x is 10": x == 10
+    print "inside"
+end plan
+print "skipped"

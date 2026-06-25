@@ -1,0 +1,16 @@
+/*
+@npcs-test
+@output "42"
+@plan "begin(return-test)"
+@plan "cancel(return-test, return)"
+@plan "finally(return-test)"
+@return
+*/
+function foo()
+    plan "return-test"
+        return 42
+    end plan
+end function
+
+result = foo()
+print result

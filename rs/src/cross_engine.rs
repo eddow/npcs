@@ -5,12 +5,11 @@
 ///
 /// Engine-agnostic design: the execution primitives use the npcs executor
 /// trait, allowing any implementation to be tested.
-
 use std::collections::BTreeMap;
 use std::time::Instant;
 
 use crate::executor::{Context, ExecResult, ExecutionState, Executor, NpcScript};
-use crate::pragma_parser::{ParsedStep, ParsedTest, ResultType};
+use crate::pragma_parser::{ParsedStep, ResultType};
 use crate::value::Value;
 
 // ── Test context ────────────────────────────────────────────────────
@@ -117,23 +116,20 @@ pub struct StepResult {
 }
 
 /// Execute one step: parse source, inject globals, run, check assertions.
-pub fn execute_step(
-    script: &NpcScript,
-    step: &ParsedStep,
-    state_json: Option<&str>,
-) -> StepResult {
+pub fn execute_step(script: &NpcScript, step: &ParsedStep, state_json: Option<&str>) -> StepResult {
     let start = Instant::now();
 
     // Helper: build a StepResult with common defaults
-    let make_result = |passed: bool, failures: Vec<String>, state_json: Option<String>| StepResult {
-        passed,
-        failures,
-        execution_time_ms: start.elapsed().as_millis() as u64,
-        timeout_ms: step.timeout_ms,
-        state_json,
-        output: vec![],
-        plan_events: vec![],
-    };
+    let make_result =
+        |passed: bool, failures: Vec<String>, state_json: Option<String>| StepResult {
+            passed,
+            failures,
+            execution_time_ms: start.elapsed().as_millis() as u64,
+            timeout_ms: step.timeout_ms,
+            state_json,
+            output: vec![],
+            plan_events: vec![],
+        };
 
     // Build context with globals merged
     let mut ctx = CrossEngineContext::new(step.globals.clone());
@@ -143,7 +139,11 @@ pub fn execute_step(
         let state: ExecutionState = match serde_json::from_str(json) {
             Ok(s) => s,
             Err(e) => {
-                return make_result(false, vec![format!("Failed to deserialize state: {e}")], None);
+                return make_result(
+                    false,
+                    vec![format!("Failed to deserialize state: {e}")],
+                    None,
+                );
             }
         };
         Executor::from_state(script, &state)
@@ -212,16 +212,10 @@ pub fn execute_step(
                 (ExecResult::Yield(_), ResultType::Yield) => {}
                 (ExecResult::Return(_), ResultType::Return) => {}
                 (ExecResult::Yield(_), _) => {
-                    failures.push(format!(
-                        "Expected {:?} but got Yield",
-                        step.result_type
-                    ));
+                    failures.push(format!("Expected {:?} but got Yield", step.result_type));
                 }
                 (ExecResult::Return(_), _) => {
-                    failures.push(format!(
-                        "Expected {:?} but got Return",
-                        step.result_type
-                    ));
+                    failures.push(format!("Expected {:?} but got Return", step.result_type));
                 }
             }
 
@@ -249,12 +243,31 @@ pub fn execute_step(
                     output
                 ));
             } else {
-                for (i, (expected, actual)) in
-                    step.outputs.iter().zip(output.iter()).enumerate()
-                {
+                for (i, (expected, actual)) in step.outputs.iter().zip(output.iter()).enumerate() {
                     if expected != actual {
                         failures.push(format!(
                             "Output[{}] mismatch: expected {:?}, got {:?}",
+                            i, expected, actual
+                        ));
+                    }
+                }
+            }
+
+            // Check plan events
+            if plan_events.len() != step.plan_events.len() {
+                failures.push(format!(
+                    "Plan events count mismatch: expected {} events, got {}: {:?}",
+                    step.plan_events.len(),
+                    plan_events.len(),
+                    plan_events
+                ));
+            } else {
+                for (i, (expected, actual)) in
+                    step.plan_events.iter().zip(plan_events.iter()).enumerate()
+                {
+                    if expected != actual {
+                        failures.push(format!(
+                            "Plan event[{}] mismatch: expected {:?}, got {:?}",
                             i, expected, actual
                         ));
                     }
@@ -344,19 +357,14 @@ pub struct TestFileResult {
 
 /// Run all steps in a .test.npcs file.
 pub fn run_test_file(file_path: &str) -> Result<TestFileResult, String> {
-    let source = std::fs::read_to_string(file_path)
-        .map_err(|e| format!("Cannot read {file_path}: {e}"))?;
+    let source =
+        std::fs::read_to_string(file_path).map_err(|e| format!("Cannot read {file_path}: {e}"))?;
     run_test_source(&source, file_path)
 }
 
 /// Run all steps from in-memory source.
 pub fn run_test_source(source: &str, file_name: &str) -> Result<TestFileResult, String> {
     let (parsed, _body) = crate::pragma_parser::parse_test_file(source)?;
-
-    // TODO: body is currently unused — the executor runs the source directly.
-    // The script body is already embedded in the source string used for parsing.
-    // We re-parse via NpcScript::parse for execution since it needs the full source.
-
     let script = NpcScript::parse(source)?;
 
     let mut step_results = Vec::new();

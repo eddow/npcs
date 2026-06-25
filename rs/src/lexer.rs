@@ -46,21 +46,6 @@ impl Lexer {
         ch
     }
 
-    fn advance_if(&mut self, predicate: fn(char) -> bool) -> bool {
-        if self.peek(0).map_or(false, predicate) {
-            self.advance();
-            true
-        } else {
-            false
-        }
-    }
-
-    fn advance_while(&mut self, predicate: fn(char) -> bool) {
-        while self.peek(0).map_or(false, predicate) {
-            self.advance();
-        }
-    }
-
     /// Peek ahead in the original source for multi-word keywords like "end if".
     fn matches_ahead(&self, s: &str) -> bool {
         let mut i = 0;

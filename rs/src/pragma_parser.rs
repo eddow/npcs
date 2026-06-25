@@ -4,7 +4,6 @@
 /// splitting into steps and parsing per-step directives.
 ///
 /// See tests/spec.md for the full specification.
-
 use crate::value::Value;
 use std::collections::BTreeMap;
 
@@ -26,6 +25,8 @@ pub struct ParsedStep {
     pub timeout_ms: u64,
     /// Globals injected for this step (merged with global_globals)
     pub globals: BTreeMap<String, Value>,
+    /// Expected plan lifecycle events in order (begin/conclude/cancel/finally)
+    pub plan_events: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -153,8 +154,8 @@ fn parse_map(s: &str) -> Result<Value, String> {
     let entries = split_top_level(inner, ',');
     let mut map = BTreeMap::new();
     for entry in entries {
-        let colon_idx = find_top_level(&entry, ':')
-            .ok_or_else(|| format!("Invalid map entry: {entry}"))?;
+        let colon_idx =
+            find_top_level(&entry, ':').ok_or_else(|| format!("Invalid map entry: {entry}"))?;
         let key_raw = entry[..colon_idx].trim();
         // Key can be a bare identifier or a quoted string
         let key = if key_raw.starts_with('"') {
@@ -379,6 +380,19 @@ fn parse_directive_line(
         return Ok(());
     }
 
+    // @plan "<event-string>"
+    // Matches a plan lifecycle event string as produced by the engine:
+    // begin(<value>), conclude(<value>), cancel(<value>, <reason>), finally(<value>)
+    if let Some(rest) = line.strip_prefix("@plan ") {
+        let trimmed = rest.trim();
+        if trimmed.len() >= 2 && trimmed.starts_with('"') && trimmed.ends_with('"') {
+            let inner = &trimmed[1..trimmed.len() - 1];
+            step.plan_events.push(unescape_string(inner));
+            return Ok(());
+        }
+        return Err(format!("Invalid @plan: {line}"));
+    }
+
     Err(format!("Unknown pragma directive: {line}"))
 }
 
@@ -401,9 +415,10 @@ pub fn parse_pragmas(block: &str) -> Result<ParsedTest, String> {
         error_substring: None,
         timeout_ms: test.default_timeout_ms,
         globals: BTreeMap::new(),
+        plan_events: Vec::new(),
     };
 
-    let mut seen_steps = false;
+    let mut _seen_steps = false;
     let mut seen_sentinel = false;
 
     for raw_line in block.lines() {
@@ -415,7 +430,7 @@ pub fn parse_pragmas(block: &str) -> Result<ParsedTest, String> {
 
         // Step separator
         if line == "---" {
-            seen_steps = true;
+            _seen_steps = true;
             // Finalize current step
             current_step.globals.extend(
                 test.global_globals
@@ -435,6 +450,7 @@ pub fn parse_pragmas(block: &str) -> Result<ParsedTest, String> {
                 error_substring: None,
                 timeout_ms: test.default_timeout_ms,
                 globals: BTreeMap::new(),
+                plan_events: Vec::new(),
             };
             continue;
         }
@@ -481,8 +497,7 @@ pub fn parse_pragmas(block: &str) -> Result<ParsedTest, String> {
 
 /// Parse a full .test.npcs file into a ParsedTest + script body.
 pub fn parse_test_file(source: &str) -> Result<(ParsedTest, String), String> {
-    let block = extract_pragma_block(source)
-        .ok_or_else(|| "No pragma block found".to_string())?;
+    let block = extract_pragma_block(source).ok_or_else(|| "No pragma block found".to_string())?;
     let test = parse_pragmas(block)?;
     let body = extract_script_body(source).to_string();
     Ok((test, body))
@@ -548,10 +563,7 @@ mod tests {
         let mut expected = BTreeMap::new();
         expected.insert("x".into(), Value::Number(1.0));
         expected.insert("y".into(), Value::Number(2.0));
-        assert_eq!(
-            parse_literal("{x: 1, y: 2}").unwrap(),
-            Value::Map(expected)
-        );
+        assert_eq!(parse_literal("{x: 1, y: 2}").unwrap(), Value::Map(expected));
     }
 
     #[test]

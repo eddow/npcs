@@ -1,0 +1,13 @@
+/*
+@npcs-test
+@output "inside plan"
+@output "after plan"
+@plan "begin(test-plan)"
+@plan "conclude(test-plan)"
+@plan "finally(test-plan)"
+@return
+*/
+plan "test-plan"
+    print "inside plan"
+end plan
+print "after plan"
