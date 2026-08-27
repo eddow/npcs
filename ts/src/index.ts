@@ -9,7 +9,10 @@ export {
 	jsIsaTypes,
 	jsOperators,
 	type Operators,
+	reviveExecutionState,
 	reviveState,
+	serializeExecutionState,
+	type StateValueHook,
 	serializeState,
 } from './helpers'
 export { default as NpcScript } from './npcs'

@@ -8,10 +8,16 @@ State management is a core feature of NPCS that allows scripts to pause executio
 
 ### ExecutionState
 
-The execution state is represented as an array of stack entries:
+The execution state is represented by a stack of active frames plus the active plan scopes:
 
 ```typescript
-type ExecutionState = ExecutionStackEntry[]
+type ExecutionState = {
+    stack: ExecutionStackEntry[]
+    plans: Array<{
+        planValue: any          // The value captured by a `plan` block (often a host object)
+        savedState: PlanScope   // IP/stack depth snapshot for plan resume/cancel
+    }>
+}
 ```
 
 Each `ExecutionStackEntry` contains:
@@ -113,7 +119,65 @@ if (value && typeof value === 'object' && value.__type === 'FunctionDefinition')
 
 ## Saving and Loading State
 
-### Basic Usage
+### Hook-based (de)serialization
+
+For hosts whose scripts reference **native functions** (functions supplied by the application)
+and **host objects** (e.g. game-world entities) — which `serializeState`/`reviveState` cannot
+round-trip — use the dedicated `serializeExecutionState` / `reviveExecutionState` pair with a
+`StateValueHook`.
+
+The guiding principle is **reference-not-value**: never serialize a function or a host object;
+serialize a *name* (or index) that resolves back to it against a freshly reconstituted context
+after reload.
+
+```javascript
+import { serializeExecutionState, reviveExecutionState } from 'npc-script'
+
+// --- Save ---
+const serializeHook = (value) => {
+    if (typeof value === 'function') {
+        // Reference the function by its stable name (a slot in a deterministic context tree),
+        // NOT by identity or by serializing the closure.
+        return { __fnRef: nameOf(value) }
+    }
+    if (isWorldEntity(value)) {
+        // Reference a world object by a stable id / index, NOT by the object itself.
+        return { __gameRef: { kind: 'entity', id: value.id } }
+    }
+    return undefined // fall through to default handling
+}
+
+const json = JSON.stringify(serializeExecutionState(executor.state, serializeHook))
+localStorage.setItem('npc_state', json)
+
+// --- Load ---
+const reviveHook = (value) => {
+    if (value?.__fnRef) return resolveByName(value.__fnRef)        // fresh context
+    if (value?.__gameRef) return worldById(value.__gameRef.id)     // loaded world
+    return undefined
+}
+
+const saved = reviveExecutionState(JSON.parse(localStorage.getItem('npc_state')), reviveHook)
+const finalResult = script.execute(context, saved)
+```
+
+Key properties of this pair:
+
+- The product is a **plain object** (not yet stringified); the caller owns the `JSON.stringify`
+  boundary.
+- **Cycles are handled** by reference-tracking (`{ __ref: n }` tokens), so a `FunctionDefinition`'s
+  captured `scope` and `scope.parent` back-links serialize cleanly and revive as shared references.
+- The **context is never serialized** — the caller supplies the fresh execution context on
+  deserialize and resolves `__fnRef`/`__gameRef` against it. Nothing is saved twice.
+- **Plans are first-class**: `planValue` (often a host object like a `WorkPlan`) round-trips
+  through the same hook, so in-flight `plan` blocks resume correctly.
+- An unresolvable token (e.g. a closure with no name) should **throw** from the hook so the host
+  can treat the state as non-resumable and re-plan, rather than silently corrupting it.
+
+### Basic Usage (JSON replacers)
+
+For scripts that only use `FunctionDefinition`s (no native functions / host objects), the lower-level
+replacers remain available:
 
 ```javascript
 // Execute script and get state

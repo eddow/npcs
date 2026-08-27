@@ -313,6 +313,75 @@ Custom JSON deserializer for execution state. Restores function definitions and 
 const savedState = JSON.parse(stateJson, reviveState)
 ```
 
+### serializeExecutionState
+
+```typescript
+function serializeExecutionState(
+    state: ExecutionState,
+    hook?: StateValueHook
+): Record<string, unknown>
+```
+
+Serializes a full `ExecutionState` (`{ stack, plans }`) into a **plain, JSON-stringifiable
+object graph** — not yet a string. The caller owns the final `JSON.stringify` boundary.
+
+Unlike `serializeState` (a JSON replacer), this function:
+
+- **Delegates** native functions and host objects to `hook` instead of throwing.
+- **Reference-tracks** objects: shared or cyclic objects (a `FunctionDefinition`'s captured
+  scope, `scope.parent` back-links) are inlined once and every later occurrence is emitted as
+  a `{ __ref: n }` token, so the result is an acyclic, JSON-safe DAG.
+
+```javascript
+import { serializeExecutionState } from 'npc-script'
+
+const json = JSON.stringify(serializeExecutionState(executor.state, hook))
+```
+
+### reviveExecutionState
+
+```typescript
+function reviveExecutionState(
+    data: Record<string, unknown>,
+    hook?: StateValueHook
+): ExecutionState
+```
+
+Revives an object graph produced by `serializeExecutionState` back into a live `ExecutionState`.
+`{ __ref: n }` tokens resolve to their shared in-progress containers (slots are allocated before
+recursing), and `scope.parent` is rebuilt from stack order — nothing is serialized twice.
+
+```javascript
+import { reviveExecutionState } from 'npc-script'
+
+const state = reviveExecutionState(JSON.parse(json), hook)
+```
+
+### StateValueHook
+
+```typescript
+type StateValueHook = (value: unknown) => unknown
+```
+
+Optional hook supplied by the **host** for values npc-script cannot serialize natively (native
+functions and host objects — e.g. game-world references). It is used in both directions:
+
+- **Serialize**: return a non-`undefined` token to take ownership of `value` (e.g.
+  `{ __fnRef: 'work.harvest' }`). Return `undefined` to fall through to default handling.
+- **Revive**: return a non-`undefined` live value to take ownership of the token (e.g. resolve
+  `{ __fnRef }` back to the function). Return `undefined` to fall through to default handling.
+
+The fresh execution context is supplied by the caller (captured by the hook) and is **never
+serialized** — the host references its own functions/objects by name or index, not by value.
+
+```javascript
+const serializeHook = (value) =>
+    typeof value === 'function' ? { __fnRef: nameOf(value) } : undefined
+
+const reviveHook = (value) =>
+    value?.__fnRef ? resolveByName(value.__fnRef) : undefined
+```
+
 ### stack
 
 ```typescript

@@ -216,12 +216,23 @@ export class ScriptExecutor {
 
 	private countLoopOccurrences(statement: ASTBase) {
 		const dwScope = this.stack[0].loopScopes[0] as DoWhileScope
-		if (dwScope.occurrences++ > 1000)
-			throw new ExecutionError(
+		if (dwScope.occurrences++ > 1000) {
+			const ip = this.stack[0].ip
+			const error = new ExecutionError(
 				this,
 				statement,
 				'While loop "stack overflow": has more than 1000 occurrences',
 			)
+			// Snapshot loop state onto the error so the consumer's centralized
+			// diagnostics (e.g. `traces.script` in anarkai) can surface it.
+			error.context = {
+				occurrences: dwScope.occurrences,
+				loopDepth: dwScope.ipDepth,
+				functionIndex: ip.functionIndex,
+				ip: ip.indexes.join('.'),
+			}
+			throw error
+		}
 	}
 
 	// Get statement by instruction pointer
